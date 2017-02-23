@@ -63,9 +63,9 @@ int sdm_send_cmd(int sockfd, int cmd_code, ...)
 {
     va_list ap;
     int n;
-    struct header_t *cmd = malloc(sizeof(struct header_t));
+    sdm_pkt_t *cmd = malloc(sizeof(sdm_pkt_t));
 
-    memset(cmd, 0, sizeof(struct header_t));
+    memset(cmd, 0, sizeof(sdm_pkt_t));
     cmd->magic = SDM_PKG_MAGIC;
     cmd->cmd = cmd_code;
 
@@ -89,7 +89,7 @@ int sdm_send_cmd(int sockfd, int cmd_code, ...)
             d             = va_arg(ap, char *);
             cmd->data_len = va_arg(ap, int) / 2;
 
-            cmd = realloc(cmd, sizeof(struct header_t) + cmd->data_len * 2);
+            cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
             memcpy(cmd->data, d, cmd->data_len * 2);
 
             va_end(ap);
@@ -106,10 +106,10 @@ int sdm_send_cmd(int sockfd, int cmd_code, ...)
     }
 
     logger(INFO_LOG, "snd cmd %-6s: ", sdm_cmd_to_str(cmd->cmd));
-    DUMP_SHORT(DEBUG_LOG, LGREEN, (uint8_t *)cmd, sizeof(struct header_t) + cmd->data_len * 2);
+    DUMP_SHORT(DEBUG_LOG, LGREEN, (uint8_t *)cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
     LINE2LOG;
 
-    n = write(sockfd, cmd, sizeof(struct header_t) + cmd->data_len * 2);
+    n = write(sockfd, cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
     free(cmd);
 
     if (n < 0) {
@@ -152,11 +152,11 @@ char* sdm_samples_file_type_to_str(uint8_t type)
     }
 }
 
-int sdm_show(struct header_t *cmd)
+int sdm_show(sdm_pkt_t *cmd)
 {
 
     printf("\rrcv cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
-    DUMP_SHORT(INFO_LOG, YELLOW, cmd, sizeof(struct header_t));
+    DUMP_SHORT(INFO_LOG, YELLOW, cmd, sizeof(sdm_pkt_t));
     switch (cmd->cmd) {
         case SDM_REPLAY_STOP:
             printf ("\n");
@@ -325,18 +325,18 @@ command_ref_error:
     return NULL;
 }
 
-int sdm_extract_replay(char *buf, size_t len, struct header_t **cmd)
+int sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd)
 {
     unsigned int i;
     uint64_t magic = SDM_PKG_MAGIC;
     int find = 0;
 
-    if (len < sizeof(struct header_t)) {
+    if (len < sizeof(sdm_pkt_t)) {
         *cmd = NULL;
         return 0;
     }
 
-    for (i = 0; i < len && (len - i) >= sizeof(struct header_t); i++)
+    for (i = 0; i < len && (len - i) >= sizeof(sdm_pkt_t); i++)
         if (!memcmp(buf + i, &magic, sizeof(magic))) {
             find = 1;
             break;
@@ -347,8 +347,8 @@ int sdm_extract_replay(char *buf, size_t len, struct header_t **cmd)
         return len - i;
     }
 
-    *cmd = (struct header_t*)(buf + i);
-    return sizeof(struct header_t) + i;
+    *cmd = (sdm_pkt_t*)(buf + i);
+    return sizeof(sdm_pkt_t) + i;
 }
 
 void smd_rcv_idle_state()

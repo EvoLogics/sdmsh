@@ -33,7 +33,7 @@ enum {
    ,SDM_FILE_TYPE_INT
 };
 
-struct header_t {
+typedef struct sdm_pkt_t {
     uint64_t magic;
     uint8_t  cmd;
     union {
@@ -49,7 +49,7 @@ struct header_t {
     };
     uint32_t data_len; /* in 16bit words */
     uint16_t data[];
-} __attribute__ ((packed));
+} __attribute__ ((packed)) sdm_pkt_t;
 
 enum {
     SDM_STATE_IDLE    = 1
@@ -66,11 +66,11 @@ extern sdm_receive_t sdm_rcv;
 
 int   sdm_connect(char *ip, int port);
 int   sdm_send_cmd(int sockfd, int cmd_code, ...);
-int   sdm_extract_replay(char *buf, size_t len, struct header_t **cmd);
+int   sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd);
 
 void  smd_rcv_idle_state();
 
-int   sdm_show(struct header_t *cmd);
+int   sdm_show(sdm_pkt_t *cmd);
 
 int   sdm_save_samples(char *filename, char *buf, size_t len);
 char* sdm_load_samples(char *filename, size_t *len);

@@ -27,7 +27,7 @@ char buf[BUFSIZE] = {0};
 
 int handle_receive(char *buf, int len)
 {
-    struct header_t *cmd;
+    sdm_pkt_t *cmd;
     int handled, data_len;
 
     handled = sdm_extract_replay(buf, len, &cmd);
