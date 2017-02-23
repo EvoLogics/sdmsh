@@ -1,0 +1,6 @@
+*.o
+*~
+.*.sw?
+cscope.out
+tags
+.gitignore
