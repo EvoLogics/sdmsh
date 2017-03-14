@@ -4,7 +4,7 @@ OBJ = $(SRC:.c=.o)
 CFLAGS = -W -Wall -I. -lreadline -lm -ggdb -DLOGGER_ENABLED
 
 all: $(OBJ)
-	$(CC) $(CFLAGS) -o $(PROJ) $(OBJ)
+	$(CC) -o $(PROJ) $(OBJ) $(CFLAGS)
 
 clean:
 	rm -f $(PROJ) $(OBJ) *~ .*.sw?
