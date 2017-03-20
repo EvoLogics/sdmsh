@@ -45,7 +45,7 @@ int sdm_connect(char *ip, int port)
     struct sockaddr_in serveraddr;
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
+    if (sockfd < 0)
         err(1, "socket(): ");
 
     memset((char *)&serveraddr, 0, sizeof(serveraddr));
@@ -53,7 +53,7 @@ int sdm_connect(char *ip, int port)
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(port);
 
-    if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) 
+    if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
         err(1, "connect(): ");
 
     return sockfd;
@@ -135,7 +135,7 @@ char* sdm_cmd_to_str(uint8_t cmd)
 char* sdm_reply_to_str(uint8_t cmd)
 {
     switch (cmd) {
-        case SDM_REPLAY_STOP:   return "STOP";    
+        case SDM_REPLAY_STOP:   return "STOP";
         case SDM_REPLAY_RX:     return "RX";
         case SDM_REPLAY_BUSY:   return "BUSY";
         case SDM_REPLAY_REPORT: return "REPORT";
@@ -311,7 +311,7 @@ char *sdm_load_samples(char *filename, size_t *len)
                 ADD_TO_DATA_VAL16bit(data, data_size, data_offset, (uint16_t)(val * SHRT_MAX));
                 break;
             case SDM_FILE_TYPE_INT:
-                if (val >= SHRT_MIN || val <= SHRT_MAX) {
+                if (val <= SHRT_MIN || val >= SHRT_MAX) {
                     fprintf(stderr, "Line %d: Error int data must be 16bit\n", n);
                     goto command_ref_error;
                 }
@@ -365,4 +365,3 @@ void smd_rcv_idle_state()
     sdm_rcv.filename = NULL;
     sdm_rcv.data_len = 0;
 }
-
