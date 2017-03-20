@@ -311,8 +311,13 @@ char *sdm_load_samples(char *filename, size_t *len)
                 ADD_TO_DATA_VAL16bit(data, data_size, data_offset, (uint16_t)(val * SHRT_MAX));
                 break;
             case SDM_FILE_TYPE_INT:
-                fprintf (stderr, "TODO: implement signal file type 'int'\n");
-                goto command_ref_error;
+                if (val >= SHRT_MIN || val <= SHRT_MAX) {
+                    fprintf(stderr, "Line %d: Error int data must be 16bit\n", n);
+                    goto command_ref_error;
+                }
+
+                ADD_TO_DATA_VAL16bit(data, data_size, data_offset, (uint16_t)val);
+                break;
         }
     }
     fclose(fp);
