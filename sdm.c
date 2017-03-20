@@ -349,7 +349,7 @@ int sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd)
 
     if (!find) {
         *cmd = NULL;
-        return len - i;
+        return i;
     }
 
     *cmd = (sdm_pkt_t*)(buf + i);
