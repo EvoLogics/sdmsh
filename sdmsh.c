@@ -46,6 +46,7 @@ int handle_receive(char *buf, int len)
             DUMP2LOG(DEBUG_LOG, buf, len - handled);
         }
         sdm_rcv.data_len += handled;
+        logger (INFO_LOG, "\rrecv %d samples\r",  sdm_rcv.data_len / 2);
         return handled;
     }
 
@@ -131,7 +132,8 @@ int main(int argc, char *argv[])
 
             rc = handle_receive(buf, stashed + len) - len;
             stashed = rc == -1 ? 0 : stashed - rc;
-            rl_forced_update_display();
+            if (stashed == 0)
+                rl_forced_update_display();
         }
     }
 

@@ -98,6 +98,7 @@ int command_ref(char *argv[], int argc)
     }
 
     data = sdm_load_samples(argv[1], &len);
+    logger (INFO_LOG, "read %d samles\n", len / 2);
 
     if (data) {
         if (len != 1024 * 2) {
@@ -123,6 +124,7 @@ int command_tx(char *argv[], int argc)
     }
 
     data = sdm_load_samples(argv[1], &len);
+    logger (INFO_LOG, "read %d samles\n", len / 2);
 
     if (data) {
         size_t rest = len % (1024*2);
