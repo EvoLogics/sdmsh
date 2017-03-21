@@ -96,10 +96,17 @@ int sdm_send_cmd(int sockfd, int cmd_code, ...)
             break;
         }
         case SDM_CMD_RX:
+        {
+            uint32_t tmp;
             va_start(ap, cmd_code);
-            cmd->param = va_arg(ap, int);
+
+            /* max RX length 24 bit */
+            tmp = va_arg(ap, int) & 0xffffff;
+            memcpy(cmd->rx_len, &tmp, 3);
+
             va_end(ap);
             break;
+        }
         default:
             free(cmd);
             return -1;

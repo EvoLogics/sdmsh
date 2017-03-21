@@ -149,7 +149,8 @@ int command_rx(char *argv[], int argc)
         return -1;
     }
 
-    ARG_LONG("samples number", argv[1], nsamples, arg >= 0);
+    /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
+    ARG_LONG("samples number", argv[1], nsamples, arg >= 0 && arg <= 16776192);
 
     if (nsamples % 1024) {
         long old = nsamples;
