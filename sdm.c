@@ -258,7 +258,7 @@ int sdm_save_samples(char *filename, char *buf, size_t len)
     int16_t *samples = (int16_t*)buf;
     FILE *fp;
 
-    if ((fp = fopen(filename, "w")) == NULL) {
+    if ((fp = fopen(filename, "a")) == NULL) {
         return -1;
     }
 

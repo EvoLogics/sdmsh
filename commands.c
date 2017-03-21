@@ -144,6 +144,8 @@ int command_tx(char *argv[], int argc)
 int command_rx(char *argv[], int argc)
 {
     long nsamples = 0;
+    FILE *fp;
+
     if (argc != 3) {
         show_help(argv[0]);
         return -1;
@@ -158,6 +160,13 @@ int command_rx(char *argv[], int argc)
         logger(WARN_LOG, "Warning: signal samples number %ld do not divisible by 1024 samples. Expand to %ld\n"
                 , old, nsamples);
     }
+
+    /* truncate file if exist */
+    if ((fp = fopen(argv[2], "w")) == NULL) {
+        logger(ERR_LOG, "Error cannot open %s file: %s\n", argv[2], strerror(errno));
+        return -1;
+    }
+    fclose(fp);
 
     sdm_rcv.filename = strdup(argv[2]);
     sdm_send_cmd(sockfd, SDM_CMD_RX, nsamples);
