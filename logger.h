@@ -72,7 +72,7 @@
         }                                                               \
     }while(0)
 
-/* Line to log */ 
+/* Line to log */
 #define L2L(x)       logger(x,"\n");
 #define LINE2LOG     logger(DEBUG_LOG,"\n");
 
