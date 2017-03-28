@@ -114,7 +114,7 @@ int sdm_send_cmd(int sockfd, int cmd_code, ...)
 
     logger(INFO_LOG, "snd cmd %-6s: ", sdm_cmd_to_str(cmd->cmd));
     DUMP_SHORT(DEBUG_LOG, LGREEN, (uint8_t *)cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
-    LINE2LOG;
+    logger(INFO_LOG, "\n");
 
     n = write(sockfd, cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
     free(cmd);
@@ -134,7 +134,7 @@ char* sdm_cmd_to_str(uint8_t cmd)
         case SDM_CMD_STOP:   return "STOP";
         case SDM_CMD_TX:     return "TX";
         case SDM_CMD_RX:     return "RX";
-        case SDM_CMD_REF:    return "RE:  ";
+        case SDM_CMD_REF:    return "REF";
         case SDM_CMD_CONFIG: return "CONFIG";
         default: return "???";
     }
@@ -163,35 +163,36 @@ char* sdm_samples_file_type_to_str(uint8_t type)
 int sdm_show(sdm_pkt_t *cmd)
 {
 
-    printf("\rrcv cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
-    DUMP_SHORT(INFO_LOG, YELLOW, cmd, sizeof(sdm_pkt_t));
+    logger(INFO_LOG, "\rrcv cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
+    DUMP_SHORT(DEBUG_LOG, YELLOW, cmd, sizeof(sdm_pkt_t));
+
     switch (cmd->cmd) {
-        case SDM_REPLAY_STOP:
-            printf ("\n");
-            break;
         case SDM_REPLAY_RX:
-            DUMP_SHORT(INFO_LOG, YELLOW, cmd->data, cmd->data_len);
+            /* RX do not return data_len. No need to dump data */
+        case SDM_REPLAY_STOP:
+            /* spaces need to clean last message 'recv %d samples' */
+            logger(INFO_LOG, "          \n");
             break;
         case SDM_REPLAY_BUSY:
-            printf ("%d\n", cmd->param);
+            logger(INFO_LOG, "%d\n", cmd->param);
             break;
         case SDM_REPLAY_REPORT:
             switch (cmd->param) {
-                case 0:   printf ("no SDM MODE\n"); break;
-                case 1:   printf ("transmission stop after %d samples\n", cmd->data_len); break;
-                case 2:   printf ("reception stop after %d samples\n", cmd->data_len); break;
-                case 3:   printf ("reference update %s\n", cmd->data_len ? "finished" : "failed"); break;
-                case 4:   printf ("config %s\n", cmd->data_len ? "accepted" : "failed"); break;
-                case 254: printf ("garbage dropped %d\n", cmd->data_len); break;
-                case 255: printf ("unknowd command code 0x%02x\n", cmd->data_len); break;
-                default:  printf ("uknown reply report 0x%02x\n", cmd->param); break;
+                case 0:   logger(INFO_LOG, " No SDM MODE\n"); break;
+                case 1:   logger(INFO_LOG, " Transmission stop after %d samples\n", cmd->data_len); break;
+                case 2:   logger(INFO_LOG, " Reception stop after %d samples\n", cmd->data_len); break;
+                case 3:   logger(INFO_LOG, " Reference update %s\n", cmd->data_len ? "finished" : "failed"); break;
+                case 4:   logger(INFO_LOG, " Config %s\n", cmd->data_len ? "accepted" : "failed"); break;
+                case 254: logger(INFO_LOG, " Garbage dropped %d\n", cmd->data_len); break;
+                case 255: logger(INFO_LOG, " Unknowd command code 0x%02x\n", cmd->data_len); break;
+                default:  logger(INFO_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
             }
             break;
         default:
-            printf ("uknown reply command 0x%02x\n", cmd->cmd);
+            logger(WARN_LOG, "Uknown reply command 0x%02x\n", cmd->cmd);
             break;
     }
-    LINE2LOG;
+
     return 0;
 }
 
@@ -287,7 +288,7 @@ char *sdm_load_samples(char *filename, size_t *len)
 
     type = sdm_autodetect_samples_file_type(fp);
 
-    printf ("\rautodect signal file type: %s\n", sdm_samples_file_type_to_str(type));
+    logger(INFO_LOG, "\rautodect signal file type: %s\n", sdm_samples_file_type_to_str(type));
     if (type == 0) {
         fclose(fp);
         fprintf (stderr, "Can't autodetect signal file type\n");
