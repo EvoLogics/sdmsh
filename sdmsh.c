@@ -31,6 +31,9 @@ int handle_receive(char *buf, int len)
     int handled, data_len;
 
     handled = sdm_extract_replay(buf, len, &cmd);
+
+    /* if we have not 16bit aligned data, we will skip last byte for this time */
+    handled -= (handled % 2);
     if(handled == 0)
         return 0;
 
