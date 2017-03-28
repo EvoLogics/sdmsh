@@ -4,9 +4,8 @@
 #include <stdio.h> /* FILE* */
 
 void rl_callback(char* line);
-void shell_init();
+void shell_init(char *progname, FILE *input);
 void shell_deinit();
 int  shell_handle();
 
 #endif
-

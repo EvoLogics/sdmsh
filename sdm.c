@@ -123,6 +123,7 @@ int sdm_send_cmd(int sockfd, int cmd_code, ...)
         warn("write(): ");
         return -1;
     }
+    sdm_rcv.state = SDM_STATE_WAIT_REPLY;
 
     return 0;
 }
@@ -368,8 +369,6 @@ void smd_rcv_idle_state()
     rl_clear_message();
     if (sdm_rcv.filename)
         free(sdm_rcv.filename);
-    sdm_rcv.state = SDM_STATE_IDLE;
     sdm_rcv.filename = NULL;
     sdm_rcv.data_len = 0;
 }
-

@@ -9,7 +9,7 @@
 #include <commands.h>
 #include <logger.h>
 
-char *prompt = "# ";
+char *prompt;
 int   shell_quit = 0;
 char *shell_input = NULL;
 char *history_file = NULL;
@@ -86,19 +86,30 @@ char* shell_rl_hook_dummy(const char *text, int state)
     return NULL;
 }
 
-void shell_init(char *progname)
+void shell_init(char *progname, FILE *input)
 {
     char *homedir = getenv("HOME");
-    if (homedir) {
-        asprintf(&history_file, "%s/.%s_history", homedir, progname);
-        read_history(history_file);
+
+    if (input != stdin) {
+        prompt = strdup("");
+        rl_instream = input;
+        rl_outstream = input;
+    } else {
+        prompt = strdup("# ");
+        rl_instream = stdin;
+        rl_outstream = stdout;
+
+        if (homedir) {
+            asprintf(&history_file, "%s/.%s_history", homedir, progname);
+            read_history(history_file);
+        }
+
+        /* Allow conditional parsing of the ~/.inputrc file. */
+        rl_readline_name = progname;
+        rl_attempted_completion_function = shell_cb_completion;
+        rl_completion_entry_function = shell_rl_hook_dummy;
     }
     rl_callback_handler_install(prompt, (rl_vcpfunc_t*) &rl_cb_getline);
-
-    /* Allow conditional parsing of the ~/.inputrc file. */
-    rl_readline_name = progname;
-    rl_attempted_completion_function = shell_cb_completion;
-    rl_completion_entry_function = shell_rl_hook_dummy;
 }
 
 void shell_deinit()
@@ -110,6 +121,7 @@ void shell_deinit()
     }
 
     rl_callback_handler_remove();
+    free(prompt);
 }
 
 int shell_handle()
