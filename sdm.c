@@ -45,7 +45,7 @@ int sdm_connect(char *ip, int port)
     struct sockaddr_in serveraddr;
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
+    if (sockfd < 0)
         err(1, "socket(): ");
 
     memset((char *)&serveraddr, 0, sizeof(serveraddr));
@@ -53,8 +53,8 @@ int sdm_connect(char *ip, int port)
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(port);
 
-    if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0) 
-        err(1, "connect(): ");
+    if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+        err(1, "connect(\"%s:%d\"): ", ip, port);
 
     return sockfd;
 }
@@ -142,7 +142,7 @@ char* sdm_cmd_to_str(uint8_t cmd)
 char* sdm_reply_to_str(uint8_t cmd)
 {
     switch (cmd) {
-        case SDM_REPLAY_STOP:   return "STOP";    
+        case SDM_REPLAY_STOP:   return "STOP";
         case SDM_REPLAY_RX:     return "RX";
         case SDM_REPLAY_BUSY:   return "BUSY";
         case SDM_REPLAY_REPORT: return "REPORT";

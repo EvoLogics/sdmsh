@@ -1,4 +1,4 @@
-#define _GNU_SOURCE         
+#define _GNU_SOURCE
 #include <stdio.h> /* asprintf() */
 
 #include <stdlib.h>
@@ -45,18 +45,18 @@ char* shell_rl_find_completion(const char *text, int index)
 }
 
 char* shell_rl_cmd_gen(const char *text, int state)
-{   
+{
     static int list_index;
     char *name;
-    
+
     if (!state)
         list_index = 0;
-    
+
     if ((name = shell_rl_find_completion(text, list_index)) != NULL) {
-        list_index++; 
+        list_index++;
         return strdup(name);
-    } 
-        
+    }
+
     return NULL;
 }
 
@@ -78,7 +78,7 @@ char** shell_cb_completion(const char *text, int start, int end)
     }
 
     return matches;
-}   
+}
 
 char* shell_rl_hook_dummy(const char *text, int state)
 {
@@ -164,7 +164,7 @@ int shell_run_cmd()
             printf ("\r");
             cmd->handler(argv, argc);
             rl_forced_update_display();
-            break; 
+            break;
         }
     }
 

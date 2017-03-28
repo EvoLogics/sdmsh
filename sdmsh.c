@@ -5,8 +5,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h> 
-#include <err.h> 
+#include <netdb.h>
+#include <err.h>
 #include <math.h>
 #include <limits.h> /* SHRT_MAX */
 #include <endian.h>
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
             if (len == 0)
                 break;
 
-            if (len < 0) 
+            if (len < 0)
               err(1, "read(): ");
 
             rc = handle_receive(buf, stashed + len) - len;
