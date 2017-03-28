@@ -133,8 +133,11 @@ int main(int argc, char *argv[])
             if (len < 0)
               err(1, "read(): ");
 
-            rc = handle_receive(buf, stashed + len) - len;
-            stashed = rc == -1 ? 0 : stashed - rc;
+            rc = handle_receive(buf, stashed + len);
+            stashed = rc == -1 ? 0 : stashed + len - rc;
+            if (stashed) {
+                memmove(buf, &buf[rc], stashed);
+            }
             if (stashed == 0)
                 rl_forced_update_display();
         }
