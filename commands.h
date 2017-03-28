@@ -2,7 +2,9 @@
 #define COMMANDS_H
 
 #define ARG_LONG(name, str_val, out, range_expr) do {             \
-    long arg = strtol(str_val, NULL, 0);                          \
+    long arg;                                                     \
+    errno = 0;                                                    \
+    arg = strtol(str_val, NULL, 0);                               \
     if ((errno == ERANGE && (arg == LONG_MAX || arg == LONG_MIN)) \
         || (errno != 0 && arg == 0)) {                            \
         fprintf (stderr, name": must be a digit\n");              \
