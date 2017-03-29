@@ -86,21 +86,23 @@ int handle_receive(char *buf, int len)
 }
 
 void show_usage_and_die(char *progname) {
-    printf("Usage: %s [OPTIONS] IP/NUM [PORT]\n"
+    printf("Usage: %s [OPTIONS] IP/NUM\n"
            "Mandatory argument IP of EvoLogics S2C Software Defined Modem. Or NUM is 192.168.0.NUM.\n"
-           "Optional parameter PORT. Default is %d\n"
            "\n"
-           "  -h, --help                 Display this help and exit\n"
-           "  -v, --verbose[=log-level]  Set log level. Without parameter enable debug logging\n"
-           "  -s, --stop                 Send SMD STOP at start\n"
            "  -f, --file=FILENAME        Run commands from FILENAME\n"
+           "  -h, --help                 Display this help and exit\n"
+           "  -p, --port=PORT            Set TCP PORT for connecting the SDM modem. Default is %d\n"
+           "  -s, --stop                 Send SMD STOP at start\n"
+           "  -v, --verbose[=log-level]  Set log level. Without parameter enable debug logging\n"
            "\n"
-           "Example:\n"
+           "Examples:\n"
            "\n"
            "# Connect to 192.168.0.127 port 4200. Enable debug logging\n"
            "%s 127 -v\n"
+
            "# Connect to 10.0.0.10 to port 4201. Send SDM 'STOP' at start\n"
-           "%s -s 10.0.0.10 4201\n"
+           "%s -sp 4201 10.0.0.10\n"
+
            "# Connect to 131 port 4200 and run commands from file 'rcv.sdmsh'\n"
            "%s 131 -f rcv.sdmsh\n"
            "\n"
@@ -109,10 +111,11 @@ void show_usage_and_die(char *progname) {
 }
 
 struct option long_options[] = {
+    {"file",      required_argument, 0, 'f'},
     {"help",      no_argument,       0, 'h'},
+    {"port",      required_argument, 0, 'p'},
     {"stop",      no_argument,       0, 's'},
     {"verbose",   optional_argument, 0, 'v'},
-    {"file",      required_argument, 0, 'f'},
 };
 int option_index = 0;
 
@@ -130,10 +133,16 @@ int main(int argc, char *argv[])
     progname = basename(argv[0]);
 
     /* check command line arguments */
-    while ((opt = getopt_long(argc, argv, "hv::sf:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hv::sf:p:", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'h': flags |= FLAG_SHOW_HELP;   break;
             case 's': flags |= FLAG_SEND_STOP;   break;
+            case 'p':
+                      if (optarg == NULL)
+                          show_usage_and_die(progname);
+                      port = atoi(optarg);
+                      break;
+
             case 'f':
                       if (optarg == NULL)
                           show_usage_and_die(progname);
@@ -145,6 +154,7 @@ int main(int argc, char *argv[])
                       flags |= FLAG_EXEC_SCRIPT;
                       script_file = optarg;
                       break;
+
             case 'v':
                       if (optarg == NULL) {
                           log_level |= DEBUG_LOG;
@@ -182,11 +192,6 @@ int main(int argc, char *argv[])
         } else {
             host = argv[optind - 1];
         }
-    }
-
-    /* Optional argument port number (default 4200) */
-    if (optind++ < argc) {
-        port = atoi(argv[optind - 1]);
     }
 
     if (optind < argc)
