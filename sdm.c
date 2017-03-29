@@ -260,6 +260,11 @@ int sdm_save_samples(char *filename, char *buf, size_t len)
     int16_t *samples = (int16_t*)buf;
     FILE *fp;
 
+    if (filename == NULL) {
+        logger(ERR_LOG, "\rNo file to store data. Skipped %d byte\r", len);
+        return len;
+    }
+
     if ((fp = fopen(filename, "a")) == NULL) {
         return -1;
     }

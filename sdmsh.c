@@ -47,11 +47,6 @@ int handle_receive(char *buf, int len)
         return 0;
 
     if (cmd == NULL) {
-        if (sdm_rcv.filename == NULL) {
-            logger(ERR_LOG, "skip %d byte: ", handled);
-            DUMP2LOG(DEBUG_LOG, buf, len - handled);
-            return handled;
-        }
 
         if (sdm_save_samples(sdm_rcv.filename, buf, handled) == -1) {
             fprintf (stderr, "\rOpen file \"%s\" error: %s\n", sdm_rcv.filename, strerror(errno));
