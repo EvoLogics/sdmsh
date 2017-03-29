@@ -180,8 +180,10 @@ int shell_run_cmd()
         }
     }
 
-    if (cmd->name == NULL)
+    if (cmd->name == NULL) {
         fprintf(stderr, "\rUnknown command: %s\n", argv[0]);
+        rl_forced_update_display();
+    }
 
     free(argv);
     free(shell_input);
