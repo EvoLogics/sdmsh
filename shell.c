@@ -86,7 +86,7 @@ char* shell_rl_hook_dummy(const char *text, int state)
     return NULL;
 }
 
-void shell_init(char *progname, FILE *input)
+void shell_init(char *progname, FILE *input, char *prompt_)
 {
     char *homedir = getenv("HOME");
 
@@ -95,7 +95,7 @@ void shell_init(char *progname, FILE *input)
         rl_instream = input;
         rl_outstream = input;
     } else {
-        prompt = strdup("# ");
+        prompt = strdup(prompt_);
         rl_instream = stdin;
         rl_outstream = stdout;
 

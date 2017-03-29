@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
     char *progname, *host;
     int ret;
     int len;
+    char prompt[10];
 
     int port = SDM_PORT;
     int opt, flags = 0;
@@ -212,7 +213,9 @@ int main(int argc, char *argv[])
             err(1, "Error open script file \"%s\": ", script_file);
         logger (DEBUG_LOG, "Running script file \"%s\".\n", script_file);
     }
-    shell_init(progname, input);
+
+    sprintf(prompt, "%s> ", strrchr(host, '.') + 1);
+    shell_init(progname, input, prompt);
 
     for (;;) {
         static fd_set rfds;
