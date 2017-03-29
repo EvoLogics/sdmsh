@@ -33,7 +33,7 @@
 } while(0)
 
 sdm_receive_t sdm_rcv = {
-    .state = SDM_STATE_IDLE,
+    .state = SDM_STATE_INIT,
     .filename = NULL,
     .data_len = 0,
 };

@@ -52,7 +52,8 @@ typedef struct sdm_pkt_t {
 } __attribute__ ((packed)) sdm_pkt_t;
 
 enum {
-    SDM_STATE_IDLE = 1,
+    SDM_STATE_INIT = 1,
+    SDM_STATE_IDLE,
     SDM_STATE_WAIT_REPLY,
     SDM_STATE_RX
 };

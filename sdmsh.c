@@ -47,7 +47,6 @@ int handle_receive(char *buf, int len)
         return 0;
 
     if (cmd == NULL) {
-
         if (sdm_save_samples(sdm_rcv.filename, buf, handled) == -1) {
             fprintf (stderr, "\rOpen file \"%s\" error: %s\n", sdm_rcv.filename, strerror(errno));
             DUMP2LOG(DEBUG_LOG, buf, len - handled);
@@ -217,30 +216,50 @@ int main(int argc, char *argv[])
 
         FD_ZERO(&rfds);
         FD_SET(sockfd, &rfds);
+        tv.tv_sec  = 1;
+        tv.tv_usec = 0;
 
         if (flags & FLAG_EXEC_SCRIPT && feof(input) && sdm_rcv.state == SDM_STATE_IDLE)
             break;
-        /* If we running script, we need to wait for reply before run next command */
-        if (flags & FLAG_EXEC_SCRIPT && sdm_rcv.state == SDM_STATE_WAIT_REPLY) {
+
+        if (sdm_rcv.state == SDM_STATE_INIT) {
+            /* In init state we want flush all data what left in modem from last session.
+             * So we did't read user input till hit timeout.
+             */
+            tv.tv_sec  = 0;
+            tv.tv_usec = 10;
+            maxfd = sockfd;
+        } else if (flags & FLAG_EXEC_SCRIPT && sdm_rcv.state == SDM_STATE_WAIT_REPLY) {
+            /* If we running script, we need to wait for reply before run next command */
             maxfd = sockfd;
         } else {
             FD_SET(fileno(input), &rfds);
             maxfd = (sockfd > fileno(input)) ? sockfd : fileno(input);
         }
 
-        tv.tv_sec  = 1;
-        tv.tv_usec = 0;
         ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
         if (ret == -1)
             err(1, "select()");
-        if (!ret)
+        /* timeout */
+        if (!ret) {
+            if (sdm_rcv.state == SDM_STATE_INIT)
+                sdm_rcv.state = SDM_STATE_IDLE;
             continue;
+        }
 
         if (FD_ISSET(fileno(input), &rfds)) {
             rl_callback_read_char();
-            if(!shell_handle() && sdm_rcv.state == SDM_STATE_IDLE)
-                break;
+            if(!shell_handle()) {
+                /* shell want to quit */
+                if (flags & FLAG_EXEC_SCRIPT) {
+                    if (sdm_rcv.state == SDM_STATE_IDLE)
+                        break;
+                } else {
+                    /* In interactive mode we want to force quit */
+                    break;
+                }
+            }
         }
 
         if (FD_ISSET(sockfd, &rfds)) {
