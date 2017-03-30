@@ -212,6 +212,8 @@ int main(int argc, char *argv[])
         if (input == NULL)
             err(1, "Error open script file \"%s\": ", script_file);
         logger (DEBUG_LOG, "Running script file \"%s\".\n", script_file);
+    } else if (!isatty(STDIN_FILENO)) {
+        flags |= FLAG_EXEC_SCRIPT;
     }
 
     sprintf(prompt, "%s> ", strrchr(host, '.') + 1);

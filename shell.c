@@ -90,7 +90,7 @@ void shell_init(char *progname, FILE *input, char *prompt_)
 {
     char *homedir = getenv("HOME");
 
-    if (input != stdin) {
+    if (input != stdin || !isatty(STDIN_FILENO)) {
         prompt = strdup("");
         rl_instream = input;
         rl_outstream = input;
