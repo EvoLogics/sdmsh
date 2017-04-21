@@ -15,12 +15,12 @@
 
 #include <sdm.h>
 
-int command_help(char *argv[], int argc);
-int command_config(char *argv[], int argc);
-int command_stop(char *argv[], int argc);
-int command_ref(char *argv[], int argc);
-int command_tx(char *argv[], int argc);
-int command_rx(char *argv[], int argc);
+int command_help  (struct shell_config *sc, char *argv[], int argc);
+int command_config(struct shell_config *sc, char *argv[], int argc);
+int command_stop  (struct shell_config *sc, char *argv[], int argc);
+int command_ref   (struct shell_config *sc, char *argv[], int argc);
+int command_tx    (struct shell_config *sc, char *argv[], int argc);
+int command_rx    (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
     {"help",   command_help,   "This help", "help [command]"}
@@ -47,17 +47,18 @@ void show_help(char *name)
         fprintf(stderr, "Unknown topic: %s\n", name);
     }
 }
-int command_help(char *argv[], int argc)
+int command_help(struct shell_config *sc, char *argv[], int argc)
 {
-    argc = argc;
+    argc = argc; sc = sc;
     show_help(argv[1]);
     return 0;
 }
 
-int command_config(char *argv[], int argc)
+int command_config(struct shell_config *sc, char *argv[], int argc)
 {
     uint16_t threshold;
     uint8_t gain, srclvl;
+    int sockfd = *(int *)sc->cookie;
 
     if (argc != 4) {
         show_help(argv[0]);
@@ -73,8 +74,10 @@ int command_config(char *argv[], int argc)
     return 0;
 }
 
-int command_stop(char *argv[], int argc)
+int command_stop(struct shell_config *sc, char *argv[], int argc)
 {
+    int sockfd = *(int *)sc->cookie;
+
     argv = argv;
     if (argc != 1) {
         show_help(argv[0]);
@@ -87,10 +90,11 @@ int command_stop(char *argv[], int argc)
     return 0;
 }
 
-int command_ref(char *argv[], int argc)
+int command_ref(struct shell_config *sc, char *argv[], int argc)
 {
     char  *data;
     size_t len;
+    int sockfd = *(int *)sc->cookie;
 
     if (argc != 2) {
         show_help(argv[0]);
@@ -113,10 +117,11 @@ int command_ref(char *argv[], int argc)
     return 0;
 }
 
-int command_tx(char *argv[], int argc)
+int command_tx(struct shell_config *sc, char *argv[], int argc)
 {
     char  *data;
     size_t len;
+    int sockfd = *(int *)sc->cookie;
 
     if (argc != 2) {
         show_help(argv[0]);
@@ -143,10 +148,11 @@ int command_tx(char *argv[], int argc)
     return 0;
 }
 
-int command_rx(char *argv[], int argc)
+int command_rx(struct shell_config *sc, char *argv[], int argc)
 {
     long nsamples = 0;
     FILE *fp;
+    int sockfd = *(int *)sc->cookie;
 
     if (argc != 3) {
         show_help(argv[0]);

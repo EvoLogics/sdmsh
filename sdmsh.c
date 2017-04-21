@@ -1,3 +1,6 @@
+/* for asprintf() */
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,9 +33,9 @@ enum {
     FLAG_EXEC_SCRIPT = 0x04,
 };
 
-unsigned long log_level = FATAL_LOG | ERR_LOG | WARN_LOG | INFO_LOG;
-
 char buf[BUFSIZE] = {0};
+
+struct shell_config shell_config;
 
 int handle_receive(char *buf, int len)
 {
@@ -82,6 +85,7 @@ int handle_receive(char *buf, int len)
             sdm_rcv.state = SDM_STATE_IDLE;
             return handled;
     }
+    /* FIXME: never reached? */
     return len;
 }
 
@@ -124,7 +128,7 @@ int main(int argc, char *argv[])
     char *progname, *host;
     int ret;
     int len;
-    char prompt[10];
+    int sockfd;
 
     int port = SDM_PORT;
     int opt, flags = 0;
@@ -216,8 +220,15 @@ int main(int argc, char *argv[])
         flags |= FLAG_EXEC_SCRIPT;
     }
 
-    sprintf(prompt, "%s> ", strrchr(host, '.') + 1);
-    shell_init(progname, input, prompt);
+    if (flags & FLAG_EXEC_SCRIPT)
+        asprintf(&shell_config.prompt, "%s> ", strrchr(host, '.') + 1);
+    else
+        shell_config.prompt = NULL;
+
+    shell_config.progname = progname;
+    shell_config.input    = input;
+    shell_config.cookie   = &sockfd;
+    shell_init(&shell_config);
 
     for (;;) {
         static fd_set rfds;
@@ -260,7 +271,7 @@ int main(int argc, char *argv[])
 
         if (FD_ISSET(fileno(input), &rfds)) {
             rl_callback_read_char();
-            if(!shell_handle()) {
+            if(!shell_handle(&shell_config)) {
                 /* shell want to quit */
                 if (flags & FLAG_EXEC_SCRIPT) {
                     if (sdm_rcv.state == SDM_STATE_IDLE)
@@ -293,7 +304,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    shell_deinit();
+    shell_deinit(&shell_config);
 
     close(sockfd);
 

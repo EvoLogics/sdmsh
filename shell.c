@@ -9,18 +9,16 @@
 #include <commands.h>
 #include <logger.h>
 
-char *prompt;
-int   shell_quit = 0;
-char *shell_input = NULL;
-char *history_file = NULL;
+int shell_run_cmd(struct shell_config *sc);
 
-int shell_run_cmd();
+/* needed for rb_cb_getline() */
+static struct shell_config *shell_config;
 
 void rl_cb_getline(char* line)
 {
-    shell_input = line;
+    shell_config->shell_input = line;
     if (line == NULL) {
-        shell_quit = 1;
+        shell_config->shell_quit = 1;
         return;
     }
 
@@ -86,54 +84,59 @@ char* shell_rl_hook_dummy(const char *text, int state)
     return NULL;
 }
 
-void shell_init(char *progname, FILE *input, char *prompt_)
+void shell_init(struct shell_config *sc)
 {
     char *homedir = getenv("HOME");
 
-    if (input != stdin || !isatty(STDIN_FILENO)) {
-        prompt = strdup("");
-        rl_instream = input;
-        rl_outstream = input;
+    sc->shell_quit = 0;
+    sc->shell_input = NULL;
+    sc->history_file = NULL;
+
+    if (sc->input != stdin || !isatty(STDIN_FILENO)) {
+        sc->prompt = strdup("");
+        rl_instream = sc->input;
+        rl_outstream = sc->input;
     } else {
-        prompt = strdup(prompt_);
+        if (sc->prompt == NULL)
+            sc->prompt = strdup("> ");
         rl_instream = stdin;
         rl_outstream = stdout;
 
         if (homedir) {
-            asprintf(&history_file, "%s/.%s_history", homedir, progname);
-            read_history(history_file);
+            asprintf(&sc->history_file, "%s/.%s_history", homedir, sc->progname);
+            read_history(sc->history_file);
         }
 
         /* Allow conditional parsing of the ~/.inputrc file. */
-        rl_readline_name = progname;
+        rl_readline_name = sc->progname;
         rl_attempted_completion_function = shell_cb_completion;
         rl_completion_entry_function = shell_rl_hook_dummy;
     }
-    rl_callback_handler_install(prompt, (rl_vcpfunc_t*) &rl_cb_getline);
+    rl_callback_handler_install(sc->prompt, (rl_vcpfunc_t*) &rl_cb_getline);
 }
 
-void shell_deinit()
+void shell_deinit(struct shell_config *sc)
 {
-    if (history_file) {
-        write_history(history_file);
-        free(history_file);
-        history_file = NULL;
+    if (sc->history_file) {
+        write_history(sc->history_file);
+        free(sc->history_file);
+        sc->history_file = NULL;
     }
 
     rl_callback_handler_remove();
-    free(prompt);
+    free(sc->prompt);
 }
 
-int shell_handle()
+int  shell_handle(struct shell_config *sc)
 {
-    if (shell_quit)
+    if (sc->shell_quit)
         return 0;
 
-    if (shell_input != NULL) {
-        shell_run_cmd();
+    if (sc->shell_input != NULL) {
+        shell_run_cmd(sc);
 
-        free(shell_input);
-        shell_input = NULL;
+        free(sc->shell_input);
+        sc->shell_input = NULL;
     }
     return 1;
 }
@@ -152,29 +155,29 @@ void shell_make_argv(char *cmd_line, char ***argv, int *argc)
     (*argv)[*argc] = NULL;
 }
 
-int shell_run_cmd()
+int shell_run_cmd(struct shell_config *sc)
 {
     struct commands_t *cmd;
     char **argv;
     int argc;
 
-    if (*shell_input == 0) {
-        free(shell_input);
-        shell_input = NULL;
+    if (*sc->shell_input == 0) {
+        free(sc->shell_input);
+        sc->shell_input = NULL;
         return 1;
     }
 
-    shell_make_argv(shell_input, &argv, &argc);
+    shell_make_argv(sc->shell_input, &argv, &argc);
     if (argv == NULL || *argv == NULL) {
-        free(shell_input);
-        shell_input = NULL;
+        free(sc->shell_input);
+        sc->shell_input = NULL;
         return 1;
     }
 
     for (cmd = commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
             printf ("\r");
-            cmd->handler(argv, argc);
+            cmd->handler(sc, argv, argc);
             rl_forced_update_display();
             break;
         }
@@ -186,8 +189,8 @@ int shell_run_cmd()
     }
 
     free(argv);
-    free(shell_input);
-    shell_input = NULL;
+    free(sc->shell_input);
+    sc->shell_input = NULL;
 
     return 0;
 }

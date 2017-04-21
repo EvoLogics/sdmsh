@@ -84,7 +84,5 @@ char* sdm_cmd_to_str(uint8_t cmd);
 char* sdm_reply_to_str(uint8_t cmd);
 char* sdm_samples_file_type_to_str(uint8_t type);
 
-extern int sockfd;
-
 #endif
 

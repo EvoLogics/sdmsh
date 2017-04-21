@@ -1,6 +1,8 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
+#include <shell.h>
+
 #define ARG_LONG(name, str_val, out, range_expr) do {             \
     long arg;                                                     \
     errno = 0;                                                    \
@@ -17,7 +19,7 @@
     out = arg;                                                    \
 } while(0)
 
-typedef int (*command_handler)(char *argv[], int argc);
+typedef int (*command_handler)(struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t {
     char *name;

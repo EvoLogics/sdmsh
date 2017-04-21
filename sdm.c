@@ -32,17 +32,18 @@
     data[data_offset++] = (val);               \
 } while(0)
 
+unsigned long log_level = FATAL_LOG | ERR_LOG | WARN_LOG | INFO_LOG;
+
 sdm_receive_t sdm_rcv = {
     .state = SDM_STATE_INIT,
     .filename = NULL,
     .data_len = 0,
 };
 
-int sockfd;
-
 int sdm_connect(char *ip, int port)
 {
     struct sockaddr_in serveraddr;
+    int sockfd;
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
@@ -372,7 +373,6 @@ int sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd)
 
 void smd_rcv_idle_state()
 {
-    rl_clear_message();
     if (sdm_rcv.filename)
         free(sdm_rcv.filename);
     sdm_rcv.filename = NULL;
