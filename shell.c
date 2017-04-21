@@ -177,7 +177,7 @@ int shell_run_cmd(struct shell_config *sc)
     for (cmd = commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
             printf ("\r");
-            cmd->handler(sc, argv, argc);
+            cmd->handler(sc->cookie, argv, argc);
             rl_forced_update_display();
             break;
         }
