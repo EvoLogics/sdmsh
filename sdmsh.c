@@ -37,58 +37,6 @@ char buf[BUFSIZE] = {0};
 
 struct shell_config shell_config;
 
-int handle_receive(char *buf, int len)
-{
-    sdm_pkt_t *cmd;
-    int handled, data_len;
-
-    handled = sdm_extract_replay(buf, len, &cmd);
-
-    /* if we have not 16bit aligned data, we will skip last byte for this time */
-    handled -= (handled % 2);
-    if(handled == 0)
-        return 0;
-
-    if (cmd == NULL) {
-        if (sdm_save_samples(sdm_rcv.filename, buf, handled) == -1) {
-            fprintf (stderr, "\rOpen file \"%s\" error: %s\n", sdm_rcv.filename, strerror(errno));
-            DUMP2LOG(DEBUG_LOG, buf, len - handled);
-        }
-        sdm_rcv.data_len += handled;
-        logger (INFO_LOG, "\rrecv %d samples\r",  sdm_rcv.data_len / 2);
-        return handled;
-    }
-
-    data_len = ((char *)cmd - buf);
-
-    if (data_len != 0) {
-        if (sdm_save_samples(sdm_rcv.filename, buf, data_len) == -1) {
-            fprintf (stderr, "\rOpen file \"%s\" error: %s\n", sdm_rcv.filename, strerror(errno));
-            DUMP2LOG(DEBUG_LOG, buf, len - handled);
-        }
-        sdm_rcv.data_len += data_len;
-    }
-
-    sdm_show(cmd);
-    switch (cmd->cmd) {
-        case SDM_CMD_STOP:
-            if (sdm_rcv.filename != NULL) {
-                logger(INFO_LOG, "Receiving %d samples to file %s is done.\n", sdm_rcv.data_len / 2, sdm_rcv.filename);
-                smd_rcv_idle_state();
-            }
-            sdm_rcv.state = SDM_STATE_IDLE;
-            return handled;
-        case SDM_CMD_RX:
-            sdm_rcv.state = SDM_STATE_RX;
-            return handled;
-        default:
-            sdm_rcv.state = SDM_STATE_IDLE;
-            return handled;
-    }
-    /* FIXME: never reached? */
-    return len;
-}
-
 void show_usage_and_die(char *progname) {
     printf("Usage: %s [OPTIONS] IP/NUM\n"
            "Mandatory argument IP of EvoLogics S2C Software Defined Modem. Or NUM is 192.168.0.NUM.\n"
@@ -128,7 +76,7 @@ int main(int argc, char *argv[])
     char *progname, *host;
     int ret;
     int len;
-    int sockfd;
+    sdm_session_t *sdm_session;
 
     int port = SDM_PORT;
     int opt, flags = 0;
@@ -206,13 +154,13 @@ int main(int argc, char *argv[])
         show_usage_and_die(progname);
 
     logger(DEBUG_LOG, "Connect to %s:%d\n", host, port);
-    sockfd = sdm_connect(host, port);
+    sdm_session = sdm_connect(host, port);
 
-    if (sockfd < 0)
+    if (sdm_session == NULL)
         err(1, "sdm_connect(\"%s:%d\"): ", host, port);
 
     if (flags & FLAG_SEND_STOP)
-        sdm_send_cmd(sockfd, SDM_CMD_STOP);
+        sdm_send_cmd(sdm_session, SDM_CMD_STOP);
 
     if (flags & FLAG_EXEC_SCRIPT) {
         input = fopen(script_file, "r");
@@ -230,7 +178,7 @@ int main(int argc, char *argv[])
 
     shell_config.progname = progname;
     shell_config.input    = input;
-    shell_config.cookie   = &sockfd;
+    shell_config.cookie   = sdm_session;
     shell_init(&shell_config);
 
     for (;;) {
@@ -239,26 +187,26 @@ int main(int argc, char *argv[])
         static int maxfd;
 
         FD_ZERO(&rfds);
-        FD_SET(sockfd, &rfds);
+        FD_SET(sdm_session->sockfd, &rfds);
         tv.tv_sec  = 1;
         tv.tv_usec = 0;
 
-        if (flags & FLAG_EXEC_SCRIPT && feof(input) && sdm_rcv.state == SDM_STATE_IDLE)
+        if (flags & FLAG_EXEC_SCRIPT && feof(input) && sdm_session->state == SDM_STATE_IDLE)
             break;
 
-        if (sdm_rcv.state == SDM_STATE_INIT) {
+        if (sdm_session->state == SDM_STATE_INIT) {
             /* In init state we want flush all data what left in modem from last session.
              * So we did't read user input till hit timeout.
              */
             tv.tv_sec  = 0;
             tv.tv_usec = 10;
-            maxfd = sockfd;
-        } else if (flags & FLAG_EXEC_SCRIPT && sdm_rcv.state == SDM_STATE_WAIT_REPLY) {
+            maxfd = sdm_session->sockfd;
+        } else if (flags & FLAG_EXEC_SCRIPT && sdm_session->state == SDM_STATE_WAIT_REPLY) {
             /* If we running script, we need to wait for reply before run next command */
-            maxfd = sockfd;
+            maxfd = sdm_session->sockfd;
         } else {
             FD_SET(fileno(input), &rfds);
-            maxfd = (sockfd > fileno(input)) ? sockfd : fileno(input);
+            maxfd = (sdm_session->sockfd > fileno(input)) ? sdm_session->sockfd : fileno(input);
         }
 
         ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
@@ -267,8 +215,8 @@ int main(int argc, char *argv[])
             err(1, "select()");
         /* timeout */
         if (!ret) {
-            if (sdm_rcv.state == SDM_STATE_INIT)
-                sdm_rcv.state = SDM_STATE_IDLE;
+            if (sdm_session->state == SDM_STATE_INIT)
+                sdm_session->state = SDM_STATE_IDLE;
             continue;
         }
 
@@ -277,7 +225,7 @@ int main(int argc, char *argv[])
             if(!shell_handle(&shell_config)) {
                 /* shell want to quit */
                 if (flags & FLAG_EXEC_SCRIPT) {
-                    if (sdm_rcv.state == SDM_STATE_IDLE)
+                    if (sdm_session->state == SDM_STATE_IDLE)
                         break;
                 } else {
                     /* In interactive mode we want to force quit */
@@ -286,10 +234,10 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (FD_ISSET(sockfd, &rfds)) {
+        if (FD_ISSET(sdm_session->sockfd, &rfds)) {
             int rc;
             static int stashed = 0;
-            len = read(sockfd, buf + stashed, BUFSIZE - stashed);
+            len = read(sdm_session->sockfd, buf + stashed, BUFSIZE - stashed);
 
             if (len == 0)
                 break;
@@ -297,7 +245,7 @@ int main(int argc, char *argv[])
             if (len < 0)
               err(1, "read(): ");
 
-            rc = handle_receive(buf, stashed + len);
+            rc = sdm_handle_rcv_buf(sdm_session, buf, stashed + len);
             stashed = rc == -1 ? 0 : stashed + len - rc;
             if (stashed) {
                 memmove(buf, &buf[rc], stashed);
@@ -308,8 +256,7 @@ int main(int argc, char *argv[])
     }
 
     shell_deinit(&shell_config);
-
-    close(sockfd);
+    sdm_close(sdm_session);
 
     return 0;
 }

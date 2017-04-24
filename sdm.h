@@ -58,19 +58,24 @@ enum {
     SDM_STATE_RX
 };
 
-typedef struct sdm_receive_t {
+typedef struct sdm_sdm_t {
+    int sockfd;
     int state;
     char* filename;
     int data_len;
-} sdm_receive_t;
+} sdm_session_t;
 
-extern sdm_receive_t sdm_rcv;
+extern sdm_session_t sdm_rcv;
 
-int   sdm_connect(char *ip, int port);
-int   sdm_send_cmd(int sockfd, int cmd_code, ...);
+sdm_session_t* sdm_connect(char *ip, int port);
+void  sdm_close(sdm_session_t *ss);
+
+int   sdm_send_cmd(sdm_session_t *sd, int cmd_code, ...);
 int   sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd);
 
-void  smd_rcv_idle_state();
+int   sdm_handle_rcv_buf(sdm_session_t *ss, char *buf, int len);
+
+void  sdm_set_idle_state(sdm_session_t *ss);
 
 int   sdm_show(sdm_pkt_t *cmd);
 

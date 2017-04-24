@@ -58,7 +58,7 @@ int command_config(void *cookie, char *argv[], int argc)
 {
     uint16_t threshold;
     uint8_t gain, srclvl;
-    int sockfd = *(int *)cookie;
+    sdm_session_t *ss = cookie;
 
     if (argc != 4) {
         show_help(argv[0]);
@@ -68,15 +68,15 @@ int command_config(void *cookie, char *argv[], int argc)
     ARG_LONG("threshold", argv[1], threshold, arg >= 1 && arg <= 4095);
     ARG_LONG("gain", argv[2], gain, arg >= 0 && arg <= 1);
     ARG_LONG("source level", argv[3], srclvl, arg >= 0 && arg <= 3);
-    sdm_send_cmd(sockfd, SDM_CMD_CONFIG, threshold, gain, srclvl);
-    smd_rcv_idle_state();
+    sdm_send_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl);
+    sdm_set_idle_state(ss);
 
     return 0;
 }
 
 int command_stop(void *cookie, char *argv[], int argc)
 {
-    int sockfd = *(int *)cookie;
+    sdm_session_t *ss = cookie;
 
     argv = argv;
     if (argc != 1) {
@@ -84,8 +84,8 @@ int command_stop(void *cookie, char *argv[], int argc)
         return -1;
     }
 
-    sdm_send_cmd(sockfd, SDM_CMD_STOP);
-    smd_rcv_idle_state();
+    sdm_send_cmd(ss, SDM_CMD_STOP);
+    sdm_set_idle_state(ss);
 
     return 0;
 }
@@ -94,7 +94,7 @@ int command_ref(void *cookie, char *argv[], int argc)
 {
     char  *data;
     size_t len;
-    int sockfd = *(int *)cookie;
+    sdm_session_t *ss = cookie;
 
     if (argc != 2) {
         show_help(argv[0]);
@@ -109,11 +109,11 @@ int command_ref(void *cookie, char *argv[], int argc)
             fprintf (stderr, "Error reference signal must be 1024 samples\n");
             return -1;
         }
-        sdm_send_cmd(sockfd, SDM_CMD_REF, data, len);
+        sdm_send_cmd(ss, SDM_CMD_REF, data, len);
         free(data);
     }
 
-    smd_rcv_idle_state();
+    sdm_set_idle_state(ss);
     return 0;
 }
 
@@ -121,7 +121,7 @@ int command_tx(void *cookie, char *argv[], int argc)
 {
     char  *data;
     size_t len;
-    int sockfd = *(int *)cookie;
+    sdm_session_t *ss = cookie;
 
     if (argc != 2) {
         show_help(argv[0]);
@@ -140,11 +140,11 @@ int command_tx(void *cookie, char *argv[], int argc)
             memset(data + len, 0, rest);
             len += rest;
         }
-        sdm_send_cmd(sockfd, SDM_CMD_TX, data, len);
+        sdm_send_cmd(ss, SDM_CMD_TX, data, len);
         free(data);
     }
 
-    smd_rcv_idle_state();
+    sdm_set_idle_state(ss);
     return 0;
 }
 
@@ -152,7 +152,7 @@ int command_rx(void *cookie, char *argv[], int argc)
 {
     long nsamples = 0;
     FILE *fp;
-    int sockfd = *(int *)cookie;
+    sdm_session_t *ss = cookie;
 
     if (argc != 3) {
         show_help(argv[0]);
@@ -176,9 +176,9 @@ int command_rx(void *cookie, char *argv[], int argc)
     }
     fclose(fp);
 
-    sdm_rcv.filename = strdup(argv[2]);
-    sdm_send_cmd(sockfd, SDM_CMD_RX, nsamples);
-    /* rl_message("Waiting for receiving %ld samples to file %s\n", nsamples, sdm_rcv.filename); */
+    ss->filename = strdup(argv[2]);
+    sdm_send_cmd(ss, SDM_CMD_RX, nsamples);
+    /* rl_message("Waiting for receiving %ld samples to file %s\n", nsamples, ss->filename); */
     
     return 0;
 }

@@ -34,20 +34,18 @@
 
 unsigned long log_level = FATAL_LOG | ERR_LOG | WARN_LOG | INFO_LOG;
 
-sdm_receive_t sdm_rcv = {
-    .state = SDM_STATE_INIT,
-    .filename = NULL,
-    .data_len = 0,
-};
-
-int sdm_connect(char *ip, int port)
+sdm_session_t* sdm_connect(char *ip, int port)
 {
     struct sockaddr_in serveraddr;
     int sockfd;
 
+    sdm_session_t* ss = malloc(sizeof(sdm_session_t));
+    if (ss == NULL)
+        return NULL;
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
-        return -1;
+        return NULL;
 
     memset((char *)&serveraddr, 0, sizeof(serveraddr));
     serveraddr.sin_addr.s_addr = inet_addr(ip);
@@ -55,12 +53,25 @@ int sdm_connect(char *ip, int port)
     serveraddr.sin_port = htons(port);
 
     if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
-        return -1;
+        return NULL;
 
-    return sockfd;
+    ss->state = SDM_STATE_INIT,
+    ss->filename = NULL,
+    ss->data_len = 0,
+    ss->sockfd = sockfd;
+
+    return ss;
 }
 
-int sdm_send_cmd(int sockfd, int cmd_code, ...)
+void sdm_close(sdm_session_t *ss)
+{
+    close(ss->sockfd);
+    if (ss->filename)
+        free(ss->filename);
+    free(ss);
+}
+
+int sdm_send_cmd(sdm_session_t *ss, int cmd_code, ...)
 {
     va_list ap;
     int n;
@@ -117,14 +128,14 @@ int sdm_send_cmd(int sockfd, int cmd_code, ...)
     DUMP_SHORT(DEBUG_LOG, LGREEN, (uint8_t *)cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
     logger(INFO_LOG, "\n");
 
-    n = write(sockfd, cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
+    n = write(ss->sockfd, cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
     free(cmd);
 
     if (n < 0) {
         warn("write(): ");
         return -1;
     }
-    sdm_rcv.state = SDM_STATE_WAIT_REPLY;
+    ss->state = SDM_STATE_WAIT_REPLY;
 
     return 0;
 }
@@ -371,10 +382,63 @@ int sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd)
     return sizeof(sdm_pkt_t) + i;
 }
 
-void smd_rcv_idle_state()
+void sdm_set_idle_state(sdm_session_t *ss)
 {
-    if (sdm_rcv.filename)
-        free(sdm_rcv.filename);
-    sdm_rcv.filename = NULL;
-    sdm_rcv.data_len = 0;
+    if (ss->filename)
+        free(ss->filename);
+    ss->filename = NULL;
+    ss->data_len = 0;
 }
+
+int sdm_handle_rcv_buf(sdm_session_t *ss, char *buf, int len)
+{
+    sdm_pkt_t *cmd;
+    int handled, data_len;
+
+    handled = sdm_extract_replay(buf, len, &cmd);
+
+    /* if we have not 16bit aligned data, we will skip last byte for this time */
+    handled -= (handled % 2);
+    if(handled == 0)
+        return 0;
+
+    if (cmd == NULL) {
+        if (sdm_save_samples(ss->filename, buf, handled) == -1) {
+            fprintf (stderr, "\rOpen file \"%s\" error: %s\n", ss->filename, strerror(errno));
+            DUMP2LOG(DEBUG_LOG, buf, len - handled);
+        }
+        ss->data_len += handled;
+        logger (INFO_LOG, "\rrecv %d samples\r",  ss->data_len / 2);
+        return handled;
+    }
+
+    data_len = ((char *)cmd - buf);
+
+    if (data_len != 0) {
+        if (sdm_save_samples(ss->filename, buf, data_len) == -1) {
+            fprintf (stderr, "\rOpen file \"%s\" error: %s\n", ss->filename, strerror(errno));
+            DUMP2LOG(DEBUG_LOG, buf, len - handled);
+        }
+        ss->data_len += data_len;
+    }
+
+    sdm_show(cmd);
+    switch (cmd->cmd) {
+        case SDM_CMD_STOP:
+            if (ss->filename != NULL) {
+                logger(INFO_LOG, "Receiving %d samples to file %s is done.\n", ss->data_len / 2, ss->filename);
+                sdm_set_idle_state(ss);
+            }
+            ss->state = SDM_STATE_IDLE;
+            return handled;
+        case SDM_CMD_RX:
+            ss->state = SDM_STATE_RX;
+            return handled;
+        default:
+            ss->state = SDM_STATE_IDLE;
+            return handled;
+    }
+    /* FIXME: never reached? */
+    return len;
+}
+
