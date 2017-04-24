@@ -88,6 +88,8 @@ void shell_init(struct shell_config *sc)
 {
     char *homedir = getenv("HOME");
 
+    shell_config = sc;
+
     sc->shell_quit = 0;
     sc->shell_input = NULL;
     sc->history_file = NULL;
