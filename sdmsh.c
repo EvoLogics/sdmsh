@@ -208,6 +208,9 @@ int main(int argc, char *argv[])
     logger(DEBUG_LOG, "Connect to %s:%d\n", host, port);
     sockfd = sdm_connect(host, port);
 
+    if (sockfd < 0)
+        err(1, "sdm_connect(\"%s:%d\"): ", host, port);
+
     if (flags & FLAG_SEND_STOP)
         sdm_send_cmd(sockfd, SDM_CMD_STOP);
 

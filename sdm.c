@@ -47,7 +47,7 @@ int sdm_connect(char *ip, int port)
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
-        err(1, "socket(): ");
+        return -1;
 
     memset((char *)&serveraddr, 0, sizeof(serveraddr));
     serveraddr.sin_addr.s_addr = inet_addr(ip);
@@ -55,7 +55,7 @@ int sdm_connect(char *ip, int port)
     serveraddr.sin_port = htons(port);
 
     if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
-        err(1, "connect(\"%s:%d\"): ", ip, port);
+        return -1;
 
     return sockfd;
 }
