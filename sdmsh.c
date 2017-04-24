@@ -224,9 +224,9 @@ int main(int argc, char *argv[])
     }
 
     if (flags & FLAG_EXEC_SCRIPT)
-        asprintf(&shell_config.prompt, "%s> ", strrchr(host, '.') + 1);
-    else
         shell_config.prompt = NULL;
+    else
+        asprintf(&shell_config.prompt, "%s> ", strrchr(host, '.') + 1);
 
     shell_config.progname = progname;
     shell_config.input    = input;
