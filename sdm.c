@@ -55,10 +55,12 @@ sdm_session_t* sdm_connect(char *ip, int port)
     if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
         return NULL;
 
-    ss->state = SDM_STATE_INIT,
-    ss->filename = NULL,
-    ss->data_len = 0,
     ss->sockfd = sockfd;
+    ss->rcv_data = NULL;
+    ss->rcv_data_len = 0;
+    ss->state = SDM_STATE_INIT;
+    ss->filename = NULL;
+    ss->data_len = 0;
 
     return ss;
 }
@@ -68,6 +70,8 @@ void sdm_close(sdm_session_t *ss)
     close(ss->sockfd);
     if (ss->filename)
         free(ss->filename);
+    if (ss->rcv_data)
+        free(ss->rcv_data);
     free(ss);
 }
 
@@ -387,15 +391,69 @@ void sdm_set_idle_state(sdm_session_t *ss)
     if (ss->filename)
         free(ss->filename);
     ss->filename = NULL;
+
+    if (ss->rcv_data) {
+        logger(WARN_LOG, "%s(): sdm_session->rcv_data was not NULL before free."
+               "Possible lost data\n" , __func__);
+        free(ss->rcv_data);
+    }
+
+    if (ss->rcv_data_len)
+        logger(WARN_LOG, "%s(): sdm_session->rcv_data_len was %d."
+                "Possible lost data\n", __func__, ss->rcv_data_len);
+
+    ss->rcv_data = NULL;
+    ss->rcv_data_len = 0;
+
     ss->data_len = 0;
 }
 
-int sdm_handle_rcv_buf(sdm_session_t *ss, char *buf, int len)
+int sdm_buf_resize(sdm_session_t *ss, char *buf, int len)
+{
+    assert(ss != NULL);
+
+    if (buf != NULL) {
+        assert(len >= 0);
+        if (len == 0)
+            return 0;
+
+        ss->rcv_data = realloc(ss->rcv_data, ss->rcv_data_len + len);
+        if (ss->rcv_data == NULL)
+            return -1;
+        memcpy(ss->rcv_data + ss->rcv_data_len, buf, len);
+        ss->rcv_data_len += len;
+    } else {
+        if (ss->rcv_data_len == -len || len >= 0) {
+            if (len > 0)
+                logger(WARN_LOG, "%s(): buf == NULL but len > 0: %d, "
+                        "drop %d byte\n", __func__, len, ss->rcv_data_len);
+
+            free(ss->rcv_data);
+            ss->rcv_data = NULL;
+            ss->rcv_data_len = 0;
+            return 0;
+        }
+
+        if (len < 0) {
+            len = -len;
+            memmove(ss->rcv_data, ss->rcv_data + len, ss->rcv_data_len - len);
+            ss->rcv_data_len -= len;
+        }
+    }
+    return len;
+}
+
+int sdm_handle_rcv_data(sdm_session_t *ss, char *buf, int len)
 {
     sdm_pkt_t *cmd;
     int handled, data_len;
 
-    handled = sdm_extract_replay(buf, len, &cmd);
+    if (ss == NULL || buf == NULL || len == 0)
+        return 0;
+
+    sdm_buf_resize(ss, buf, len);
+
+    handled = sdm_extract_replay(ss->rcv_data, ss->rcv_data_len, &cmd);
 
     /* if we have not 16bit aligned data, we will skip last byte for this time */
     handled -= (handled % 2);
@@ -403,26 +461,29 @@ int sdm_handle_rcv_buf(sdm_session_t *ss, char *buf, int len)
         return 0;
 
     if (cmd == NULL) {
-        if (sdm_save_samples(ss->filename, buf, handled) == -1) {
+        if (sdm_save_samples(ss->filename, ss->rcv_data, handled) == -1) {
             fprintf (stderr, "\rOpen file \"%s\" error: %s\n", ss->filename, strerror(errno));
-            DUMP2LOG(DEBUG_LOG, buf, len - handled);
+            DUMP2LOG(DEBUG_LOG, ss->rcv_data, ss->rcv_data_len - handled);
         }
         ss->data_len += handled;
         logger (INFO_LOG, "\rrecv %d samples\r",  ss->data_len / 2);
+        sdm_buf_resize(ss, NULL, -handled);
         return handled;
     }
 
-    data_len = ((char *)cmd - buf);
+    data_len = ((char *)cmd - ss->rcv_data);
 
     if (data_len != 0) {
-        if (sdm_save_samples(ss->filename, buf, data_len) == -1) {
+        if (sdm_save_samples(ss->filename, ss->rcv_data, data_len) == -1) {
             fprintf (stderr, "\rOpen file \"%s\" error: %s\n", ss->filename, strerror(errno));
-            DUMP2LOG(DEBUG_LOG, buf, len - handled);
+            DUMP2LOG(DEBUG_LOG, ss->rcv_data, ss->rcv_data_len - handled);
         }
         ss->data_len += data_len;
     }
 
     sdm_show(cmd);
+    sdm_buf_resize(ss, NULL, -handled);
+
     switch (cmd->cmd) {
         case SDM_CMD_STOP:
             if (ss->filename != NULL) {

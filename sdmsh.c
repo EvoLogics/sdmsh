@@ -236,8 +236,7 @@ int main(int argc, char *argv[])
 
         if (FD_ISSET(sdm_session->sockfd, &rfds)) {
             int rc;
-            static int stashed = 0;
-            len = read(sdm_session->sockfd, buf + stashed, BUFSIZE - stashed);
+            len = read(sdm_session->sockfd, buf, sizeof(buf));
 
             if (len == 0)
                 break;
@@ -245,12 +244,8 @@ int main(int argc, char *argv[])
             if (len < 0)
               err(1, "read(): ");
 
-            rc = sdm_handle_rcv_buf(sdm_session, buf, stashed + len);
-            stashed = rc == -1 ? 0 : stashed + len - rc;
-            if (stashed) {
-                memmove(buf, &buf[rc], stashed);
-            }
-            if (stashed == 0)
+            rc = sdm_handle_rcv_data(sdm_session, buf, len);
+            if (sdm_session->rcv_data_len == 0 || rc == 0)
                 rl_forced_update_display();
         }
     }

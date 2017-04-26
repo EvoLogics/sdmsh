@@ -59,8 +59,12 @@ enum {
 };
 
 typedef struct sdm_sdm_t {
-    int sockfd;
+    int  sockfd;
+    char *rcv_data;
+    int  rcv_data_len;
+
     int state;
+
     char* filename;
     int data_len;
 } sdm_session_t;
@@ -73,7 +77,7 @@ void  sdm_close(sdm_session_t *ss);
 int   sdm_send_cmd(sdm_session_t *sd, int cmd_code, ...);
 int   sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd);
 
-int   sdm_handle_rcv_buf(sdm_session_t *ss, char *buf, int len);
+int   sdm_handle_rcv_data(sdm_session_t *ss, char *buf, int len);
 
 void  sdm_set_idle_state(sdm_session_t *ss);
 
