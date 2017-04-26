@@ -42,16 +42,16 @@ typedef struct sdm_pkt_t {
         struct {
             uint16_t threshold;
             uint8_t  gain_and_srclvl;
-        } __attribute__ ((packed));
+        };
         struct {
             uint16_t param;
             uint8_t  dummy;
-        } __attribute__ ((packed));
+        };
         char rx_len[3];
     };
     uint32_t data_len; /* in 16bit words */
-    uint16_t data[];
-} __attribute__ ((packed)) sdm_pkt_t;
+    uint16_t data[0];
+} sdm_pkt_t;
 
 enum {
     SDM_STATE_INIT = 1,
