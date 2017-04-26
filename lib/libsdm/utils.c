@@ -8,7 +8,7 @@
 #include <limits.h>
 #include <errno.h>
 
-#include "logger.h"
+#include <utils.h>
 
 #ifdef LOGGER_ENABLED
 

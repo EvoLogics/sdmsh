@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdio.h> /* FILE* */ 
 
+#include <utils.h>
+
 #define BUFSIZE  (1024 * 4)
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__

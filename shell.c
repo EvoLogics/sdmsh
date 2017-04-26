@@ -7,7 +7,7 @@
 
 #include <shell.h>
 #include <commands.h>
-#include <logger.h>
+#include <utils.h>
 
 int shell_run_cmd(struct shell_config *sc);
 

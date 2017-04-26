@@ -11,7 +11,6 @@
 
 #include <shell.h>
 #include <commands.h>
-#include <logger.h>
 
 #include <sdm.h>
 

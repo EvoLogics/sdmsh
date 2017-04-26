@@ -1,24 +1,31 @@
 PROJ = sdmsh
 
-LIB_SRC = sdm.c logger.c
-LIB_OBJ = $(LIB_SRC:.c=.o)
-
 SRC = $(PROJ).c shell.c commands.c
 OBJ = $(SRC:.c=.o)
 
-CFLAGS = -W -Wall -I. -lreadline -lm -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
+LIB	= libsdm
+LIB_DIR	= lib/$(LIB)
+LIB_SO	= $(LIB_DIR)/$(LIB).so
+LIB_A	= $(LIB_DIR)/$(LIB).a
 
-no-sdm-so: $(LIB_OBJ) $(OBJ)
-	$(CC) -L. -lreadline -o $(PROJ) $(OBJ) $(LIB_OBJ)
+CFLAGS = -W -Wall -I. -I$(LIB_DIR) -lreadline -lm -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
 
-binary: lib $(OBJ)
-	$(CC) -L. -I. -lreadline -lsdm -o $(PROJ) $(OBJ)
+build: lib $(OBJ)
+	$(CC) -L. -lreadline -o $(PROJ) $(OBJ) $(LIB_A)
 
-lib: $(LIB_OBJ)
-	$(CC) -shared -DLOGGER_ENABLED -o libsdm.so $^
+build-dyn: lib $(OBJ)
+	$(CC) -L$(LIB_DIR) -I$(LIB_DIR) -lreadline -lsdm -o $(PROJ) $(OBJ)
+
+.PHONY: lib
+lib:
+	make -C $(LIB_DIR)
+
+$(LIB_A) $(LIB_SO):
+	make -C $(LIB_DIR)
 
 clean:
-	rm -f $(PROJ) $(OBJ) $(LIB_OBJ) *~ .*.sw? *.so
+	make -C $(LIB_DIR) clean
+	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so
 
 dist-clean: clean
 	rm -f cscope.out tags

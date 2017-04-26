@@ -14,7 +14,6 @@
 #include <readline/readline.h>
 
 #include <sdm.h>
-#include <logger.h>
 
 #define ADD_TO_DATA_VAL16bit(data, data_size, data_offset, val) \
     ADD_TO_DATA_VAL(2, data, data_size, data_offset, val)
@@ -500,6 +499,7 @@ int sdm_handle_rcv_data(sdm_session_t *ss, char *buf, int len)
             return handled;
     }
     /* FIXME: never reached? */
+    assert(0 && "must not be reached?");
     return len;
 }
 

@@ -23,7 +23,6 @@
 
 #include <sdm.h>
 #include <shell.h>
-#include <logger.h>
 
 #define SDM_PORT    4200
 
