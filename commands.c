@@ -102,16 +102,19 @@ int command_ref(void *cookie, char *argv[], int argc)
     }
 
     data = sdm_load_samples(argv[1], &len);
+    if (data == NULL) {
+        sdm_set_idle_state(ss);
+        return 1;
+    }
+
     logger (INFO_LOG, "read %d samles\n", len / 2);
 
-    if (data) {
-        if (len != 1024 * 2) {
-            fprintf (stderr, "Error reference signal must be 1024 samples\n");
-            return -1;
-        }
-        sdm_send_cmd(ss, SDM_CMD_REF, data, len);
-        free(data);
+    if (len != 1024 * 2) {
+        fprintf (stderr, "Error reference signal must be 1024 samples\n");
+        return -1;
     }
+    sdm_send_cmd(ss, SDM_CMD_REF, data, len);
+    free(data);
 
     sdm_set_idle_state(ss);
     return 0;
@@ -129,20 +132,23 @@ int command_tx(void *cookie, char *argv[], int argc)
     }
 
     data = sdm_load_samples(argv[1], &len);
+    if (data == NULL) {
+        sdm_set_idle_state(ss);
+        return 1;
+    }
+
     logger (INFO_LOG, "read %d samles\n", len / 2);
 
-    if (data) {
-        size_t rest = len % (1024*2);
-        if (rest) {
-            rest = 2*1024 - rest;
-            logger(WARN_LOG, "Warning: signal samples number %d do not divisible by 1024 samples. Zero padding added\n", len/2);
-            data = realloc(data, len + rest);
-            memset(data + len, 0, rest);
-            len += rest;
-        }
-        sdm_send_cmd(ss, SDM_CMD_TX, data, len);
-        free(data);
+    size_t rest = len % (1024*2);
+    if (rest) {
+        rest = 2*1024 - rest;
+        logger(WARN_LOG, "Warning: signal samples number %d do not divisible by 1024 samples. Zero padding added\n", len/2);
+        data = realloc(data, len + rest);
+        memset(data + len, 0, rest);
+        len += rest;
     }
+    sdm_send_cmd(ss, SDM_CMD_TX, data, len);
+    free(data);
 
     sdm_set_idle_state(ss);
     return 0;
