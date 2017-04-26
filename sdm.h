@@ -69,8 +69,6 @@ typedef struct sdm_sdm_t {
     int data_len;
 } sdm_session_t;
 
-extern sdm_session_t sdm_rcv;
-
 sdm_session_t* sdm_connect(char *ip, int port);
 void  sdm_close(sdm_session_t *ss);
 
