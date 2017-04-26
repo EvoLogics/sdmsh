@@ -9,10 +9,8 @@
 
 #include <readline/readline.h>
 
-#include <shell.h>
-#include <commands.h>
-
 #include <sdm.h>
+#include <sdmsh_commands.h>
 
 int command_help  (void *cookie, char *argv[], int argc);
 int command_config(void *cookie, char *argv[], int argc);

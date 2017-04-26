@@ -6,7 +6,6 @@
 #include <readline/history.h>
 
 #include <shell.h>
-#include <commands.h>
 #include <utils.h>
 
 int shell_run_cmd(struct shell_config *sc);
@@ -32,7 +31,7 @@ char* shell_rl_find_completion(const char *text, int index)
     int cnt = 0;
     struct commands_t *cmd;
 
-    for (cmd = commands; cmd->name != NULL; cmd++)
+    for (cmd = shell_config->commands; cmd->name != NULL; cmd++)
         if (*text == 0 || strstart(cmd->name, text))
             if(cnt++ == index) {
                 name = cmd->name;
@@ -176,7 +175,7 @@ int shell_run_cmd(struct shell_config *sc)
         return 1;
     }
 
-    for (cmd = commands; cmd->name != NULL; cmd++) {
+    for (cmd = sc->commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
             printf ("\r");
             cmd->handler(sc->cookie, argv, argc);

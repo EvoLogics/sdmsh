@@ -1,6 +1,6 @@
 PROJ = sdmsh
 
-SRC = $(PROJ).c shell.c commands.c
+SRC = $(PROJ).c shell.c sdmsh_commands.c
 OBJ = $(SRC:.c=.o)
 
 LIB	= libsdm

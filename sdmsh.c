@@ -23,6 +23,7 @@
 
 #include <sdm.h>
 #include <shell.h>
+#include <sdmsh_commands.h>
 
 #define SDM_PORT    4200
 
@@ -178,6 +179,7 @@ int main(int argc, char *argv[])
     shell_config.progname = progname;
     shell_config.input    = input;
     shell_config.cookie   = sdm_session;
+    shell_config.commands = commands;
     shell_init(&shell_config);
 
     for (;;) {
