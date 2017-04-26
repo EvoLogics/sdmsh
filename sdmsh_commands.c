@@ -12,20 +12,20 @@
 #include <sdm.h>
 #include <sdmsh_commands.h>
 
-int command_help  (void *cookie, char *argv[], int argc);
-int command_config(void *cookie, char *argv[], int argc);
-int command_stop  (void *cookie, char *argv[], int argc);
-int command_ref   (void *cookie, char *argv[], int argc);
-int command_tx    (void *cookie, char *argv[], int argc);
-int command_rx    (void *cookie, char *argv[], int argc);
+int sdmsh_cmd_help  (void *cookie, char *argv[], int argc);
+int sdmsh_cmd_config(void *cookie, char *argv[], int argc);
+int sdmsh_cmd_stop  (void *cookie, char *argv[], int argc);
+int sdmsh_cmd_ref   (void *cookie, char *argv[], int argc);
+int sdmsh_cmd_tx    (void *cookie, char *argv[], int argc);
+int sdmsh_cmd_rx    (void *cookie, char *argv[], int argc);
 
 struct commands_t commands[] = {
-    {"help",   command_help,   "This help", "help [command]"}
-   ,{"config", command_config, "Config SDM command.", "config <threshold> <gain> <source level>" }
-   ,{"stop",   command_stop,   "Stop SDM command.", NULL}
-   ,{"ref",    command_ref,    "Update reference signal.", "ref <file name>"}
-   ,{"tx",     command_tx,     "Send signal.", "tx <file name>"}
-   ,{"rx",     command_rx,     "Receive signal. Sample number can be 0", "rx <sample number> <file name>"}
+    {"help",   sdmsh_cmd_help,   "This help", "help [command]"}
+   ,{"config", sdmsh_cmd_config, "Config SDM command.", "config <threshold> <gain> <source level>" }
+   ,{"stop",   sdmsh_cmd_stop,   "Stop SDM command.", NULL}
+   ,{"ref",    sdmsh_cmd_ref,    "Update reference signal.", "ref <file name>"}
+   ,{"tx",     sdmsh_cmd_tx,     "Send signal.", "tx <file name>"}
+   ,{"rx",     sdmsh_cmd_rx,     "Receive signal. Sample number can be 0", "rx <sample number> <file name>"}
    ,{NULL}
 };
 
@@ -44,14 +44,15 @@ void show_help(char *name)
         fprintf(stderr, "Unknown topic: %s\n", name);
     }
 }
-int command_help(void *cookie, char *argv[], int argc)
+
+int sdmsh_cmd_help(void *cookie, char *argv[], int argc)
 {
     argc = argc; cookie = cookie;
     show_help(argv[1]);
     return 0;
 }
 
-int command_config(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_config(void *cookie, char *argv[], int argc)
 {
     uint16_t threshold;
     uint8_t gain, srclvl;
@@ -71,7 +72,7 @@ int command_config(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int command_stop(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_stop(void *cookie, char *argv[], int argc)
 {
     sdm_session_t *ss = cookie;
 
@@ -87,7 +88,7 @@ int command_stop(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int command_ref(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_ref(void *cookie, char *argv[], int argc)
 {
     char  *data;
     size_t len;
@@ -117,7 +118,7 @@ int command_ref(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int command_tx(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_tx(void *cookie, char *argv[], int argc)
 {
     char  *data;
     size_t len;
@@ -151,7 +152,7 @@ int command_tx(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int command_rx(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_rx(void *cookie, char *argv[], int argc)
 {
     long nsamples = 0;
     FILE *fp;
