@@ -73,7 +73,7 @@ int option_index = 0;
 int main(int argc, char *argv[])
 {
     char *progname, *host;
-    int ret;
+    int rc;
     int len;
     sdm_session_t *sdm_session;
 
@@ -208,12 +208,12 @@ int main(int argc, char *argv[])
             maxfd = (sdm_session->sockfd > fileno(input)) ? sdm_session->sockfd : fileno(input);
         }
 
-        ret = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+        rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
-        if (ret == -1)
+        if (rc == -1)
             err(1, "select()");
         /* timeout */
-        if (!ret) {
+        if (!rc) {
             if (sdm_session->state == SDM_STATE_INIT)
                 sdm_session->state = SDM_STATE_IDLE;
             continue;
@@ -234,7 +234,6 @@ int main(int argc, char *argv[])
         }
 
         if (FD_ISSET(sdm_session->sockfd, &rfds)) {
-            int rc;
             len = read(sdm_session->sockfd, buf, sizeof(buf));
 
             if (len == 0)
