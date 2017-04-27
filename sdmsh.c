@@ -33,8 +33,6 @@ enum {
     FLAG_EXEC_SCRIPT = 0x04,
 };
 
-char buf[BUFSIZE] = {0};
-
 struct shell_config shell_config;
 
 void show_usage_and_die(char *progname) {
@@ -76,6 +74,7 @@ int main(int argc, char *argv[])
     char *progname, *host;
     int rc;
     int len;
+    char buf[BUFSIZE];
     sdm_session_t *sdm_session;
 
     int port = SDM_PORT;
