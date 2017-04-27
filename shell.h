@@ -19,7 +19,8 @@
     out = arg;                                                    \
 } while(0)
 
-typedef int (*command_handler)(void *cookie, char *argv[], int argc);
+struct shell_config;
+typedef int (*command_handler)(struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t {
     char *name;
@@ -46,5 +47,6 @@ void rl_callback(char* line);
 void shell_init(struct shell_config *sc);
 void shell_deinit(struct shell_config *sc);
 int  shell_handle(struct shell_config *sc);
+void shell_show_help(struct shell_config *sc, char *name);
 
 #endif

@@ -12,12 +12,12 @@
 #include <sdm.h>
 #include <sdmsh_commands.h>
 
-int sdmsh_cmd_help  (void *cookie, char *argv[], int argc);
-int sdmsh_cmd_config(void *cookie, char *argv[], int argc);
-int sdmsh_cmd_stop  (void *cookie, char *argv[], int argc);
-int sdmsh_cmd_ref   (void *cookie, char *argv[], int argc);
-int sdmsh_cmd_tx    (void *cookie, char *argv[], int argc);
-int sdmsh_cmd_rx    (void *cookie, char *argv[], int argc);
+int sdmsh_cmd_help  (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_stop  (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_ref   (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_tx    (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_rx    (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
     {"help",   sdmsh_cmd_help,   "This help", "help [command]"}
@@ -29,37 +29,21 @@ struct commands_t commands[] = {
    ,{NULL}
 };
 
-void show_help(char *name)
+int sdmsh_cmd_help(struct shell_config *sc, char *argv[], int argc)
 {
-    struct commands_t *cmd;
-    for (cmd = commands; cmd->name != NULL; cmd++) {
-        if (!name || !strcmp(cmd->name, name)) {
-            printf ("%-10s-\t%s\n", cmd->name, cmd->help);
-            printf ("%-10s \tUsage: %s\n", " ", cmd->usage ? cmd->usage : cmd->name);
-            if (name)
-                break;
-        }
-    }
-    if (name && cmd->name == NULL) {
-        fprintf(stderr, "Unknown topic: %s\n", name);
-    }
-}
-
-int sdmsh_cmd_help(void *cookie, char *argv[], int argc)
-{
-    argc = argc; cookie = cookie;
-    show_help(argv[1]);
+    argc = argc;
+    shell_show_help(sc, argv[1]);
     return 0;
 }
 
-int sdmsh_cmd_config(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
 {
     uint16_t threshold;
     uint8_t gain, srclvl;
-    sdm_session_t *ss = cookie;
+    sdm_session_t *ss = sc->cookie;
 
     if (argc != 4) {
-        show_help(argv[0]);
+        shell_show_help(sc, argv[0]);
         return -1;
     }
 
@@ -72,13 +56,13 @@ int sdmsh_cmd_config(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int sdmsh_cmd_stop(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
 {
-    sdm_session_t *ss = cookie;
+    sdm_session_t *ss = sc->cookie;
 
     argv = argv;
     if (argc != 1) {
-        show_help(argv[0]);
+        shell_show_help(sc, argv[0]);
         return -1;
     }
 
@@ -88,14 +72,14 @@ int sdmsh_cmd_stop(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int sdmsh_cmd_ref(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 {
     char  *data;
     size_t len;
-    sdm_session_t *ss = cookie;
+    sdm_session_t *ss = sc->cookie;
 
     if (argc != 2) {
-        show_help(argv[0]);
+        shell_show_help(sc, argv[0]);
         return -1;
     }
 
@@ -118,14 +102,14 @@ int sdmsh_cmd_ref(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int sdmsh_cmd_tx(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 {
     char  *data;
     size_t len;
-    sdm_session_t *ss = cookie;
+    sdm_session_t *ss = sc->cookie;
 
     if (argc != 2) {
-        show_help(argv[0]);
+        shell_show_help(sc, argv[0]);
         return -1;
     }
 
@@ -152,14 +136,14 @@ int sdmsh_cmd_tx(void *cookie, char *argv[], int argc)
     return 0;
 }
 
-int sdmsh_cmd_rx(void *cookie, char *argv[], int argc)
+int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
 {
     long nsamples = 0;
     FILE *fp;
-    sdm_session_t *ss = cookie;
+    sdm_session_t *ss = sc->cookie;
 
     if (argc != 3) {
-        show_help(argv[0]);
+        shell_show_help(sc, argv[0]);
         return -1;
     }
 

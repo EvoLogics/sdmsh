@@ -178,7 +178,7 @@ int shell_run_cmd(struct shell_config *sc)
     for (cmd = sc->commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
             printf ("\r");
-            cmd->handler(sc->cookie, argv, argc);
+            cmd->handler(sc, argv, argc);
             rl_forced_update_display();
             break;
         }
@@ -194,4 +194,20 @@ int shell_run_cmd(struct shell_config *sc)
     sc->shell_input = NULL;
 
     return 0;
+}
+
+void shell_show_help(struct shell_config *sc, char *name)
+{
+    struct commands_t *cmd;
+    for (cmd = sc->commands; cmd->name != NULL; cmd++) {
+        if (!name || !strcmp(cmd->name, name)) {
+            printf ("%-10s-\t%s\n", cmd->name, cmd->help);
+            printf ("%-10s \tUsage: %s\n", " ", cmd->usage ? cmd->usage : cmd->name);
+            if (name)
+                break;
+        }
+    }
+    if (name && cmd->name == NULL) {
+        fprintf(stderr, "Unknown topic: %s\n", name);
+    }
 }
