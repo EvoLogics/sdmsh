@@ -166,6 +166,20 @@ char* sdm_reply_to_str(uint8_t cmd)
     }
 }
 
+char* sdm_reply_report_to_str(uint8_t cmd)
+{
+    switch (cmd) {
+        case SDM_REPLAY_REPORT_NO_SDM_MODE: return "NO_SDM_MODE";
+        case SDM_REPLAY_REPORT_TX_STOP:     return "TX_STOP";
+        case SDM_REPLAY_REPORT_RX_STOP:     return "RX_STOP";
+        case SDM_REPLAY_REPORT_REF:         return "REF";
+        case SDM_REPLAY_REPORT_CONFIG:      return "CONFIG";
+        case SDM_REPLAY_REPORT_DROP:        return "DROP";
+        case SDM_REPLAY_REPORT_UNKNOWN:     return "UNKNOWN";
+        default: return "???";
+    }
+}
+
 char* sdm_samples_file_type_to_str(uint8_t type)
 {
     switch(type) {
@@ -193,14 +207,14 @@ int sdm_show(sdm_pkt_t *cmd)
             break;
         case SDM_REPLAY_REPORT:
             switch (cmd->param) {
-                case 0:   logger(INFO_LOG, " No SDM MODE\n"); break;
-                case 1:   logger(INFO_LOG, " Transmission stop after %d samples\n", cmd->data_len); break;
-                case 2:   logger(INFO_LOG, " Reception stop after %d samples\n", cmd->data_len); break;
-                case 3:   logger(INFO_LOG, " Reference update %s\n", cmd->data_len ? "finished" : "failed"); break;
-                case 4:   logger(INFO_LOG, " Config %s\n", cmd->data_len ? "accepted" : "failed"); break;
-                case 254: logger(INFO_LOG, " Garbage dropped %d\n", cmd->data_len); break;
-                case 255: logger(INFO_LOG, " Unknowd command code 0x%02x\n", cmd->data_len); break;
-                default:  logger(INFO_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
+                case SDM_REPLAY_REPORT_NO_SDM_MODE: logger(INFO_LOG, " %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_NO_SDM_MODE)); break;
+                case SDM_REPLAY_REPORT_TX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_TX_STOP), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_RX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_RX_STOP), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_REF:         logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_REF),    cmd->data_len ? "done":"fail"); break;
+                case SDM_REPLAY_REPORT_CONFIG:      logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_CONFIG), cmd->data_len ? "done":"fail"); break;
+                case SDM_REPLAY_REPORT_DROP:        logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_DROP), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%02x\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_UNKNOWN), cmd->data_len); break;
+                default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
             }
             break;
         default:

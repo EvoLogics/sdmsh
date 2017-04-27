@@ -31,6 +31,17 @@ enum {
 };
 
 enum {
+    SDM_REPLAY_REPORT_NO_SDM_MODE = 0,
+    SDM_REPLAY_REPORT_TX_STOP     = 1,
+    SDM_REPLAY_REPORT_RX_STOP     = 2,
+    SDM_REPLAY_REPORT_REF         = 3,
+    SDM_REPLAY_REPORT_CONFIG      = 4,
+    SDM_REPLAY_REPORT_DROP        = 254,
+    SDM_REPLAY_REPORT_UNKNOWN     = 255,
+};
+
+
+enum {
     SDM_FILE_TYPE_FLOAT = 1
    ,SDM_FILE_TYPE_INT
 };
@@ -91,6 +102,7 @@ const char* strrpbrk(const char *s, const char *accept_only);
 
 char* sdm_cmd_to_str(uint8_t cmd);
 char* sdm_reply_to_str(uint8_t cmd);
+char* sdm_reply_report_to_str(uint8_t cmd);
 char* sdm_samples_file_type_to_str(uint8_t type);
 
 #endif
