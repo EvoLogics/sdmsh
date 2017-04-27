@@ -50,7 +50,7 @@ int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
     ARG_LONG("threshold", argv[1], threshold, arg >= 1 && arg <= 4095);
     ARG_LONG("gain", argv[2], gain, arg >= 0 && arg <= 1);
     ARG_LONG("source level", argv[3], srclvl, arg >= 0 && arg <= 3);
-    sdm_send_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl);
+    sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl);
     sdm_set_idle_state(ss);
 
     return 0;
@@ -66,7 +66,7 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
 
-    sdm_send_cmd(ss, SDM_CMD_STOP);
+    sdm_cmd(ss, SDM_CMD_STOP);
     sdm_set_idle_state(ss);
 
     return 0;
@@ -95,7 +95,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         fprintf (stderr, "Error reference signal must be 1024 samples\n");
         return -1;
     }
-    sdm_send_cmd(ss, SDM_CMD_REF, data, len);
+    sdm_cmd(ss, SDM_CMD_REF, data, len);
     free(data);
 
     sdm_set_idle_state(ss);
@@ -129,7 +129,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         memset(data + len, 0, rest);
         len += rest;
     }
-    sdm_send_cmd(ss, SDM_CMD_TX, data, len);
+    sdm_cmd(ss, SDM_CMD_TX, data, len);
     free(data);
 
     sdm_set_idle_state(ss);
@@ -165,7 +165,7 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
     fclose(fp);
 
     ss->filename = strdup(argv[2]);
-    sdm_send_cmd(ss, SDM_CMD_RX, nsamples);
+    sdm_cmd(ss, SDM_CMD_RX, nsamples);
     /* rl_message("Waiting for receiving %ld samples to file %s\n", nsamples, ss->filename); */
     
     return 0;

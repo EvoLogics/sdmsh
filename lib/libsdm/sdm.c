@@ -55,8 +55,8 @@ sdm_session_t* sdm_connect(char *ip, int port)
         return NULL;
 
     ss->sockfd = sockfd;
-    ss->rcv_data = NULL;
-    ss->rcv_data_len = 0;
+    ss->rx_data = NULL;
+    ss->rx_data_len = 0;
     ss->state = SDM_STATE_INIT;
     ss->filename = NULL;
     ss->data_len = 0;
@@ -69,12 +69,12 @@ void sdm_close(sdm_session_t *ss)
     close(ss->sockfd);
     if (ss->filename)
         free(ss->filename);
-    if (ss->rcv_data)
-        free(ss->rcv_data);
+    if (ss->rx_data)
+        free(ss->rx_data);
     free(ss);
 }
 
-int sdm_send_cmd(sdm_session_t *ss, int cmd_code, ...)
+int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
 {
     va_list ap;
     int n;
@@ -127,7 +127,7 @@ int sdm_send_cmd(sdm_session_t *ss, int cmd_code, ...)
             return -1;
     }
 
-    logger(INFO_LOG, "snd cmd %-6s: ", sdm_cmd_to_str(cmd->cmd));
+    logger(INFO_LOG, "tx cmd %-6s: ", sdm_cmd_to_str(cmd->cmd));
     DUMP_SHORT(DEBUG_LOG, LGREEN, (uint8_t *)cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
     logger(INFO_LOG, "\n");
 
@@ -178,7 +178,7 @@ char* sdm_samples_file_type_to_str(uint8_t type)
 int sdm_show(sdm_pkt_t *cmd)
 {
 
-    logger(INFO_LOG, "\rrcv cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
+    logger(INFO_LOG, "\rrx cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
     DUMP_SHORT(DEBUG_LOG, YELLOW, cmd, sizeof(sdm_pkt_t));
 
     switch (cmd->cmd) {
@@ -391,18 +391,18 @@ void sdm_set_idle_state(sdm_session_t *ss)
         free(ss->filename);
     ss->filename = NULL;
 
-    if (ss->rcv_data) {
-        logger(WARN_LOG, "%s(): sdm_session->rcv_data was not NULL before free."
+    if (ss->rx_data) {
+        logger(WARN_LOG, "%s(): sdm_session->rx_data was not NULL before free."
                "Possible lost data\n" , __func__);
-        free(ss->rcv_data);
+        free(ss->rx_data);
     }
 
-    if (ss->rcv_data_len)
-        logger(WARN_LOG, "%s(): sdm_session->rcv_data_len was %d."
-                "Possible lost data\n", __func__, ss->rcv_data_len);
+    if (ss->rx_data_len)
+        logger(WARN_LOG, "%s(): sdm_session->rx_data_len was %d."
+                "Possible lost data\n", __func__, ss->rx_data_len);
 
-    ss->rcv_data = NULL;
-    ss->rcv_data_len = 0;
+    ss->rx_data = NULL;
+    ss->rx_data_len = 0;
 
     ss->data_len = 0;
 }
@@ -416,33 +416,33 @@ int sdm_buf_resize(sdm_session_t *ss, char *buf, int len)
         if (len == 0)
             return 0;
 
-        ss->rcv_data = realloc(ss->rcv_data, ss->rcv_data_len + len);
-        if (ss->rcv_data == NULL)
+        ss->rx_data = realloc(ss->rx_data, ss->rx_data_len + len);
+        if (ss->rx_data == NULL)
             return -1;
-        memcpy(ss->rcv_data + ss->rcv_data_len, buf, len);
-        ss->rcv_data_len += len;
+        memcpy(ss->rx_data + ss->rx_data_len, buf, len);
+        ss->rx_data_len += len;
     } else {
-        if (ss->rcv_data_len == -len || len >= 0) {
+        if (ss->rx_data_len == -len || len >= 0) {
             if (len > 0)
                 logger(WARN_LOG, "%s(): buf == NULL but len > 0: %d, "
-                        "drop %d byte\n", __func__, len, ss->rcv_data_len);
+                        "drop %d byte\n", __func__, len, ss->rx_data_len);
 
-            free(ss->rcv_data);
-            ss->rcv_data = NULL;
-            ss->rcv_data_len = 0;
+            free(ss->rx_data);
+            ss->rx_data = NULL;
+            ss->rx_data_len = 0;
             return 0;
         }
 
         if (len < 0) {
             len = -len;
-            memmove(ss->rcv_data, ss->rcv_data + len, ss->rcv_data_len - len);
-            ss->rcv_data_len -= len;
+            memmove(ss->rx_data, ss->rx_data + len, ss->rx_data_len - len);
+            ss->rx_data_len -= len;
         }
     }
     return len;
 }
 
-int sdm_handle_rcv_data(sdm_session_t *ss, char *buf, int len)
+int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 {
     sdm_pkt_t *cmd;
     int handled, data_len;
@@ -450,9 +450,12 @@ int sdm_handle_rcv_data(sdm_session_t *ss, char *buf, int len)
     if (ss == NULL || buf == NULL || len == 0)
         return 0;
 
+    /* clear last received command */
+    memset(&ss->cmd, 0, sizeof(sdm_pkt_t));
+
     sdm_buf_resize(ss, buf, len);
 
-    handled = sdm_extract_replay(ss->rcv_data, ss->rcv_data_len, &cmd);
+    handled = sdm_extract_replay(ss->rx_data, ss->rx_data_len, &cmd);
 
     /* if we have not 16bit aligned data, we will skip last byte for this time */
     handled -= (handled % 2);
@@ -460,9 +463,9 @@ int sdm_handle_rcv_data(sdm_session_t *ss, char *buf, int len)
         return 0;
 
     if (cmd == NULL) {
-        if (sdm_save_samples(ss->filename, ss->rcv_data, handled) == -1) {
+        if (sdm_save_samples(ss->filename, ss->rx_data, handled) == -1) {
             fprintf (stderr, "\rOpen file \"%s\" error: %s\n", ss->filename, strerror(errno));
-            DUMP2LOG(DEBUG_LOG, ss->rcv_data, ss->rcv_data_len - handled);
+            DUMP2LOG(DEBUG_LOG, ss->rx_data, ss->rx_data_len - handled);
         }
         ss->data_len += handled;
         logger (INFO_LOG, "\rrecv %d samples\r",  ss->data_len / 2);
@@ -470,12 +473,12 @@ int sdm_handle_rcv_data(sdm_session_t *ss, char *buf, int len)
         return handled;
     }
 
-    data_len = ((char *)cmd - ss->rcv_data);
+    data_len = ((char *)cmd - ss->rx_data);
 
     if (data_len != 0) {
-        if (sdm_save_samples(ss->filename, ss->rcv_data, data_len) == -1) {
+        if (sdm_save_samples(ss->filename, ss->rx_data, data_len) == -1) {
             fprintf (stderr, "\rOpen file \"%s\" error: %s\n", ss->filename, strerror(errno));
-            DUMP2LOG(DEBUG_LOG, ss->rcv_data, ss->rcv_data_len - handled);
+            DUMP2LOG(DEBUG_LOG, ss->rx_data, ss->rx_data_len - handled);
         }
         ss->data_len += data_len;
     }

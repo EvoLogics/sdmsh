@@ -53,8 +53,8 @@ void show_usage_and_die(char *progname) {
            "# Connect to 10.0.0.10 to port 4201. Send SDM 'STOP' at start\n"
            "%s -sp 4201 10.0.0.10\n"
 
-           "# Connect to 131 port 4200 and run commands from file 'rcv.sdmsh'\n"
-           "%s 131 -f rcv.sdmsh\n"
+           "# Connect to 131 port 4200 and run commands from file 'rx.sdmsh'\n"
+           "%s 131 -f rx.sdmsh\n"
            "\n"
                , progname, SDM_PORT, progname, progname, progname);
     exit(0);
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
         err(1, "sdm_connect(\"%s:%d\"): ", host, port);
 
     if (flags & FLAG_SEND_STOP)
-        sdm_send_cmd(sdm_session, SDM_CMD_STOP);
+        sdm_cmd(sdm_session, SDM_CMD_STOP);
 
     if (flags & FLAG_EXEC_SCRIPT) {
         input = fopen(script_file, "r");
@@ -243,8 +243,8 @@ int main(int argc, char *argv[])
             if (len < 0)
               err(1, "read(): ");
 
-            rc = sdm_handle_rcv_data(sdm_session, buf, len);
-            if (sdm_session->rcv_data_len == 0 || rc == 0)
+            rc = sdm_handle_rx_data(sdm_session, buf, len);
+            if (sdm_session->rx_data_len == 0 || rc == 0)
                 rl_forced_update_display();
         }
     }
