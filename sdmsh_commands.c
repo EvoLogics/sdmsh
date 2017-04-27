@@ -74,7 +74,7 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
 
 int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 {
-    char  *data;
+    uint16_t  *data;
     size_t len;
     sdm_session_t *ss = sc->cookie;
 
@@ -89,9 +89,9 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         return 1;
     }
 
-    logger (INFO_LOG, "read %d samles\n", len / 2);
+    logger (INFO_LOG, "read %d samles\n", len);
 
-    if (len != 1024 * 2) {
+    if (len != 1024) {
         fprintf (stderr, "Error reference signal must be 1024 samples\n");
         return -1;
     }
@@ -104,7 +104,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 
 int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 {
-    char  *data;
+    uint16_t  *data;
     size_t len;
     sdm_session_t *ss = sc->cookie;
 
@@ -119,14 +119,14 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         return 1;
     }
 
-    logger (INFO_LOG, "read %d samles\n", len / 2);
+    logger (INFO_LOG, "read %d samles\n", len);
 
-    size_t rest = len % (1024*2);
+    size_t rest = len % (1024);
     if (rest) {
-        rest = 2*1024 - rest;
-        logger(WARN_LOG, "Warning: signal samples number %d do not divisible by 1024 samples. Zero padding added\n", len/2);
-        data = realloc(data, len + rest);
-        memset(data + len, 0, rest);
+        rest = 1024 - rest;
+        logger(WARN_LOG, "Warning: signal samples number %d do not divisible by 1024 samples. Zero padding added\n", len);
+        data = realloc(data, (len + rest)*2);
+        memset(data + len*2, 0, rest*2);
         len += rest;
     }
     sdm_cmd(ss, SDM_CMD_TX, data, len);

@@ -94,8 +94,8 @@ void  sdm_set_idle_state(sdm_session_t *ss);
 
 int   sdm_show(sdm_pkt_t *cmd);
 
-int   sdm_save_samples(char *filename, char *buf, size_t len);
-char* sdm_load_samples(char *filename, size_t *len);
+int       sdm_save_samples(char *filename, char *buf, size_t len);
+uint16_t *sdm_load_samples(char *filename, size_t *len);
 
 int   sdm_autodetect_samples_file_type(FILE *fp);
 const char* strrpbrk(const char *s, const char *accept_only);

@@ -102,7 +102,7 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
             va_start(ap, cmd_code);
 
             d             = va_arg(ap, char *);
-            cmd->data_len = va_arg(ap, int) / 2;
+            cmd->data_len = va_arg(ap, int);
 
             cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
             memcpy(cmd->data, d, cmd->data_len * 2);
@@ -305,7 +305,7 @@ int sdm_save_samples(char *filename, char *buf, size_t len)
     return 0;
 }
 
-char *sdm_load_samples(char *filename, size_t *len)
+uint16_t *sdm_load_samples(char *filename, size_t *len)
 {
     FILE *fp;
     int n;
@@ -365,8 +365,8 @@ char *sdm_load_samples(char *filename, size_t *len)
     }
     fclose(fp);
 
-    *len = data_offset * 2;
-    return (char *)data;
+    *len = data_offset;
+    return data;
 
 command_ref_error:
     fclose(fp);
