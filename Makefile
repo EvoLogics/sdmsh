@@ -25,7 +25,7 @@ $(LIB_A) $(LIB_SO):
 
 clean:
 	make -C $(LIB_DIR) clean
-	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so
+	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so core
 
 dist-clean: clean
 	rm -f cscope.out tags

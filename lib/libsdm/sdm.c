@@ -497,10 +497,13 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         ss->data_len += data_len;
     }
 
-    sdm_show(cmd);
+    /* store in sdm_session structure last received package */
+    memcpy(&ss->cmd, cmd, sizeof(sdm_pkt_t));
+
+    sdm_show(&ss->cmd);
     sdm_buf_resize(ss, NULL, -handled);
 
-    switch (cmd->cmd) {
+    switch (ss->cmd.cmd) {
         case SDM_CMD_STOP:
             if (ss->filename != NULL) {
                 logger(INFO_LOG, "Receiving %d samples to file %s is done.\n", ss->data_len / 2, ss->filename);
@@ -520,3 +523,84 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     return len;
 }
 
+int sdm_rx(sdm_session_t *ss, int cmd, ...)
+{
+    int len = 0;
+    char buf[BUFSIZE];
+
+    for (;;) {
+        int rc;
+        static fd_set rfds;
+        static struct timeval tv;
+        static int maxfd;
+
+        FD_ZERO(&rfds);
+        FD_SET(ss->sockfd, &rfds);
+        tv.tv_sec  = 1;
+        tv.tv_usec = 0;
+
+        maxfd = ss->sockfd;
+
+        /* if (ss->state != SDM_STATE_WAIT_REPLY) { */
+            /* return 0; */
+        /* } */
+
+        rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+
+        if (rc == -1)
+            err(1, "select()");
+
+        /* timeout */
+        if (!rc) {
+            if (ss->state == SDM_STATE_INIT)
+                ss->state = SDM_STATE_IDLE;
+            continue;
+        }
+
+        if (FD_ISSET(ss->sockfd, &rfds)) {
+            len = read(ss->sockfd, buf, sizeof(buf));
+
+            if (len == 0)
+                break;
+
+            if (len < 0)
+                err(1, "read(): ");
+
+            rc = sdm_handle_rx_data(ss, buf, len);
+            if (ss->rx_data_len == 0 || rc == 0) {
+                if (ss->cmd.cmd == cmd) {
+                    if (cmd == SDM_REPLAY_REPORT) {
+                        int rr;
+                        va_list ap;
+                        va_start(ap, cmd);
+                        rr    = va_arg(ap, int);
+                        if (ss->cmd.param == rr) {
+                            switch (rr) {
+                                case SDM_REPLAY_REPORT_NO_SDM_MODE: return 0;
+                                case SDM_REPLAY_REPORT_TX_STOP:     return 0;
+                                case SDM_REPLAY_REPORT_RX_STOP:     return 0;
+                                case SDM_REPLAY_REPORT_REF:         return va_arg(ap, unsigned int) == ss->cmd.data_len;
+                                case SDM_REPLAY_REPORT_CONFIG:      return va_arg(ap, unsigned int) == ss->cmd.data_len;
+                                case SDM_REPLAY_REPORT_DROP:        return 0;
+                                case SDM_REPLAY_REPORT_UNKNOWN:     return 0;
+                                default:                            return 1;
+                            }
+                        }
+                        va_end(ap);
+                    }
+                    if (cmd == SDM_REPLAY_STOP) {
+                        return 0;
+                    }
+                    if (cmd == SDM_REPLAY_RX) {
+                        return 0;
+                    }
+                    if (cmd == SDM_REPLAY_BUSY) {
+                        return 0;
+                    }
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}

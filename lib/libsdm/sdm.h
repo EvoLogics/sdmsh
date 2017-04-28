@@ -71,7 +71,7 @@ enum {
     SDM_STATE_RX
 };
 
-typedef struct sdm_sdm_t {
+typedef struct {
     int  sockfd;
     char *rx_data;
     int  rx_data_len;
@@ -80,6 +80,8 @@ typedef struct sdm_sdm_t {
 
     char* filename;
     int data_len;
+
+    sdm_pkt_t cmd; /* last received command */
 } sdm_session_t;
 
 sdm_session_t* sdm_connect(char *ip, int port);
@@ -88,6 +90,7 @@ void  sdm_close(sdm_session_t *ss);
 int   sdm_cmd(sdm_session_t *sd, int cmd_code, ...);
 int   sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd);
 
+int   sdm_rx(sdm_session_t *ss, int cmd, ...);
 int   sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len);
 
 void  sdm_set_idle_state(sdm_session_t *ss);
