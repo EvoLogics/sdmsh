@@ -92,7 +92,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     logger (INFO_LOG, "read %d samles\n", len);
 
     if (len != 1024) {
-        fprintf (stderr, "Error reference signal must be 1024 samples\n");
+        logger (WARN_LOG, "Error reference signal must be 1024 samples\n");
         return -1;
     }
     sdm_cmd(ss, SDM_CMD_REF, data, len);
