@@ -11,10 +11,10 @@ LIB_A	= $(LIB_DIR)/$(LIB).a
 CFLAGS = -W -Wall -I. -I$(LIB_DIR) -lreadline -lm -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
 
 build: lib $(OBJ)
-	$(CC) -L. -lreadline -o $(PROJ) $(OBJ) $(LIB_A)
+	$(CC) -o $(PROJ) $(OBJ) $(LIB_A) -L. -lreadline
 
 build-dyn: lib $(OBJ)
-	$(CC) -L$(LIB_DIR) -I$(LIB_DIR) -lreadline -lsdm -o $(PROJ) $(OBJ)
+	$(CC) -o $(PROJ) $(OBJ) -L$(LIB_DIR) -I$(LIB_DIR) -lreadline -lsdm 
 
 .PHONY: lib
 lib:
