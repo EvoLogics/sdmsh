@@ -125,8 +125,10 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     if (rest) {
         rest = 1024 - rest;
         logger(WARN_LOG, "Warning: signal samples number %d do not divisible by 1024 samples. Zero padding added\n", len);
-        data = realloc(data, (len + rest)*2);
-        memset(data + len*2, 0, rest*2);
+        data = realloc(data, (len + rest) * 2);
+        if (data == NULL)
+            err(1, "realloc()");
+        memset(data + len, 0, rest * 2);
         len += rest;
     }
     sdm_cmd(ss, SDM_CMD_TX, data, len);
