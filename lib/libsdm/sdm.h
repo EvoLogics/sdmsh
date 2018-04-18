@@ -16,28 +16,33 @@
 #endif
 
 enum {
-    SDM_CMD_STOP    = 0,
-    SDM_CMD_TX      = 1,
-    SDM_CMD_RX      = 2,
-    SDM_CMD_REF     = 3,
-    SDM_CMD_CONFIG  = 4
+    SDM_CMD_STOP        = 0,
+    SDM_CMD_TX          = 1,
+    SDM_CMD_RX          = 2,
+    SDM_CMD_REF         = 3,
+    SDM_CMD_CONFIG      = 4,
+    SDM_CMD_USBL_CONFIG = 5,
+    SDM_CMD_USBL_RX     = 6
 };
 
 enum {
-    SDM_REPLAY_STOP   = 0,
-    SDM_REPLAY_RX     = 2,
-    SDM_REPLAY_BUSY   = 254,
-    SDM_REPLAY_REPORT = 255,
+    SDM_REPLAY_STOP    = 0,
+    SDM_REPLAY_RX      = 2,
+    SDM_REPLAY_USBL_RX = 6,
+    SDM_REPLAY_BUSY    = 254,
+    SDM_REPLAY_REPORT  = 255,
 };
 
 enum {
-    SDM_REPLAY_REPORT_NO_SDM_MODE = 0,
-    SDM_REPLAY_REPORT_TX_STOP     = 1,
-    SDM_REPLAY_REPORT_RX_STOP     = 2,
-    SDM_REPLAY_REPORT_REF         = 3,
-    SDM_REPLAY_REPORT_CONFIG      = 4,
-    SDM_REPLAY_REPORT_DROP        = 254,
-    SDM_REPLAY_REPORT_UNKNOWN     = 255,
+    SDM_REPLAY_REPORT_NO_SDM_MODE  = 0,
+    SDM_REPLAY_REPORT_TX_STOP      = 1,
+    SDM_REPLAY_REPORT_RX_STOP      = 2,
+    SDM_REPLAY_REPORT_REF          = 3,
+    SDM_REPLAY_REPORT_CONFIG       = 4,
+    SDM_REPLAY_REPORT_USBL_CONFIG  = 5,
+    SDM_REPLAY_REPORT_USBL_RX_STOP = 6,
+    SDM_REPLAY_REPORT_DROP         = 254,
+    SDM_REPLAY_REPORT_UNKNOWN      = 255,
 };
 
 

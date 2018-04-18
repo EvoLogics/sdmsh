@@ -94,6 +94,29 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
             cmd->gain_and_srclvl |= va_arg(ap, int);
             va_end(ap);
             break;
+        case SDM_CMD_USBL_CONFIG:
+        {
+            uint32_t delay, samples;
+            uint32_t gain, sample_rate;
+            uint32_t tmp;
+            
+            va_start(ap, cmd_code);
+            delay = va_arg(ap, int);
+            samples = va_arg(ap, int);
+            gain = va_arg(ap, int);
+            sample_rate = va_arg(ap, int);
+            va_end(ap);
+            
+            tmp = (gain << 4) + (sample_rate << 1);
+
+            memcpy(cmd->rx_len, &tmp, 3);
+            cmd->data_len = 4;
+            cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 4);
+
+            memcpy(cmd->data, &delay, 4);
+            memcpy(&cmd->data[2], &samples, 4);
+            break;
+        }
         case SDM_CMD_TX:
         case SDM_CMD_REF:
         {
@@ -122,6 +145,21 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
             va_end(ap);
             break;
         }
+        case SDM_CMD_USBL_RX:
+        {
+            uint8_t channel;
+            uint16_t samples;
+            uint32_t tmp;
+            
+            va_start(ap, cmd_code);
+            channel = va_arg(ap, int);
+            samples = va_arg(ap, int);
+            va_end(ap);
+
+            tmp = samples + (channel << 21);
+            memcpy(cmd->rx_len, &tmp, 3);
+            break;
+        }
         default:
             free(cmd);
             return -1;
@@ -146,11 +184,13 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
 char* sdm_cmd_to_str(uint8_t cmd)
 {
     switch (cmd) {
-        case SDM_CMD_STOP:   return "STOP";
-        case SDM_CMD_TX:     return "TX";
-        case SDM_CMD_RX:     return "RX";
-        case SDM_CMD_REF:    return "REF";
-        case SDM_CMD_CONFIG: return "CONFIG";
+        case SDM_CMD_STOP:        return "STOP";
+        case SDM_CMD_TX:          return "TX";
+        case SDM_CMD_RX:          return "RX";
+        case SDM_CMD_REF:         return "REF";
+        case SDM_CMD_CONFIG:      return "CONFIG";
+        case SDM_CMD_USBL_CONFIG: return "USBL_CONFIG";
+        case SDM_CMD_USBL_RX:     return "USBL_RX";
         default: return "???";
     }
 }
@@ -158,10 +198,11 @@ char* sdm_cmd_to_str(uint8_t cmd)
 char* sdm_reply_to_str(uint8_t cmd)
 {
     switch (cmd) {
-        case SDM_REPLAY_STOP:   return "STOP";
-        case SDM_REPLAY_RX:     return "RX";
-        case SDM_REPLAY_BUSY:   return "BUSY";
-        case SDM_REPLAY_REPORT: return "REPORT";
+        case SDM_REPLAY_STOP:    return "STOP";
+        case SDM_REPLAY_RX:      return "RX";
+        case SDM_REPLAY_USBL_RX: return "USBL_RX";
+        case SDM_REPLAY_BUSY:    return "BUSY";
+        case SDM_REPLAY_REPORT:  return "REPORT";
         default: return "???";
     }
 }
@@ -174,6 +215,8 @@ char* sdm_reply_report_to_str(uint8_t cmd)
         case SDM_REPLAY_REPORT_RX_STOP:     return "RX_STOP";
         case SDM_REPLAY_REPORT_REF:         return "REF";
         case SDM_REPLAY_REPORT_CONFIG:      return "CONFIG";
+        case SDM_REPLAY_REPORT_USBL_CONFIG: return "USBL_CONFIG";
+        case SDM_REPLAY_REPORT_USBL_RX_STOP:return "RX_STOP";
         case SDM_REPLAY_REPORT_DROP:        return "DROP";
         case SDM_REPLAY_REPORT_UNKNOWN:     return "UNKNOWN";
         default: return "???";
@@ -197,6 +240,7 @@ int sdm_show(sdm_pkt_t *cmd)
 
     switch (cmd->cmd) {
         case SDM_REPLAY_RX:
+        case SDM_REPLAY_USBL_RX:
             /* RX do not return data_len. No need to dump data */
         case SDM_REPLAY_STOP:
             /* spaces need to clean last message 'recv %d samples' */
@@ -208,12 +252,14 @@ int sdm_show(sdm_pkt_t *cmd)
         case SDM_REPLAY_REPORT:
             switch (cmd->param) {
                 case SDM_REPLAY_REPORT_NO_SDM_MODE: logger(INFO_LOG, " %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_NO_SDM_MODE)); break;
-                case SDM_REPLAY_REPORT_TX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_TX_STOP), cmd->data_len); break;
-                case SDM_REPLAY_REPORT_RX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_RX_STOP), cmd->data_len); break;
-                case SDM_REPLAY_REPORT_REF:         logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_REF),    cmd->data_len ? "done":"fail"); break;
-                case SDM_REPLAY_REPORT_CONFIG:      logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_CONFIG), cmd->data_len ? "done":"fail"); break;
-                case SDM_REPLAY_REPORT_DROP:        logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_DROP), cmd->data_len); break;
-                case SDM_REPLAY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%02x\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_UNKNOWN), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_TX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_RX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_REF:         logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param),    cmd->data_len ? "done":"fail"); break;
+                case SDM_REPLAY_REPORT_CONFIG:      logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
+                case SDM_REPLAY_REPORT_USBL_CONFIG: logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
+                case SDM_REPLAY_REPORT_USBL_RX_STOP:logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_DROP:        logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%02x\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
             }
             break;
@@ -461,16 +507,16 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     sdm_pkt_t *cmd;
     int handled, data_len;
 
-    if (ss == NULL || buf == NULL || len == 0)
+    if (ss == NULL)
         return 0;
 
     /* clear last received command */
     memset(&ss->cmd, 0, sizeof(sdm_pkt_t));
-
-    sdm_buf_resize(ss, buf, len);
+    if (buf && len > 0) {
+        sdm_buf_resize(ss, buf, len);
+    }
 
     handled = sdm_extract_replay(ss->rx_data, ss->rx_data_len, &cmd);
-
     /* if we have not 16bit aligned data, we will skip last byte for this time */
     handled -= (handled % 2);
     if(handled == 0)
@@ -512,6 +558,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
             ss->state = SDM_STATE_IDLE;
             return handled;
         case SDM_CMD_RX:
+        case SDM_CMD_USBL_RX:
             ss->state = SDM_STATE_RX;
             return handled;
         default:
@@ -566,7 +613,7 @@ int sdm_rx(sdm_session_t *ss, int cmd, ...)
             if (len < 0)
                 err(1, "read(): ");
 
-            rc = sdm_handle_rx_data(ss, buf, len);
+             rc = sdm_handle_rx_data(ss, buf, len);
             if (ss->rx_data_len == 0 || rc == 0) {
                 if (ss->cmd.cmd == cmd) {
                     if (cmd == SDM_REPLAY_REPORT) {
@@ -581,6 +628,8 @@ int sdm_rx(sdm_session_t *ss, int cmd, ...)
                                 case SDM_REPLAY_REPORT_RX_STOP:     return 0;
                                 case SDM_REPLAY_REPORT_REF:         return va_arg(ap, unsigned int) == ss->cmd.data_len;
                                 case SDM_REPLAY_REPORT_CONFIG:      return va_arg(ap, unsigned int) == ss->cmd.data_len;
+                                case SDM_REPLAY_REPORT_USBL_CONFIG: return va_arg(ap, unsigned int) == ss->cmd.data_len;
+                                case SDM_REPLAY_REPORT_USBL_RX_STOP:return 0;
                                 case SDM_REPLAY_REPORT_DROP:        return 0;
                                 case SDM_REPLAY_REPORT_UNKNOWN:     return 0;
                                 default:                            return 1;
@@ -592,6 +641,9 @@ int sdm_rx(sdm_session_t *ss, int cmd, ...)
                         return 0;
                     }
                     if (cmd == SDM_REPLAY_RX) {
+                        return 0;
+                    }
+                    if (cmd == SDM_REPLAY_USBL_RX) {
                         return 0;
                     }
                     if (cmd == SDM_REPLAY_BUSY) {

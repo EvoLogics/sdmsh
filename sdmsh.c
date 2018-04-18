@@ -243,9 +243,12 @@ int main(int argc, char *argv[])
             if (len < 0)
               err(1, "read(): ");
 
-            rc = sdm_handle_rx_data(sdm_session, buf, len);
-            if (sdm_session->rx_data_len == 0 || rc == 0)
-                rl_forced_update_display();
+            do {
+                rc = sdm_handle_rx_data(sdm_session, buf, len);
+                if (len && (sdm_session->rx_data_len == 0 || rc == 0))
+                    rl_forced_update_display();
+                len = 0;
+            } while (rc > 0);
         }
     }
 
