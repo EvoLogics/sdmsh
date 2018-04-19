@@ -201,7 +201,9 @@ int main(int argc, char *argv[])
             tv.tv_sec  = 0;
             tv.tv_usec = 10;
             maxfd = sdm_session->sockfd;
-        } else if (flags & FLAG_EXEC_SCRIPT && sdm_session->state == SDM_STATE_WAIT_REPLY) {
+        } else if (flags & FLAG_EXEC_SCRIPT &&
+                   (sdm_session->state == SDM_STATE_WAIT_REPLY ||
+                    sdm_session->state == SDM_STATE_RX)) {
             /* If we running script, we need to wait for reply before run next command */
             maxfd = sdm_session->sockfd;
         } else {
