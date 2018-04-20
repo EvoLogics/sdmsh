@@ -12,6 +12,8 @@
 #include <sdm.h>
 #include <sdmsh_commands.h>
 
+#include <stream.h>
+
 int sdmsh_cmd_help       (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_config     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_stop       (struct shell_config *sc, char *argv[], int argc);
@@ -26,12 +28,49 @@ struct commands_t commands[] = {
    ,{"config",      sdmsh_cmd_config,     "Config SDM command.", "config <threshold> <gain> <source level>" }
    ,{"usbl_config", sdmsh_cmd_usbl_config,"Config SDM USBL command.", "usbl_config <delay> <samples> <gain> <sample_rate>"}
    ,{"stop",        sdmsh_cmd_stop,       "Stop SDM command.", NULL}
-   ,{"ref",         sdmsh_cmd_ref,        "Update reference signal.", "ref <file name>"}
-   ,{"tx",          sdmsh_cmd_tx,         "Send signal.", "tx <file name>"}
-   ,{"rx",          sdmsh_cmd_rx,         "Receive signal. Sample number can be 0", "rx <number of samples> <file name>"}
-   ,{"usbl_rx",     sdmsh_cmd_usbl_rx,    "Receive signal from USBL channel.", "usbl_rx <channel> <number of samples> <file name>"}
+   ,{"ref",         sdmsh_cmd_ref,        "Update reference signal.", "ref [<driver>:]<parameter>"}
+   ,{"tx",          sdmsh_cmd_tx,         "Send signal.", "tx [<number of samples>] [<driver>:]<parameter>"}
+   ,{"rx",          sdmsh_cmd_rx,         "Receive signal. Sample number can be 0", "rx <number of samples> [<driver>:]<parameter>"}
+   ,{"usbl_rx",     sdmsh_cmd_usbl_rx,    "Receive signal from USBL channel.", "usbl_rx <channel> <number of samples> [<driver>:]<parameter>"}
    ,{NULL}
 };
+
+int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
+{
+    char *arg = strdup(parameter);
+    char *default_drv = "ascii";
+    char *drv, *drv_param;
+    /* argv[2]: driver:parameter */
+    /* raw:rx.raw */
+
+    if (strchr(parameter, ':')) {
+        drv = strtok(parameter, ":");
+        if (drv == NULL) {
+            logger(ERR_LOG, "Output format error: %s\n", parameter);
+            goto stream_new_error;
+        }
+        drv_param = strtok(NULL, ":");
+        if (drv_param == NULL) {
+            logger(ERR_LOG, "Output parameter undefined\n");
+            goto stream_new_error;
+        }
+    } else {
+        drv = default_drv;
+        drv_param = parameter;
+    }
+    if (ss->stream) 
+        sdm_stream_free(ss->stream);
+    ss->stream = sdm_stream_new(direction, drv, drv_param);
+    if (ss->stream == NULL) {
+        logger(ERR_LOG, "Stream creation error\n");
+        goto stream_new_error;
+    }
+    free(arg);
+    return 0;
+  stream_new_error:
+    free(arg);
+    return -1;
+}
 
 int sdmsh_cmd_help(struct shell_config *sc, char *argv[], int argc)
 {
@@ -100,66 +139,96 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
 
 int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 {
-    uint16_t  *data;
-    size_t len;
+    int16_t  *data;
+    size_t len = 1024;
     sdm_session_t *ss = sc->cookie;
+    unsigned cnt;
+    int rv, cmd; 
 
     if (argc != 2) {
         shell_show_help(sc, argv[0]);
         return -1;
     }
 
-    data = sdm_load_samples(argv[1], &len);
-    if (data == NULL) {
-        sdm_set_idle_state(ss);
-        return 1;
-    }
-
-    logger (INFO_LOG, "read %d samles\n", len);
-
-    if (len != 1024) {
-        logger (WARN_LOG, "Error reference signal must be 1024 samples\n");
+    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1])) {
         return -1;
     }
-    sdm_cmd(ss, SDM_CMD_REF, data, len);
+    if (sdm_stream_open(ss->stream)) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+        return -1;
+    }
+    data = malloc(len * sizeof(int16_t));
+    cnt = sdm_load_samples(ss, data, len);
+    cmd = SDM_CMD_REF;
+    if (cnt == len) {
+        rv = sdm_cmd(ss, cmd, data, len);
+    } else if (cnt > 0) {
+        logger (WARN_LOG, "Padding reference signal to 1024 samples\n");
+        memset(&data[cnt], 0, (len - cnt) * 2);
+        rv = sdm_cmd(ss, cmd, data, len);
+    } else {
+        rv = -1;
+    }
     free(data);
-
     sdm_set_idle_state(ss);
-    return 0;
+    return rv;
 }
 
 int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 {
-    uint16_t  *data;
-    size_t len;
+    size_t len = 1024 * 2, cnt, cmd;
+    int16_t *data;
     sdm_session_t *ss = sc->cookie;
+    int rv;
+    unsigned nsamples, passed = 0;
+    int arg_id = 1;
 
-    if (argc != 2) {
+    if (argc != 3 && argc != 2) {
         shell_show_help(sc, argv[0]);
         return -1;
     }
-
-    data = sdm_load_samples(argv[1], &len);
-    if (data == NULL) {
-        sdm_set_idle_state(ss);
-        return 1;
+    if (argc == 3) {
+        ARG_LONG("number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+        arg_id = 2;
+    } else {
+        nsamples = 0;
+        arg_id = 1;
     }
 
-    logger (INFO_LOG, "read %d samles\n", len);
-
-    size_t rest = len % (1024);
-    if (rest) {
-        rest = 1024 - rest;
-        logger(WARN_LOG, "Warning: signal samples number %d do not divisible by 1024 samples. Zero padding added\n", len);
-        data = realloc(data, (len + rest) * 2);
-        if (data == NULL)
-            err(1, "realloc()");
-        memset(data + len, 0, rest * 2);
-        len += rest;
+    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[arg_id])) {
+        return -1;
     }
-    sdm_cmd(ss, SDM_CMD_TX, data, len);
+    if (nsamples == 0) {
+        nsamples = sdm_stream_count(ss->stream);
+        if (nsamples == 0) {
+            logger(ERR_LOG, "Zero samples\n");
+            return -1;
+        }
+    }
+    
+    if (sdm_stream_open(ss->stream)) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+        return -1;
+    }
+    data = malloc(len * sizeof(int16_t));
+
+    cmd = SDM_CMD_TX;
+    do {
+        len = len < nsamples - passed ? len : nsamples - passed;
+        cnt = sdm_load_samples(ss, data, len);
+        if (cnt == len) {
+            rv = sdm_cmd(ss, cmd, nsamples, data, len);
+            passed += len;
+        } else if (cnt > 0) {
+            memset(&data[cnt], 0, (len - cnt) * 2);
+            rv = sdm_cmd(ss, cmd, nsamples, data, 1024 * ((cnt + 1023) / 1024));
+            passed += 1024 * ((cnt + 1023) / 1024);
+        } else {
+            rv = -1;
+        }
+        cmd = SDM_CMD_TX_CONTINUE;
+    } while (rv == 0 && passed < nsamples);
     free(data);
-
     sdm_set_idle_state(ss);
     return 0;
 }
@@ -167,7 +236,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
 {
     long nsamples = 0;
-    FILE *fp;
+    /* FILE *fp; */
     sdm_session_t *ss = sc->cookie;
 
     if (argc != 3) {
@@ -185,14 +254,13 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
                 , old, nsamples);
     }
 
-    /* truncate file if exist */
-    if ((fp = fopen(argv[2], "w")) == NULL) {
-        logger(ERR_LOG, "Error cannot open %s file: %s\n", argv[2], strerror(errno));
+    if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[2])) {
         return -1;
     }
-    fclose(fp);
-
-    ss->filename = strdup(argv[2]);
+    if (sdm_stream_open(ss->stream)) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+        return -1;
+    }
     sdm_cmd(ss, SDM_CMD_RX, nsamples);
     /* rl_message("Waiting for receiving %ld samples to file %s\n", nsamples, ss->filename); */
     
@@ -203,7 +271,6 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
 {
     uint8_t channel = 0;
     uint16_t samples = 0;
-    FILE *fp;
     sdm_session_t *ss = sc->cookie;
 
     if (argc != 4) {
@@ -213,15 +280,14 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
 
     ARG_LONG("channel", argv[1], channel, arg >= 0 && arg <= 4);
     ARG_LONG("number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
-    
-    /* truncate file if exist */
-    if ((fp = fopen(argv[3], "w")) == NULL) {
-        logger(ERR_LOG, "Error cannot open %s file: %s\n", argv[3], strerror(errno));
+
+    if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[3])) {
         return -1;
     }
-    fclose(fp);
-
-    ss->filename = strdup(argv[3]);
+    if (sdm_stream_open(ss->stream)) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+        return -1;
+    }
     sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);
     
     return 0;

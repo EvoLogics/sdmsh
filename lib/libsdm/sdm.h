@@ -6,6 +6,7 @@
 #include <stdio.h> /* FILE* */ 
 
 #include <utils.h>
+#include <stream.h>
 
 #define BUFSIZE  (1024 * 4)
 
@@ -22,7 +23,9 @@ enum {
     SDM_CMD_REF         = 3,
     SDM_CMD_CONFIG      = 4,
     SDM_CMD_USBL_CONFIG = 5,
-    SDM_CMD_USBL_RX     = 6
+    SDM_CMD_USBL_RX     = 6,
+
+    SDM_CMD_TX_CONTINUE = 128
 };
 
 enum {
@@ -45,11 +48,6 @@ enum {
     SDM_REPLAY_REPORT_UNKNOWN      = 255,
 };
 
-
-enum {
-    SDM_FILE_TYPE_FLOAT = 1
-   ,SDM_FILE_TYPE_INT
-};
 
 typedef struct sdm_pkt_t {
     uint64_t magic;
@@ -76,6 +74,11 @@ enum {
     SDM_STATE_RX
 };
 
+enum {
+    SDM_ASCII = 1,
+    SDM_BIN16
+};
+
 typedef struct {
     int  sockfd;
     char *rx_data;
@@ -83,7 +86,7 @@ typedef struct {
 
     int state;
 
-    char* filename;
+    sdm_stream_t *stream;
     int data_len;
 
     sdm_pkt_t cmd; /* last received command */
@@ -102,16 +105,14 @@ void  sdm_set_idle_state(sdm_session_t *ss);
 
 int   sdm_show(sdm_pkt_t *cmd);
 
-int       sdm_save_samples(char *filename, char *buf, size_t len);
-uint16_t *sdm_load_samples(char *filename, size_t *len);
+int       sdm_save_samples(sdm_session_t *ss, char *buf, size_t len);
+/* int       sdm_save_samples(sdm_session_t *ss, char *filename, char *buf, size_t len); */
+int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len);
 
-int   sdm_autodetect_samples_file_type(FILE *fp);
 const char* strrpbrk(const char *s, const char *accept_only);
 
 char* sdm_cmd_to_str(uint8_t cmd);
 char* sdm_reply_to_str(uint8_t cmd);
 char* sdm_reply_report_to_str(uint8_t cmd);
-char* sdm_samples_file_type_to_str(uint8_t type);
 
 #endif
-

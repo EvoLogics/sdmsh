@@ -1,9 +1,9 @@
-PROJ = libsdm
+PROJ = libstream
 
-SRC = sdm.c utils.c
+SRC = stream.c stream_raw.c stream_ascii.c
 OBJ = $(SRC:.c=.o)
 
-CFLAGS = -W -Wall -I. -I../libstream -lm -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
+CFLAGS = -W -Wall -I. -lm -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
 
 $(PROJ): $(PROJ).so $(PROJ).a
 
