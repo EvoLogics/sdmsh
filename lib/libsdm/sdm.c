@@ -81,7 +81,7 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
     int n;
     sdm_pkt_t *cmd = malloc(sizeof(sdm_pkt_t));
     char *data;
-    int data_len;
+    int data_len = 0;
 
     memset(cmd, 0, sizeof(sdm_pkt_t));
     cmd->magic = SDM_PKG_MAGIC;
