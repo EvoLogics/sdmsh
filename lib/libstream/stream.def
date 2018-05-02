@@ -4,6 +4,6 @@
 
 STREAM(ascii)
 STREAM(raw)
-//STREAM(tcp)
+STREAM(tcp)
 
 #undef STREAM
