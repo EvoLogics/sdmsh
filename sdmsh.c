@@ -182,6 +182,22 @@ int main(int argc, char *argv[])
     shell_init(&shell_config);
 
     for (;;) {
+        fd_set rfds;
+        int maxfd = sdm_session->sockfd + 1;
+        struct timeval tv;
+        tv.tv_sec  = 0;
+        tv.tv_usec = 100000;
+        FD_ZERO(&rfds);
+        FD_SET(sdm_session->sockfd, &rfds);
+        rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+        if (rc > 0) {
+            len = read(sdm_session->sockfd, buf, sizeof(buf));
+            if (len > 0) continue;
+        }
+        break;
+    }
+    
+    for (;;) {
         static fd_set rfds;
         static struct timeval tv;
         static int maxfd;

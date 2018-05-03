@@ -174,8 +174,10 @@ static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sa
             break;
         }
     } while (offset < requested_length);
-    
-    if (offset == requested_length) {
+
+    if (rv == 0) {
+        return offset / 2;
+    } else if (offset == requested_length) {
         return sample_count;
     } else {
         return SDM_ERROR_STREAM;

@@ -53,6 +53,7 @@ void sdm_stream_free(sdm_stream_t *stream)
     if (stream->free)
         stream->free(stream);
     free(stream);
+    stream = NULL;
 }
 
 void sdm_stream_set_fs(sdm_stream_t *stream, unsigned fs)
@@ -82,12 +83,20 @@ int sdm_stream_close(sdm_stream_t *stream)
 
 int sdm_stream_read(sdm_stream_t *stream, int16_t* samples, unsigned sample_count)
 {
-    return stream->read(stream, samples, sample_count);
+    if (stream) {
+        return stream->read(stream, samples, sample_count);
+    } else {
+        return SDM_ERROR_STREAM;
+    }
 }
 
 int sdm_stream_write(sdm_stream_t *stream, int16_t *samples, unsigned sample_count)
 {
-    return stream->write(stream, samples, sample_count);
+    if (stream) {
+        return stream->write(stream, samples, sample_count);
+    } else {
+        return SDM_ERROR_STREAM;
+    }
 }
 
 unsigned sdm_stream_count(sdm_stream_t *stream)

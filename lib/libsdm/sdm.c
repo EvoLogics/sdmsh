@@ -90,13 +90,20 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
     switch (cmd_code) {
         case SDM_CMD_STOP:
             break;
-        case SDM_CMD_CONFIG:
+        case SDM_CMD_CONFIG: {
+            uint32_t preamp_gain;
+            
             va_start(ap, cmd_code);
             cmd->threshold =       va_arg(ap, int);
             cmd->gain_and_srclvl = va_arg(ap, int) << 8;
             cmd->gain_and_srclvl |= va_arg(ap, int);
+            preamp_gain = (va_arg(ap, int) & 0xf) << 28;
             va_end(ap);
+            data_len = cmd->data_len = 1;
+            cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 4);
+            memcpy(cmd->data, &preamp_gain, 4);
             break;
+        }
         case SDM_CMD_USBL_CONFIG:
         {
             uint32_t delay, samples;
@@ -113,7 +120,7 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
             tmp = (gain << 4) + (sample_rate << 1);
 
             memcpy(cmd->rx_len, &tmp, 3);
-            cmd->data_len = 4;
+            data_len = cmd->data_len = 4;
             cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 4);
 
             memcpy(cmd->data, &delay, 4);
@@ -177,8 +184,10 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
     }
 
     if (cmd_code == SDM_CMD_TX_CONTINUE) {
-        logger(INFO_LOG, "tx cmd continue: %d samples\n", data_len);
-        n = write(ss->sockfd, data, data_len * 2);
+        if (data_len) {
+            logger(INFO_LOG, "tx cmd continue: %d samples\n", data_len);
+            n = write(ss->sockfd, data, data_len * 2);
+        }
     } else {
         logger(INFO_LOG, "tx cmd %-6s: %d samples ", sdm_cmd_to_str(cmd->cmd), data_len);
         DUMP_SHORT(DEBUG_LOG, LGREEN, (uint8_t *)cmd, sizeof(sdm_pkt_t) + data_len * 2);
@@ -380,7 +389,6 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     if (buf && len > 0) {
         sdm_buf_resize(ss, buf, len);
     }
-
     handled = sdm_extract_replay(ss->rx_data, ss->rx_data_len, &cmd);
     /* if we have not 16bit aligned data, we will skip last byte for this time */
     handled -= (handled % 2);

@@ -25,7 +25,7 @@ int sdmsh_cmd_usbl_rx    (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
     {"help",        sdmsh_cmd_help,       "This help", "help [command]"}
-   ,{"config",      sdmsh_cmd_config,     "Config SDM command.", "config <threshold> <gain> <source level>" }
+   ,{"config",      sdmsh_cmd_config,     "Config SDM command.", "config <threshold> <gain> <source level> [<preamp_gain>]" }
    ,{"usbl_config", sdmsh_cmd_usbl_config,"Config SDM USBL command.", "usbl_config <delay> <samples> <gain> <sample_rate>"}
    ,{"stop",        sdmsh_cmd_stop,       "Stop SDM command.", NULL}
    ,{"ref",         sdmsh_cmd_ref,        "Update reference signal.", "ref [<driver>:]<parameter>"}
@@ -49,7 +49,7 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
             logger(ERR_LOG, "Output format error: %s\n", parameter);
             goto stream_new_error;
         }
-        drv_param = strtok(NULL, ":");
+        drv_param = strtok(NULL, "");
         if (drv_param == NULL) {
             logger(ERR_LOG, "Output parameter undefined\n");
             goto stream_new_error;
@@ -82,10 +82,10 @@ int sdmsh_cmd_help(struct shell_config *sc, char *argv[], int argc)
 int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
 {
     uint16_t threshold;
-    uint8_t gain, srclvl;
+    uint8_t gain, srclvl, preamp_gain = 0;
     sdm_session_t *ss = sc->cookie;
 
-    if (argc != 4) {
+    if (argc != 4 && argc != 5) {
         shell_show_help(sc, argv[0]);
         return -1;
     }
@@ -93,7 +93,10 @@ int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
     ARG_LONG("threshold", argv[1], threshold, arg >= 1 && arg <= 4095);
     ARG_LONG("gain", argv[2], gain, arg >= 0 && arg <= 1);
     ARG_LONG("source level", argv[3], srclvl, arg >= 0 && arg <= 3);
-    sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl);
+    if (argc == 5) {
+        ARG_LONG("preamp gain", argv[4], preamp_gain, arg >= 0 && arg <= 13);
+    }
+    sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
     sdm_set_idle_state(ss);
 
     return 0;
@@ -216,6 +219,10 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     do {
         len = len < nsamples - passed ? len : nsamples - passed;
         cnt = sdm_load_samples(ss, data, len);
+        if (cnt == 0) {
+            cmd = SDM_CMD_STOP;
+            break;
+        }
         if (cnt == len) {
             rv = sdm_cmd(ss, cmd, nsamples, data, len);
             passed += len;

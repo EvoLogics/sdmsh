@@ -82,8 +82,10 @@ static int stream_open(sdm_stream_t *stream)
 
     if (stream->direction == STREAM_OUTPUT) {
         pdata->fd = fopen(stream->args, "w");
+        pdata->file_type = SDM_FILE_TYPE_INT;        
     } else {
         pdata->fd = fopen(stream->args, "r");
+        sdm_autodetect_samples_file_type(stream);
     }
     if (pdata->fd == NULL)
     {
@@ -91,7 +93,6 @@ static int stream_open(sdm_stream_t *stream)
         pdata->error = errno;
         return SDM_ERROR_STREAM;
     }
-    sdm_autodetect_samples_file_type(stream);
     if (pdata->file_type == 0) {
         fclose(pdata->fd);
         fprintf (stderr, "Can't autodetect signal file type\n");
