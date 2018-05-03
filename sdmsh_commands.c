@@ -28,10 +28,10 @@ struct commands_t commands[] = {
    ,{"config",      sdmsh_cmd_config,     "Config SDM command.", "config <threshold> <gain> <source level> [<preamp_gain>]" }
    ,{"usbl_config", sdmsh_cmd_usbl_config,"Config SDM USBL command.", "usbl_config <delay> <samples> <gain> <sample_rate>"}
    ,{"stop",        sdmsh_cmd_stop,       "Stop SDM command.", NULL}
-   ,{"ref",         sdmsh_cmd_ref,        "Update reference signal.", "ref [<driver>:]<parameter>"}
+   ,{"ref",         sdmsh_cmd_ref,        "Update reference signal.", "ref [<drv>:]<params>"}
    ,{"tx",          sdmsh_cmd_tx,         "Send signal.", "tx [<number of samples>] [<driver>:]<parameter>"}
-   ,{"rx",          sdmsh_cmd_rx,         "Receive signal. Sample number can be 0", "rx <number of samples> [<driver>:]<parameter>"}
-   ,{"usbl_rx",     sdmsh_cmd_usbl_rx,    "Receive signal from USBL channel.", "usbl_rx <channel> <number of samples> [<driver>:]<parameter>"}
+   ,{"rx",          sdmsh_cmd_rx,         "Receive signal [0 is inf].", "rx <number of samples> [<drv>:]<params>  [[<drv>:]<params>]"}
+   ,{"usbl_rx",     sdmsh_cmd_usbl_rx,    "Receive signal from USBL channel.", "usbl_rx <channel> <number of samples> [<drv>:]<params>"}
    ,{NULL}
 };
 
@@ -254,8 +254,9 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
     long nsamples = 0;
     /* FILE *fp; */
     sdm_session_t *ss = sc->cookie;
+    int strm_cnt = argc - 2, i;
 
-    if (argc != 3) {
+    if (argc != 3 && argc != 4) {
         shell_show_help(sc, argv[0]);
         return -1;
     }
@@ -271,11 +272,17 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
     }
 
     sdm_free_streams(ss);
-    if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[2])) {
-        return -1;
+    for (i = 0; i < strm_cnt; i++) {
+        if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[2 + i])) {
+            break;
+        }
+        if (sdm_stream_open(ss->stream[i])) {
+            logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[i]));
+            break;
+        }
     }
-    if (sdm_stream_open(ss->stream[0])) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
+    if (i != strm_cnt) {
+        sdm_free_streams(ss);
         return -1;
     }
     sdm_cmd(ss, SDM_CMD_RX, nsamples);
