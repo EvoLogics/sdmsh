@@ -59,7 +59,7 @@ sdm_session_t* sdm_connect(char *ip, int port)
     ss->rx_data = NULL;
     ss->rx_data_len = 0;
     ss->state = SDM_STATE_INIT;
-    ss->stream = NULL;
+    ss->stream_cnt = 0;
     ss->data_len = 0;
 
     return ss;
@@ -67,9 +67,12 @@ sdm_session_t* sdm_connect(char *ip, int port)
 
 void sdm_close(sdm_session_t *ss)
 {
+    int i;
     close(ss->sockfd);
-    if (ss->stream)
-        sdm_stream_free(ss->stream);
+    for (i = 0; i < ss->stream_cnt; i++) {
+        if (ss->stream[i])
+            sdm_stream_free(ss->stream[i]);
+    }
     if (ss->rx_data)
         free(ss->rx_data);
     free(ss);
@@ -289,12 +292,30 @@ int sdm_show(sdm_pkt_t *cmd)
 
 int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
 {
-    return sdm_stream_write(ss->stream, (int16_t*)buf, len / 2);
+    int i;
+    for (i = 0; i < ss->stream_cnt; i++) {
+        sdm_stream_write(ss->stream[i], (int16_t*)buf, len / 2);
+    }
+    return 0;
 }
 
 int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len)
 {
-    return sdm_stream_read(ss->stream, samples, len);
+    if (ss->stream_cnt == 1) {
+        return sdm_stream_read(ss->stream[0], samples, len);
+    } else {
+        return -1;
+    }
+}
+
+int sdm_free_streams(sdm_session_t *ss)
+{
+    int i;
+    for (i = 0; i < ss->stream_cnt; i++) {
+        sdm_stream_close(ss->stream[i]);
+    }
+    ss->stream_cnt = 0;
+    return 0;
 }
 
 int sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd)
@@ -417,15 +438,15 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     sdm_buf_resize(ss, NULL, -handled);
 
     switch (ss->cmd.cmd) {
-        case SDM_CMD_STOP:
-            /* if (ss->filename != NULL) { */
-            if (ss->stream != NULL) {
+        case SDM_CMD_STOP: {
+            if (ss->stream_cnt) {
                 logger(INFO_LOG, "\nReceiving %d samples is done.\n", ss->data_len / 2);
-                sdm_stream_close(ss->stream);
+                sdm_free_streams(ss);
                 sdm_set_idle_state(ss);
             }
             ss->state = SDM_STATE_IDLE;
             return handled;
+        }
         case SDM_CMD_RX:
         case SDM_CMD_USBL_RX:
             ss->state = SDM_STATE_RX;

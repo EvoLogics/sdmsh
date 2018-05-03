@@ -40,9 +40,14 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
     char *arg = strdup(parameter);
     char *default_drv = "ascii";
     char *drv, *drv_param;
+    sdm_stream_t *stream;
     /* argv[2]: driver:parameter */
     /* raw:rx.raw */
 
+    if (ss->stream_cnt >= 2) {
+        logger(ERR_LOG, "Too many streams open: %d\n", ss->stream_cnt);
+        return -1;
+    }
     if (strchr(parameter, ':')) {
         drv = strtok(parameter, ":");
         if (drv == NULL) {
@@ -58,13 +63,16 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
         drv = default_drv;
         drv_param = parameter;
     }
-    if (ss->stream) 
-        sdm_stream_free(ss->stream);
-    ss->stream = sdm_stream_new(direction, drv, drv_param);
-    if (ss->stream == NULL) {
+    /* if (ss->stream)  */
+    /*     sdm_stream_free(ss->stream); */
+    
+    stream = sdm_stream_new(direction, drv, drv_param);
+    if (stream == NULL) {
         logger(ERR_LOG, "Stream creation error\n");
         goto stream_new_error;
     }
+    ss->stream[ss->stream_cnt] = stream;
+    ss->stream_cnt++;
     free(arg);
     return 0;
   stream_new_error:
@@ -152,12 +160,13 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         shell_show_help(sc, argv[0]);
         return -1;
     }
-
+    sdm_free_streams(ss);
+    
     if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1])) {
         return -1;
     }
-    if (sdm_stream_open(ss->stream)) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+    if (sdm_stream_open(ss->stream[0])) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
     data = malloc(len * sizeof(int16_t));
@@ -197,20 +206,20 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         nsamples = 0;
         arg_id = 1;
     }
-
+    sdm_free_streams(ss);
     if (sdmsh_stream_new(ss, STREAM_INPUT, argv[arg_id])) {
         return -1;
     }
     if (nsamples == 0) {
-        nsamples = sdm_stream_count(ss->stream);
+        nsamples = sdm_stream_count(ss->stream[0]);
         if (nsamples == 0) {
             logger(ERR_LOG, "Zero samples\n");
             return -1;
         }
     }
     
-    if (sdm_stream_open(ss->stream)) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+    if (sdm_stream_open(ss->stream[0])) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
     data = malloc(len * sizeof(int16_t));
@@ -261,11 +270,12 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
                 , old, nsamples);
     }
 
+    sdm_free_streams(ss);
     if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[2])) {
         return -1;
     }
-    if (sdm_stream_open(ss->stream)) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+    if (sdm_stream_open(ss->stream[0])) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
     sdm_cmd(ss, SDM_CMD_RX, nsamples);
@@ -288,11 +298,12 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
     ARG_LONG("channel", argv[1], channel, arg >= 0 && arg <= 4);
     ARG_LONG("number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
 
+    sdm_free_streams(ss);
     if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[3])) {
         return -1;
     }
-    if (sdm_stream_open(ss->stream)) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream));
+    if (sdm_stream_open(ss->stream[0])) {
+        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
     sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);

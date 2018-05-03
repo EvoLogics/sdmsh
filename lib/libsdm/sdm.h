@@ -86,7 +86,8 @@ typedef struct {
 
     int state;
 
-    sdm_stream_t *stream;
+    int stream_cnt;
+    sdm_stream_t *stream[2];
     int data_len;
 
     sdm_pkt_t cmd; /* last received command */
@@ -108,6 +109,7 @@ int   sdm_show(sdm_pkt_t *cmd);
 int       sdm_save_samples(sdm_session_t *ss, char *buf, size_t len);
 /* int       sdm_save_samples(sdm_session_t *ss, char *filename, char *buf, size_t len); */
 int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len);
+int sdm_free_streams(sdm_session_t *ss);
 
 const char* strrpbrk(const char *s, const char *accept_only);
 
