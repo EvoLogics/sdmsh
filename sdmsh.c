@@ -107,20 +107,25 @@ int main(int argc, char *argv[])
                       script_file = optarg;
                       break;
 
-            case 'v':
+            case 'v': {
+                      char *endptr;
+
                       if (optarg == NULL) {
                           log_level |= DEBUG_LOG;
                           break;
                       }
 
-                      log_level = strtoul(optarg, NULL, 0);
-                      if ((errno == ERANGE && (log_level == 0 || log_level == ULONG_MAX))
-                              || (errno != 0 && log_level == 0)) {
+                      log_level = strtoul(optarg, &endptr, 0);
+                      if ((errno == ERANGE && log_level == ULONG_MAX)
+                              || (errno != 0 && log_level == 0)
+                              || (errno == 0 && *endptr != 0)
+                              || (optarg == endptr)) {
                           fprintf (stderr, "log-level: must be a digit\n");
-                          return 0;
+                          return 1;
                       }
 
                       break;
+            }
             case '?':
                       exit (1);
             default:
