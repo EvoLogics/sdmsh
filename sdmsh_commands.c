@@ -98,11 +98,11 @@ int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
 
-    ARG_LONG("threshold", argv[1], threshold, arg >= 1 && arg <= 4095);
-    ARG_LONG("gain", argv[2], gain, arg >= 0 && arg <= 1);
-    ARG_LONG("source level", argv[3], srclvl, arg >= 0 && arg <= 3);
+    ARG_LONG("config: threshold", argv[1], threshold, arg >= 1 && arg <= 4095);
+    ARG_LONG("config: gain", argv[2], gain, arg >= 0 && arg <= 1);
+    ARG_LONG("config: source level", argv[3], srclvl, arg >= 0 && arg <= 3);
     if (argc == 5) {
-        ARG_LONG("preamp gain", argv[4], preamp_gain, arg >= 0 && arg <= 13);
+        ARG_LONG("config: preamp gain", argv[4], preamp_gain, arg >= 0 && arg <= 13);
     }
     sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
     sdm_set_idle_state(ss);
@@ -121,10 +121,10 @@ int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
     
-    ARG_LONG("delay", argv[1], delay, arg >= 0 && arg <= 65535);
-    ARG_LONG("number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
-    ARG_LONG("gain", argv[3], gain, arg >= 0 && arg <= 13);
-    ARG_LONG("sample_rate", argv[4], sample_rate, arg >= 0 && arg <= 6);
+    ARG_LONG("usbl_config: delay", argv[1], delay, arg >= 0 && arg <= 65535);
+    ARG_LONG("usbl_config: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
+    ARG_LONG("usbl_config: gain", argv[3], gain, arg >= 0 && arg <= 13);
+    ARG_LONG("usbl_config: sample_rate", argv[4], sample_rate, arg >= 0 && arg <= 6);
 
     sdm_cmd(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
     sdm_set_idle_state(ss);
@@ -166,7 +166,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
     if (sdm_stream_open(ss->stream[0])) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
+        logger(ERR_LOG, "ref: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
     data = malloc(len * sizeof(int16_t));
@@ -175,7 +175,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     if (cnt == len) {
         rv = sdm_cmd(ss, cmd, data, len);
     } else if (cnt > 0) {
-        logger (WARN_LOG, "Padding reference signal to 1024 samples\n");
+        logger (WARN_LOG, "ref: Padding reference signal to 1024 samples\n");
         memset(&data[cnt], 0, (len - cnt) * 2);
         rv = sdm_cmd(ss, cmd, data, len);
     } else {
@@ -200,7 +200,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
     if (argc == 3) {
-        ARG_LONG("number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+        ARG_LONG("tx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
         arg_id = 2;
     } else {
         nsamples = 0;
@@ -213,13 +213,13 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     if (nsamples == 0) {
         nsamples = sdm_stream_count(ss->stream[0]);
         if (nsamples == 0) {
-            logger(ERR_LOG, "Zero samples\n");
+            logger(ERR_LOG, "tx: Zero samples\n");
             return -1;
         }
     }
     
     if (sdm_stream_open(ss->stream[0])) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
+        logger(ERR_LOG, "tx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
     data = malloc(len * sizeof(int16_t));
@@ -262,12 +262,12 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
     }
 
     /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
-    ARG_LONG("number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+    ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
 
     if (nsamples % 1024) {
         long old = nsamples;
         nsamples += 1024 - nsamples % 1024;
-        logger(WARN_LOG, "Warning: signal number of samples %ld do not divisible by 1024 samples. Expand to %ld\n"
+        logger(WARN_LOG, "rx: Warning: signal number of samples %ld do not divisible by 1024 samples. Expand to %ld\n"
                 , old, nsamples);
     }
 
@@ -277,7 +277,7 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
             break;
         }
         if (sdm_stream_open(ss->stream[i])) {
-            logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[i]));
+            logger(ERR_LOG, "rx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
             break;
         }
     }
@@ -302,15 +302,15 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
 
-    ARG_LONG("channel", argv[1], channel, arg >= 0 && arg <= 4);
-    ARG_LONG("number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
+    ARG_LONG("usbl_rx: channel", argv[1], channel, arg >= 0 && arg <= 4);
+    ARG_LONG("usbl_rx: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
 
     sdm_free_streams(ss);
     if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[3])) {
         return -1;
     }
     if (sdm_stream_open(ss->stream[0])) {
-        logger(ERR_LOG, "Stream open error: %s\n", sdm_stream_get_error(ss->stream[0]));
+        logger(ERR_LOG, "usbl_rx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
     sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);
