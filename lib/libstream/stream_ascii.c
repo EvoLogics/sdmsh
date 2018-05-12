@@ -39,6 +39,9 @@ int sdm_autodetect_samples_file_type(sdm_stream_t *stream)
     char buf[40];
 
     pdata->file_type = 0;
+
+    if (fp == NULL)
+        return 0;
     fseek(fp, 0, SEEK_SET);
 
     /* read first line. if it's not digit (start not from [-0-9 ]), skip it */
@@ -105,10 +108,13 @@ static int stream_close(sdm_stream_t *stream)
 {
     struct private_data_t *pdata = stream->pdata;
 
+    if (pdata->fd == NULL)
+        return 0;
+
     fflush(pdata->fd);
     fclose(pdata->fd);
     
-    return 0;
+    return SDM_ERROR_NONE;
 }
 
 static void stream_free(sdm_stream_t *stream)

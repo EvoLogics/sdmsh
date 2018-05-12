@@ -45,10 +45,13 @@ static int stream_close(sdm_stream_t *stream)
 {
     struct private_data_t *pdata = stream->pdata;
 
+    if (pdata->fd == NULL)
+        return 0;
+
     fflush(pdata->fd);
     fclose(pdata->fd);
     
-    return 0;
+    return SDM_ERROR_NONE;
 }
 
 static void stream_free(sdm_stream_t *stream)
