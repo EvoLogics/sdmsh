@@ -138,7 +138,6 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
             va_end(ap);
             break;
         case SDM_CMD_TX:
-        case SDM_CMD_REF:
         {
             char *d;
 
@@ -146,7 +145,23 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
 
             cmd->data_len = va_arg(ap, unsigned);
             d             = va_arg(ap, char *);
-            data_len = va_arg(ap, int);
+            data_len      = va_arg(ap, int);
+
+            cmd = realloc(cmd, sizeof(sdm_pkt_t) + data_len * 2);
+            memcpy(cmd->data, d, data_len * 2);
+
+            va_end(ap);
+            break;
+        }
+        case SDM_CMD_REF:
+        {
+            char *d;
+
+            va_start(ap, cmd_code);
+
+            d             = va_arg(ap, char *);
+            data_len      = va_arg(ap, int);
+            cmd->data_len = data_len;
 
             cmd = realloc(cmd, sizeof(sdm_pkt_t) + data_len * 2);
             memcpy(cmd->data, d, data_len * 2);
