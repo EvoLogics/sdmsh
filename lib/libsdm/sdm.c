@@ -94,17 +94,17 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
         case SDM_CMD_STOP:
             break;
         case SDM_CMD_CONFIG: {
-            uint32_t preamp_gain;
+            uint16_t preamp_gain;
             
             va_start(ap, cmd_code);
             cmd->threshold =       va_arg(ap, int);
             cmd->gain_and_srclvl = va_arg(ap, int) << 8;
             cmd->gain_and_srclvl |= va_arg(ap, int);
-            preamp_gain = (va_arg(ap, int) & 0xf) << 28;
+            preamp_gain = (va_arg(ap, int) & 0xf) << 12;
             va_end(ap);
             data_len = cmd->data_len = 1;
-            cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 4);
-            memcpy(cmd->data, &preamp_gain, 4);
+            cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
+            memcpy(cmd->data, &preamp_gain, 2);
             break;
         }
         case SDM_CMD_USBL_CONFIG:
