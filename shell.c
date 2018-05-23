@@ -10,7 +10,7 @@
 
 int shell_run_cmd(struct shell_config *sc);
 
-/* needed for rb_cb_getline() */
+/* needed for rb_cb_getline() and rl_hook_argv_getch() */
 static struct shell_config *shell_config;
 
 void rl_cb_getline(char* line)
@@ -210,4 +210,33 @@ void shell_show_help(struct shell_config *sc, char *name)
     if (name && cmd->name == NULL) {
         fprintf(stderr, "Unknown topic: %s\n", name);
     }
+}
+
+int rl_hook_argv_getch(FILE *in)
+{
+    int ch;
+    in = in;
+
+    if (shell_config->argv_input.optind == shell_config->argv_input.argc)
+        return EOF;
+
+    ch = shell_config->argv_input.argv[shell_config->argv_input.optind][shell_config->argv_input.pos++];
+
+    if (ch == 0) {
+        ch = '\n';
+        shell_config->argv_input.optind++;
+        shell_config->argv_input.pos = 0;
+    } else if (ch == ';')
+        ch = '\n';
+
+    return ch;
+}
+
+void shell_init_input_argv(struct shell_config *sc, int argc, char **argv)
+{
+    sc->argv_input.argc = argc;
+    sc->argv_input.argv = argv;
+    sc->argv_input.optind  = 0;
+    sc->argv_input.pos = 0;
+    rl_getc_function = rl_hook_argv_getch;
 }

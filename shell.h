@@ -29,6 +29,16 @@ struct commands_t {
     char *usage;
 };
 
+/*
+ * function handling settings parameters via command line
+ */
+struct argv_input_cookie {
+    int    argc;
+    char **argv;
+    int    optind; /* current argument */
+    int    pos;    /* current char in argument */
+};
+
 struct shell_config {
     /* data need to be filled by user */
     char *progname;
@@ -41,10 +51,13 @@ struct shell_config {
     int   shell_quit;
     char *shell_input;
     char *history_file;
+
+    struct argv_input_cookie argv_input;
 };
 
 void rl_callback(char* line);
 void shell_init(struct shell_config *sc);
+void shell_init_input_argv(struct shell_config *sc, int argc, char **argv);
 void shell_deinit(struct shell_config *sc);
 int  shell_handle(struct shell_config *sc);
 void shell_show_help(struct shell_config *sc, char *name);

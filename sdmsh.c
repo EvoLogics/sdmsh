@@ -36,7 +36,7 @@ enum {
 struct shell_config shell_config;
 
 void show_usage_and_die(char *progname) {
-    printf("Usage: %s [OPTIONS] IP/NUM\n"
+    printf("Usage: %s [OPTIONS] IP/NUM [command; [command;] ...]\n"
            "Mandatory argument IP of EvoLogics S2C Software Defined Modem. Or NUM is 192.168.0.NUM.\n"
            "\n"
            "  -f, --file=FILENAME        Run commands from FILENAME\n"
@@ -55,8 +55,11 @@ void show_usage_and_die(char *progname) {
 
            "# Connect to 131 port 4200 and run commands from file 'rx.sdmsh'\n"
            "%s 131 -f rx.sdmsh\n"
+
+            "# Run commands from command line\n"
+           "%s 127 'config 350 0 3; ref examples/1834_polychirp_re_down.dat; rx 2048 rcv'\n"
            "\n"
-               , progname, SDM_PORT, progname, progname, progname);
+               , progname, SDM_PORT, progname, progname, progname, progname);
     exit(0);
 }
 
@@ -151,9 +154,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (optind < argc)
-        show_usage_and_die(progname);
-
     if (flags & FLAG_SHOW_HELP)
         show_usage_and_die(progname);
 
@@ -166,9 +166,16 @@ int main(int argc, char *argv[])
     if (flags & FLAG_SEND_STOP)
         sdm_cmd(sdm_session, SDM_CMD_STOP);
 
-    if (flags & FLAG_EXEC_SCRIPT) {
-        input = fopen(script_file, "r");
-        if (input == NULL)
+    if (optind != argc && argv[optind]) {
+        if (flags & FLAG_EXEC_SCRIPT)
+            errx(1, "option -f and commands from parameter can't be used in same time\n");
+
+        shell_init_input_argv(&shell_config, argc - optind, argv + optind);
+        flags |= FLAG_EXEC_SCRIPT;
+        if ((input = fopen("/dev/zero", "r")) == NULL)
+            err(1, "Error open file /dev/zero");
+    } else if (flags & FLAG_EXEC_SCRIPT) {
+        if ((input = fopen(script_file, "r")) == NULL)
             err(1, "Error open script file \"%s\": ", script_file);
         logger (DEBUG_LOG, "Running script file \"%s\".\n", script_file);
     } else if (!isatty(STDIN_FILENO)) {
