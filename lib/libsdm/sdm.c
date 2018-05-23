@@ -124,7 +124,7 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
 
             memcpy(cmd->rx_len, &tmp, 3);
             data_len = cmd->data_len = 4;
-            cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 4);
+            cmd = realloc(cmd, sizeof(sdm_pkt_t) + cmd->data_len * 2);
 
             memcpy(cmd->data, &delay, 4);
             memcpy(&cmd->data[2], &samples, 4);
