@@ -24,6 +24,7 @@ enum {
     SDM_CMD_CONFIG      = 4,
     SDM_CMD_USBL_CONFIG = 5,
     SDM_CMD_USBL_RX     = 6,
+    SDM_CMD_SYSTIME     = 7,
 
     SDM_CMD_TX_CONTINUE = 128
 };
@@ -32,6 +33,7 @@ enum {
     SDM_REPLAY_STOP    = 0,
     SDM_REPLAY_RX      = 2,
     SDM_REPLAY_USBL_RX = 6,
+    SDM_REPLAY_SYSTIME = 7,
     SDM_REPLAY_BUSY    = 254,
     SDM_REPLAY_REPORT  = 255,
 };
@@ -44,6 +46,7 @@ enum {
     SDM_REPLAY_REPORT_CONFIG       = 4,
     SDM_REPLAY_REPORT_USBL_CONFIG  = 5,
     SDM_REPLAY_REPORT_USBL_RX_STOP = 6,
+    SDM_REPLAY_REPORT_SYSTIME      = 7,
     SDM_REPLAY_REPORT_DROP         = 254,
     SDM_REPLAY_REPORT_UNKNOWN      = 255,
 };
@@ -97,7 +100,7 @@ sdm_session_t* sdm_connect(char *ip, int port);
 void  sdm_close(sdm_session_t *ss);
 
 int   sdm_cmd(sdm_session_t *sd, int cmd_code, ...);
-int   sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd);
+int   sdm_extract_reply(char *buf, size_t len, sdm_pkt_t **cmd);
 
 int   sdm_rx(sdm_session_t *ss, int cmd, ...);
 int   sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len);

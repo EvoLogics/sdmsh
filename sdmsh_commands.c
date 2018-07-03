@@ -22,6 +22,7 @@ int sdmsh_cmd_tx         (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_rx         (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_rx    (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_systime    (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
     {"help",        sdmsh_cmd_help,       "This help", "help [command]"}
@@ -32,6 +33,7 @@ struct commands_t commands[] = {
    ,{"tx",          sdmsh_cmd_tx,         "Send signal.", "tx [<number of samples>] [<driver>:]<parameter>"}
    ,{"rx",          sdmsh_cmd_rx,         "Receive signal [0 is inf].", "rx <number of samples> [<drv>:]<params>  [[<drv>:]<params>]"}
    ,{"usbl_rx",     sdmsh_cmd_usbl_rx,    "Receive signal from USBL channel.", "usbl_rx <channel> <number of samples> [<drv>:]<params>"}
+   ,{"systime",     sdmsh_cmd_systime,    "Request systime.", "systime"}
    ,{NULL}
 };
 
@@ -315,5 +317,21 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
     }
     sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);
     
+    return 0;
+}
+
+int sdmsh_cmd_systime(struct shell_config *sc, char *argv[], int argc)
+{
+    sdm_session_t *ss = sc->cookie;
+
+    argv = argv;
+    if (argc != 1) {
+        shell_show_help(sc, argv[0]);
+        return -1;
+    }
+
+    sdm_cmd(ss, SDM_CMD_SYSTIME);
+    sdm_set_idle_state(ss);
+
     return 0;
 }

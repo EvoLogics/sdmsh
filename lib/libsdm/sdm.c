@@ -92,6 +92,7 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
 
     switch (cmd_code) {
         case SDM_CMD_STOP:
+        case SDM_CMD_SYSTIME:
             break;
         case SDM_CMD_CONFIG: {
             uint16_t preamp_gain;
@@ -234,6 +235,7 @@ char* sdm_cmd_to_str(uint8_t cmd)
         case SDM_CMD_CONFIG:      return "CONFIG";
         case SDM_CMD_USBL_CONFIG: return "USBL_CONFIG";
         case SDM_CMD_USBL_RX:     return "USBL_RX";
+        case SDM_CMD_SYSTIME:     return "SYSTIME";
         default: return "???";
     }
 }
@@ -244,6 +246,7 @@ char* sdm_reply_to_str(uint8_t cmd)
         case SDM_REPLAY_STOP:    return "STOP";
         case SDM_REPLAY_RX:      return "RX";
         case SDM_REPLAY_USBL_RX: return "USBL_RX";
+        case SDM_REPLAY_SYSTIME: return "SYSTIME";
         case SDM_REPLAY_BUSY:    return "BUSY";
         case SDM_REPLAY_REPORT:  return "REPORT";
         default: return "???";
@@ -261,6 +264,7 @@ char* sdm_reply_report_to_str(uint8_t cmd)
         case SDM_REPLAY_REPORT_USBL_CONFIG: return "USBL_CONFIG";
         case SDM_REPLAY_REPORT_USBL_RX_STOP:return "RX_STOP";
         case SDM_REPLAY_REPORT_DROP:        return "DROP";
+        case SDM_REPLAY_REPORT_SYSTIME:     return "SYSTIME";
         case SDM_REPLAY_REPORT_UNKNOWN:     return "UNKNOWN";
         default: return "???";
     }
@@ -283,6 +287,17 @@ int sdm_show(sdm_pkt_t *cmd)
         case SDM_REPLAY_BUSY:
             logger(INFO_LOG, "%d\n", cmd->param);
             break;
+        case SDM_REPLAY_SYSTIME: {
+            unsigned int current_time, tx_time, rx_time;
+            unsigned int *buf = (unsigned int*)cmd->data;
+
+            current_time = buf[0];
+            tx_time = buf[1];
+            rx_time = buf[2];
+            logger(INFO_LOG, " current_time = %u, tx_time = %u, rx_time = %u\n"
+                   , current_time, tx_time, rx_time);
+            break;
+        }
         case SDM_REPLAY_REPORT:
             switch (cmd->param) {
                 case SDM_REPLAY_REPORT_NO_SDM_MODE: logger(INFO_LOG, " %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_NO_SDM_MODE)); break;
@@ -293,6 +308,7 @@ int sdm_show(sdm_pkt_t *cmd)
                 case SDM_REPLAY_REPORT_USBL_CONFIG: logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
                 case SDM_REPLAY_REPORT_USBL_RX_STOP:logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 case SDM_REPLAY_REPORT_DROP:        logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_SYSTIME:     logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 case SDM_REPLAY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%02x\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
             }
@@ -333,7 +349,7 @@ int sdm_free_streams(sdm_session_t *ss)
     return 0;
 }
 
-int sdm_extract_replay(char *buf, size_t len, sdm_pkt_t **cmd)
+int sdm_extract_reply(char *buf, size_t len, sdm_pkt_t **cmd)
 {
     unsigned int i;
     uint64_t magic = SDM_PKG_MAGIC;
@@ -425,7 +441,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     if (buf && len > 0) {
         sdm_buf_resize(ss, buf, len);
     }
-    handled = sdm_extract_replay(ss->rx_data, ss->rx_data_len, &cmd);
+    handled = sdm_extract_reply(ss->rx_data, ss->rx_data_len, &cmd);
     /* if we have not 16bit aligned data, we will skip last byte for this time */
     handled -= (handled % 2);
     if(handled == 0)
@@ -437,8 +453,18 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         logger (INFO_LOG, "\rrecv %d samples\r",  ss->data_len / 2);
         sdm_buf_resize(ss, NULL, -handled);
         return handled;
+    } else {
+        if (cmd->cmd == SDM_CMD_SYSTIME) {
+            if (handled - ((char*)cmd - ss->rx_data) < 12) {
+                logger(INFO_LOG, "\rwaiting %d bytes\r", 12 - (handled - ((char*)cmd - ss->rx_data)));
+                return 0;
+            } else {
+                handled += 12;
+            }
+        }
     }
 
+    printf("handled = %d\n", handled);
     data_len = ((char *)cmd - ss->rx_data);
 
     if (data_len != 0) {
@@ -448,6 +474,9 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
     /* store in sdm_session structure last received package */
     memcpy(&ss->cmd, cmd, sizeof(sdm_pkt_t));
+    if (ss->cmd.cmd == SDM_CMD_SYSTIME) {
+        memcpy(ss->cmd.data, cmd->data, 12);
+    }
 
     sdm_show(&ss->cmd);
     sdm_buf_resize(ss, NULL, -handled);
@@ -536,6 +565,7 @@ int sdm_rx(sdm_session_t *ss, int cmd, ...)
                                 case SDM_REPLAY_REPORT_USBL_CONFIG: return va_arg(ap, unsigned int) == ss->cmd.data_len;
                                 case SDM_REPLAY_REPORT_USBL_RX_STOP:return 0;
                                 case SDM_REPLAY_REPORT_DROP:        return 0;
+                                case SDM_REPLAY_REPORT_SYSTIME:     return 0;
                                 case SDM_REPLAY_REPORT_UNKNOWN:     return 0;
                                 default:                            return 1;
                             }
