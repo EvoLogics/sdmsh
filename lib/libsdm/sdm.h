@@ -107,7 +107,7 @@ int   sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len);
 
 void  sdm_set_idle_state(sdm_session_t *ss);
 
-int   sdm_show(sdm_pkt_t *cmd);
+int   sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd);
 
 int       sdm_save_samples(sdm_session_t *ss, char *buf, size_t len);
 /* int       sdm_save_samples(sdm_session_t *ss, char *filename, char *buf, size_t len); */

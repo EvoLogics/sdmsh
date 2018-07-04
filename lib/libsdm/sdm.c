@@ -270,9 +270,8 @@ char* sdm_reply_report_to_str(uint8_t cmd)
     }
 }
 
-int sdm_show(sdm_pkt_t *cmd)
+int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 {
-
     logger(INFO_LOG, "\rrx cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
     DUMP_SHORT(DEBUG_LOG, YELLOW, cmd, sizeof(sdm_pkt_t));
 
@@ -289,12 +288,12 @@ int sdm_show(sdm_pkt_t *cmd)
             break;
         case SDM_REPLAY_SYSTIME: {
             unsigned int current_time, tx_time, rx_time;
-            unsigned int *buf = (unsigned int*)cmd->data;
+            unsigned int *buf = (unsigned int*)ss->rx_data;
 
             current_time = buf[0];
             tx_time = buf[1];
             rx_time = buf[2];
-            logger(INFO_LOG, " current_time = %u, tx_time = %u, rx_time = %u\n"
+            printf("current_time = %u, tx_time = %u, rx_time = %u\n"
                    , current_time, tx_time, rx_time);
             break;
         }
@@ -308,7 +307,7 @@ int sdm_show(sdm_pkt_t *cmd)
                 case SDM_REPLAY_REPORT_USBL_CONFIG: logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
                 case SDM_REPLAY_REPORT_USBL_RX_STOP:logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 case SDM_REPLAY_REPORT_DROP:        logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
-                case SDM_REPLAY_REPORT_SYSTIME:     logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLAY_REPORT_SYSTIME:     logger(INFO_LOG, " %s fail\n", sdm_reply_report_to_str(cmd->param)); break;
                 case SDM_REPLAY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%02x\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
             }
@@ -453,33 +452,19 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         logger (INFO_LOG, "\rrecv %d samples\r",  ss->data_len / 2);
         sdm_buf_resize(ss, NULL, -handled);
         return handled;
-    } else {
-        if (cmd->cmd == SDM_CMD_SYSTIME) {
-            if (handled - ((char*)cmd - ss->rx_data) < 12) {
-                logger(INFO_LOG, "\rwaiting %d bytes\r", 12 - (handled - ((char*)cmd - ss->rx_data)));
-                return 0;
-            } else {
-                handled += 12;
-            }
-        }
     }
 
-    printf("handled = %d\n", handled);
     data_len = ((char *)cmd - ss->rx_data);
 
-    if (data_len != 0) {
+    if (ss->state == SDM_STATE_RX && data_len != 0) {
         sdm_save_samples(ss, ss->rx_data, data_len);
         ss->data_len += data_len;
     }
 
     /* store in sdm_session structure last received package */
     memcpy(&ss->cmd, cmd, sizeof(sdm_pkt_t));
-    if (ss->cmd.cmd == SDM_CMD_SYSTIME) {
-        memcpy(ss->cmd.data, cmd->data, 12);
-    }
-
-    sdm_show(&ss->cmd);
     sdm_buf_resize(ss, NULL, -handled);
+    sdm_show(ss, &ss->cmd);
 
     switch (ss->cmd.cmd) {
         case SDM_CMD_STOP: {
@@ -495,6 +480,23 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         case SDM_CMD_USBL_RX:
             ss->state = SDM_STATE_RX;
             return handled;
+
+        case SDM_CMD_SYSTIME:
+
+            /* cmd->data_len in header in uint16 count */
+            if (handled - data_len < (int)cmd->data_len * 2) {
+                logger(INFO_LOG, "\rwaiting %d bytes\r", cmd->data_len * 2 - handled - data_len);
+                return 0;
+            }
+
+            sdm_buf_resize(ss, NULL, -cmd->data_len * 2);
+            handled += cmd->data_len * 2;
+
+            sdm_set_idle_state(ss);
+            ss->state = SDM_STATE_IDLE;
+
+            return handled;
+
         default:
             ss->state = SDM_STATE_IDLE;
             return handled;
