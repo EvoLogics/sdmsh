@@ -467,7 +467,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     sdm_show(ss, &ss->cmd);
 
     switch (ss->cmd.cmd) {
-        case SDM_CMD_STOP: {
+        case SDM_REPLAY_STOP:
             if (ss->stream_cnt) {
                 logger(INFO_LOG, "\nReceiving %d samples is done.\n", ss->data_len / 2);
                 sdm_free_streams(ss);
@@ -475,14 +475,13 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
             }
             ss->state = SDM_STATE_IDLE;
             return handled;
-        }
-        case SDM_CMD_RX:
-        case SDM_CMD_USBL_RX:
+
+        case SDM_REPLAY_RX:
+        case SDM_REPLAY_USBL_RX:
             ss->state = SDM_STATE_RX;
             return handled;
 
-        case SDM_CMD_SYSTIME:
-
+        case SDM_REPLAY_SYSTIME:
             /* cmd->data_len in header in uint16 count */
             if (handled - data_len < (int)cmd->data_len * 2) {
                 logger(INFO_LOG, "\rwaiting %d bytes\r", cmd->data_len * 2 - handled - data_len);
