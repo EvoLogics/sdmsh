@@ -175,6 +175,12 @@ void hex_dump_short(FILE *f, char buf[], unsigned int len)
 char* strchopspaces(char *str)
 {
     char *pb = str + strlen(str) - 1;
+
+    if (!str)
+        return NULL;
+    if (!*str)
+        return str;
+
     while (pb != str && isspace(*pb))
         pb--;
     *(pb + 1) = 0;
