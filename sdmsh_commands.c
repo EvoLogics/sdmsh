@@ -95,11 +95,7 @@ int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
     uint8_t gain, srclvl, preamp_gain = 0;
     sdm_session_t *ss = sc->cookie;
 
-    if (argc != 4 && argc != 5) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
-
+    ARGS_RANGE(argc == 4 || argc == 5);
     ARG_LONG("config: threshold", argv[1], threshold, arg >= 1 && arg <= 4095);
     ARG_LONG("config: gain", argv[2], gain, arg >= 0 && arg <= 1);
     ARG_LONG("config: source level", argv[3], srclvl, arg >= 0 && arg <= 3);
@@ -118,11 +114,7 @@ int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc)
     uint8_t gain, sample_rate;
     sdm_session_t *ss = sc->cookie;
 
-    if (argc != 5) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
-    
+    ARGS_RANGE(argc == 5);
     ARG_LONG("usbl_config: delay", argv[1], delay, arg >= 0 && arg <= 65535);
     ARG_LONG("usbl_config: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
     ARG_LONG("usbl_config: gain", argv[3], gain, arg >= 0 && arg <= 13);
@@ -139,11 +131,7 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
 
     argv = argv;
-    if (argc != 1) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
-
+    ARGS_RANGE(argc == 1);
     sdm_cmd(ss, SDM_CMD_STOP);
     sdm_set_idle_state(ss);
 
@@ -158,10 +146,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     unsigned cnt;
     int rv, cmd; 
 
-    if (argc != 2) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
+    ARGS_RANGE(argc == 2);
     sdm_free_streams(ss);
     
     if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1])) {
@@ -197,10 +182,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     unsigned nsamples, passed = 0;
     int arg_id = 1;
 
-    if (argc != 3 && argc != 2) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
+    ARGS_RANGE(argc == 3 || argc == 2);
     if (argc == 3) {
         ARG_LONG("tx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
         arg_id = 2;
@@ -258,10 +240,7 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
     int strm_cnt = argc - 2, i;
 
-    if (argc != 3 && argc != 4) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
+    ARGS_RANGE(argc == 3 || argc == 2);
 
     /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
     ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
@@ -299,11 +278,7 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
     uint16_t samples = 0;
     sdm_session_t *ss = sc->cookie;
 
-    if (argc != 4) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
-
+    ARGS_RANGE(argc == 4);
     ARG_LONG("usbl_rx: channel", argv[1], channel, arg >= 0 && arg <= 4);
     ARG_LONG("usbl_rx: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
 
@@ -324,12 +299,7 @@ int sdmsh_cmd_systime(struct shell_config *sc, char *argv[], int argc)
 {
     sdm_session_t *ss = sc->cookie;
 
-    argv = argv;
-    if (argc != 1) {
-        shell_show_help(sc, argv[0]);
-        return -1;
-    }
-
+    ARGS_RANGE(argc == 1);
     sdm_cmd(ss, SDM_CMD_SYSTIME);
     sdm_set_idle_state(ss);
 

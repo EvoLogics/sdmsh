@@ -28,18 +28,20 @@
 #define SDM_PORT    4200
 
 enum {
-    FLAG_SHOW_HELP   = 0x01,
-    FLAG_SEND_STOP   = 0x02,
-    FLAG_EXEC_SCRIPT = 0x04,
+    FLAG_SHOW_HELP     = 0x01,
+    FLAG_SEND_STOP     = 0x02,
+    FLAG_EXEC_SCRIPT   = 0x04,
+    FLAG_IGNORE_ERRORS = 0x08,
 };
 
 struct shell_config shell_config;
 
-void show_usage_and_die(char *progname) {
+void show_usage_and_die(int err, char *progname) {
     printf("Usage: %s [OPTIONS] IP/NUM [command; [command;] ...]\n"
            "Mandatory argument IP of EvoLogics S2C Software Defined Modem. Or NUM is 192.168.0.NUM.\n"
            "\n"
            "  -f, --file=FILENAME        Run commands from FILENAME\n"
+           "  -x, --ignore-errors        If commands running from FILE, do not exit on error reply of SDM modem, \n"
            "  -h, --help                 Display this help and exit\n"
            "  -p, --port=PORT            Set TCP PORT for connecting the SDM modem. Default is %d\n"
            "  -s, --stop                 Send SMD STOP at start\n"
@@ -60,22 +62,23 @@ void show_usage_and_die(char *progname) {
            "%s 127 'config 350 0 3; ref examples/1834_polychirp_re_down.dat; rx 2048 rcv'\n"
            "\n"
                , progname, SDM_PORT, progname, progname, progname, progname);
-    exit(0);
+    exit(err);
 }
 
 struct option long_options[] = {
-    {"file",      required_argument, 0, 'f'},
-    {"help",      no_argument,       0, 'h'},
-    {"port",      required_argument, 0, 'p'},
-    {"stop",      no_argument,       0, 's'},
-    {"verbose",   optional_argument, 0, 'v'},
+    {"file",          required_argument, 0, 'f'},
+    {"help",          no_argument,       0, 'h'},
+    {"port",          required_argument, 0, 'p'},
+    {"stop",          no_argument,       0, 's'},
+    {"verbose",       optional_argument, 0, 'v'},
+    {"ignore-errors", no_argument,       0, 'x'},
 };
 int option_index = 0;
 
 int main(int argc, char *argv[])
 {
     char *progname, *host;
-    int rc;
+    int rc = 0;
     int len;
     char buf[BUFSIZE];
     sdm_session_t *sdm_session;
@@ -88,19 +91,20 @@ int main(int argc, char *argv[])
     progname = basename(argv[0]);
 
     /* check command line arguments */
-    while ((opt = getopt_long(argc, argv, "hv::sf:p:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hv::sf:p:x", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'h': flags |= FLAG_SHOW_HELP;   break;
             case 's': flags |= FLAG_SEND_STOP;   break;
+            case 'x': flags |= FLAG_IGNORE_ERRORS;  break;
             case 'p':
                       if (optarg == NULL)
-                          show_usage_and_die(progname);
+                          show_usage_and_die(2, progname);
                       port = atoi(optarg);
                       break;
 
             case 'f':
                       if (optarg == NULL)
-                          show_usage_and_die(progname);
+                          show_usage_and_die(2, progname);
 
                       /* POSIX standard: read script from stdin if file name '-' */
                       if (optarg[0] == '-' && optarg[1] == 0)
@@ -130,15 +134,15 @@ int main(int argc, char *argv[])
                       break;
             }
             case '?':
-                      exit (1);
+                      return 2;
             default:
-                      show_usage_and_die(progname);
+                      show_usage_and_die(2, progname);
         }
     }
 
     /* As argument we need at least IP/NUM */
     if (optind >= argc)
-        show_usage_and_die(progname);
+        show_usage_and_die(2, progname);
 
     /* Mandatory argument IP/NUM */
     if (optind++ < argc) {
@@ -155,7 +159,7 @@ int main(int argc, char *argv[])
     }
 
     if (flags & FLAG_SHOW_HELP)
-        show_usage_and_die(progname);
+        show_usage_and_die(0, progname);
 
     logger(DEBUG_LOG, "Connect to %s:%d\n", host, port);
     sdm_session = sdm_connect(host, port);
@@ -252,8 +256,9 @@ int main(int argc, char *argv[])
 
         if (FD_ISSET(fileno(input), &rfds)) {
             rl_callback_read_char();
-            if(!shell_handle(&shell_config)) {
+            if((rc = shell_handle(&shell_config)) < 0) {
                 /* shell want to quit */
+                rc = rc == SHELL_EOF ? 0 : rc;
                 if (flags & FLAG_EXEC_SCRIPT) {
                     if (sdm_session->state == SDM_STATE_IDLE)
                         break;
@@ -279,11 +284,15 @@ int main(int argc, char *argv[])
                     rl_forced_update_display();
                 len = 0;
             } while (rc > 0);
+
+            if (rc == -1)
+                if (flags & FLAG_EXEC_SCRIPT && !(flags & FLAG_IGNORE_ERRORS))
+                    break;
         }
     }
 
     shell_deinit(&shell_config);
     sdm_close(sdm_session);
 
-    return 0;
+    return rc == -1 ? 1 : rc;
 }

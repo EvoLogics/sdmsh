@@ -131,15 +131,17 @@ void shell_deinit(struct shell_config *sc)
 int  shell_handle(struct shell_config *sc)
 {
     if (sc->shell_quit)
-        return 0;
+        return SHELL_EOF;
 
     if (sc->shell_input != NULL) {
-        shell_run_cmd(sc);
+        int rc = shell_run_cmd(sc);
 
         free(sc->shell_input);
         sc->shell_input = NULL;
+
+        return rc;
     }
-    return 1;
+    return 0;
 }
 
 void shell_make_argv(char *cmd_line, char ***argv, int *argc)
@@ -161,24 +163,26 @@ int shell_run_cmd(struct shell_config *sc)
     struct commands_t *cmd;
     char **argv;
     int argc;
+    int rc;
 
     if (*sc->shell_input == 0) {
         free(sc->shell_input);
         sc->shell_input = NULL;
-        return 1;
+        return -1;
     }
 
+    logger(DEBUG_LOG, "call: %s\n", sc->shell_input);
     shell_make_argv(sc->shell_input, &argv, &argc);
     if (argv == NULL || *argv == NULL) {
         free(sc->shell_input);
         sc->shell_input = NULL;
-        return 1;
+        return -1;
     }
 
     for (cmd = sc->commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
             printf ("\r");
-            cmd->handler(sc, argv, argc);
+            rc = cmd->handler(sc, argv, argc);
             rl_forced_update_display();
             break;
         }
@@ -193,7 +197,7 @@ int shell_run_cmd(struct shell_config *sc)
     free(sc->shell_input);
     sc->shell_input = NULL;
 
-    return 0;
+    return rc;
 }
 
 void shell_show_help(struct shell_config *sc, char *name)

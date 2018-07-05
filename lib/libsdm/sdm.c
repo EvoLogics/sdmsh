@@ -496,13 +496,37 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
             return handled;
 
+        case SDM_REPLAY_BUSY:
+            return -1;
+        case SDM_REPLAY_REPORT:
+            ss->state = SDM_STATE_IDLE;
+
+            /* handle replays what can be interpreted as errors */
+            switch (ss->cmd.param) {
+                case SDM_REPLAY_REPORT_TX_STOP:
+                    /* TODO: check "sent" == "reported" number of sample */
+                    break;
+                case SDM_REPLAY_REPORT_RX_STOP:
+                    /* TODO: check "received" >= "reported" number of sample */
+                    break;
+                case SDM_REPLAY_REPORT_NO_SDM_MODE:
+                case SDM_REPLAY_REPORT_SYSTIME:
+                case SDM_REPLAY_REPORT_DROP:
+                case SDM_REPLAY_REPORT_UNKNOWN:
+                    return -1;
+                case SDM_REPLAY_REPORT_REF:
+                case SDM_REPLAY_REPORT_CONFIG:
+                case SDM_REPLAY_REPORT_USBL_CONFIG:
+                    if (ss->cmd.data_len == 0)
+                        return -1;
+            }
+            return handled;
         default:
             ss->state = SDM_STATE_IDLE;
             return handled;
     }
-    /* FIXME: never reached? */
-    assert(0 && "must not be reached?");
-    return len;
+    assert(!"must not be reached");
+    return -1;
 }
 
 int sdm_rx(sdm_session_t *ss, int cmd, ...)
