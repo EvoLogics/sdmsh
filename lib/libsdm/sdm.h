@@ -8,6 +8,8 @@
 #include <utils.h>
 #include <stream.h>
 
+#define SDM_ERR_NO_SDM_MODE -42
+
 #define BUFSIZE  (1024 * 4)
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__

@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
                 len = 0;
             } while (rc > 0);
 
-            if (rc == -1)
+            if (rc < 0)
                 if (flags & FLAG_EXEC_SCRIPT && !(flags & FLAG_IGNORE_ERRORS))
                     break;
         }
@@ -294,5 +294,5 @@ int main(int argc, char *argv[])
     shell_deinit(&shell_config);
     sdm_close(sdm_session);
 
-    return rc == -1 ? 1 : rc;
+    return rc < 0 ? -rc : rc;
 }
