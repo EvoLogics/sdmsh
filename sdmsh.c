@@ -19,7 +19,6 @@
 #include <libgen.h> /* basename() */
 
 #include <readline/readline.h>
-#include <readline/history.h>
 
 #include <sdm.h>
 #include <shell.h>

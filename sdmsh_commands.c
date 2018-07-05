@@ -11,6 +11,7 @@
 
 #include <sdm.h>
 #include <sdmsh_commands.h>
+#include <history.h>
 
 #include <stream.h>
 
@@ -24,6 +25,7 @@ int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_rx    (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_systime    (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usleep     (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_history    (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
     {"help",        sdmsh_cmd_help,       "This help", "help [command]"}
@@ -36,6 +38,7 @@ struct commands_t commands[] = {
    ,{"usbl_rx",     sdmsh_cmd_usbl_rx,    "Receive signal from USBL channel.", "usbl_rx <channel> <number of samples> [<drv>:]<params>"}
    ,{"systime",     sdmsh_cmd_systime,    "Request systime.", "systime"}
    ,{"usleep",      sdmsh_cmd_usleep,     "Delay in usec", "uslee <usec>"}
+   ,{"history",     sdmsh_cmd_history,    "Display history. Optional [number-lines] by default is 10.", "history [number-lines]"}
    ,{NULL}
 };
 
@@ -316,6 +319,20 @@ int sdmsh_cmd_usleep(struct shell_config *sc, char *argv[], int argc)
     ARGS_RANGE(argc == 2);
     ARG_LONG("usleep: usec", argv[1], usec, arg >= 0);
     usleep(usec);
+
+    return 0;
+}
+
+int sdmsh_cmd_history(struct shell_config *sc, char *argv[], int argc)
+{
+    int hist_num = 10;
+    sc = sc;
+
+    ARGS_RANGE(argc == 1 || argc == 2);
+    if (argc == 2)
+        ARG_LONG("history: number-lines", argv[1], hist_num, arg >= 0);
+
+    shell_show_history(hist_num);
 
     return 0;
 }

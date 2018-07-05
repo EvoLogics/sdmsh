@@ -1,12 +1,10 @@
-#define _GNU_SOURCE
-#include <stdio.h> /* asprintf() */
-
 #include <stdlib.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <stdarg.h>
 #include <err.h>
 
+#include <readline/readline.h>
+
+#include <history.h>
 #include <shell.h>
 #include <utils.h>
 
@@ -84,8 +82,6 @@ char* shell_rl_hook_dummy(const char *text, int state)
 
 void shell_init(struct shell_config *sc)
 {
-    char *homedir = getenv("HOME");
-
     shell_config = sc;
 
     sc->shell_quit = 0;
@@ -102,10 +98,7 @@ void shell_init(struct shell_config *sc)
         rl_instream = stdin;
         rl_outstream = stdout;
 
-        if (homedir) {
-            asprintf(&sc->history_file, "%s/.%s_history", homedir, sc->progname);
-            read_history(sc->history_file);
-        }
+        shell_history_init(sc);
 
         /* Allow conditional parsing of the ~/.inputrc file. */
         rl_readline_name = sc->progname;
@@ -117,11 +110,7 @@ void shell_init(struct shell_config *sc)
 
 void shell_deinit(struct shell_config *sc)
 {
-    if (sc->history_file) {
-        write_history(sc->history_file);
-        free(sc->history_file);
-        sc->history_file = NULL;
-    }
+    shell_history_deinit(sc);
 
     rl_callback_handler_remove();
     free(sc->prompt);
@@ -129,26 +118,26 @@ void shell_deinit(struct shell_config *sc)
 
 int  shell_handle(struct shell_config *sc)
 {
+    int rc = 0;
+    char *p;
     if (sc->shell_quit)
         return SHELL_EOF;
 
-    if (sc->shell_input != NULL) {
-        int rc;
-        char *p = strchopspaces(sc->shell_input);
+    if (!sc->shell_input)
+        return 0;
 
-        if (p[0] == 0 || p[0] == '#')
-            return 0;
+    p = strchopspaces(sc->shell_input);
+    if (!p || p[0] == 0 || p[0] == '#')
+        return 0;
 
-        add_history(sc->shell_input);
+    rc = shell_run_cmd(sc);
 
-        rc = shell_run_cmd(sc);
+    shell_add_history(shell_config, p);
 
-        free(sc->shell_input);
-        sc->shell_input = NULL;
+    free(sc->shell_input);
+    sc->shell_input = NULL;
 
-        return rc;
-    }
-    return 0;
+    return rc;
 }
 
 void shell_make_argv(char *cmd_line, char ***argv, int *argc)
@@ -171,18 +160,17 @@ int shell_run_cmd(struct shell_config *sc)
     char **argv;
     int argc;
     int rc;
+    char *cmd_line;
 
-    if (*sc->shell_input == 0) {
-        free(sc->shell_input);
-        sc->shell_input = NULL;
+    if (!sc->shell_input || *sc->shell_input == 0)
         return -1;
-    }
 
-    logger(DEBUG_LOG, "call: %s\n", sc->shell_input);
-    shell_make_argv(sc->shell_input, &argv, &argc);
+    cmd_line = strdup(sc->shell_input);
+
+    logger(DEBUG_LOG, "call: %s\n", cmd_line);
+    shell_make_argv(cmd_line, &argv, &argc);
     if (argv == NULL || *argv == NULL) {
-        free(sc->shell_input);
-        sc->shell_input = NULL;
+        free(cmd_line);
         return -1;
     }
 
@@ -200,10 +188,8 @@ int shell_run_cmd(struct shell_config *sc)
         rl_forced_update_display();
     }
 
+    free(cmd_line);
     free(argv);
-    free(sc->shell_input);
-    sc->shell_input = NULL;
-
     return rc;
 }
 
