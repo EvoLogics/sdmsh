@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <stdarg.h>
+#include <err.h>
 
 #include <shell.h>
 #include <utils.h>
@@ -20,9 +22,6 @@ void rl_cb_getline(char* line)
         shell_config->shell_quit = 1;
         return;
     }
-
-    if(strlen(line) > 0)
-        add_history(line);
 }
 
 char* shell_rl_find_completion(const char *text, int index)
@@ -134,7 +133,15 @@ int  shell_handle(struct shell_config *sc)
         return SHELL_EOF;
 
     if (sc->shell_input != NULL) {
-        int rc = shell_run_cmd(sc);
+        int rc;
+        char *p = strchopspaces(sc->shell_input);
+
+        if (p[0] == 0 || p[0] == '#')
+            return 0;
+
+        add_history(sc->shell_input);
+
+        rc = shell_run_cmd(sc);
 
         free(sc->shell_input);
         sc->shell_input = NULL;
