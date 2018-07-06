@@ -4,6 +4,7 @@
 #include <shell.h>
 
 extern struct commands_t commands[];
+extern struct driver_t   drivers[];
 
 #endif
 

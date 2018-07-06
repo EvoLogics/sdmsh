@@ -194,6 +194,7 @@ int main(int argc, char *argv[])
     shell_config.input    = input;
     shell_config.cookie   = sdm_session;
     shell_config.commands = commands;
+    shell_config.drivers  = drivers;
     shell_init(&shell_config);
 
     for (;;) {

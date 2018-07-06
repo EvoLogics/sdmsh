@@ -31,14 +31,28 @@
     out = arg;                                                    \
 } while(0)
 
+#define SF_NONE            0
+#define SF_USE_DRIVER      (1 << 0)
+#define SF_NO_HISTORY      (1 << 1)
+#define SF_DRIVER_FILENAME (1 << 2)
+#define SF_DRIVER_NET      (1 << 3)
+
 struct shell_config;
 typedef int (*command_handler)(struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t {
     char *name;
     command_handler handler;
-    char *help;
+    unsigned long flags;
     char *usage;
+    char *help;
+};
+
+struct driver_t {
+    char *name;
+    unsigned long flags;
+    char *usage;
+    char *help;
 };
 
 /*
@@ -58,6 +72,7 @@ struct shell_config {
     char *prompt;
     void *cookie;  /** point to custom data for commands */
     struct commands_t *commands;
+    struct driver_t *drivers;
 
     /* internal data */
     int   shell_quit;
