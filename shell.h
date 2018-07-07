@@ -55,22 +55,34 @@ struct driver_t {
     char *help;
 };
 
-/*
- * function handling settings parameters via command line
- */
-struct argv_input_cookie {
-    int    argc;
-    char **argv;
-    int    optind; /* current argument */
-    int    pos;    /* current char in argument */
+enum {
+    SHELL_INPUT_TYPE_FILE = 1,
+    SHELL_INPUT_TYPE_ARGV = 2
 };
 
+struct inputs {
+    /* FILE inputs[SDM_MAX_SCRIPTS]; */
+    int type;
+    FILE *input;
+    union {
+        char *script_file;
+        struct {
+            char *script_string;
+            char *pos; /* current char in argument */
+        };
+    };
+};
+
+#define SHELL_MAX_INPUT 0xff
 struct shell_config {
     /* data need to be filled by user */
     char *progname;
     FILE *input;
     char *prompt;
     void *cookie;  /** point to custom data for commands */
+    struct inputs inputs[SHELL_MAX_INPUT];
+    int inputs_cnt;
+    int inputs_curr;
     struct commands_t *commands;
     struct driver_t *drivers;
 
@@ -78,8 +90,6 @@ struct shell_config {
     int   shell_quit;
     char *shell_input;
     char *history_file;
-
-    struct argv_input_cookie argv_input;
 };
 
 void rl_callback(char* line);
@@ -88,5 +98,10 @@ void shell_init_input_argv(struct shell_config *sc, int argc, char **argv);
 void shell_deinit(struct shell_config *sc);
 int  shell_handle(struct shell_config *sc);
 void shell_show_help(struct shell_config *sc, char *name);
+
+void shell_input_init(struct shell_config *sc);
+int  shell_input_add(struct shell_config *sc, int type, ...);
+int  shell_input_add(struct shell_config *sc, int type, ...);
+struct inputs* shell_input_next(struct shell_config *sc);
 
 #endif

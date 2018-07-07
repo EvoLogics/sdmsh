@@ -39,7 +39,8 @@ void show_usage_and_die(int err, char *progname) {
     printf("Usage: %s [OPTIONS] IP/NUM [command; [command;] ...]\n"
            "Mandatory argument IP of EvoLogics S2C Software Defined Modem. Or NUM is 192.168.0.NUM.\n"
            "\n"
-           "  -f, --file=FILENAME        Run commands from FILENAME\n"
+           "  -f, --file=FILENAME        Run commands from FILENAME. Can be apply multiply time.\n"
+           "  -e, --expression=\"cmd\"   Run commands separeted by ';'. Can be apply multiply time.\n"
            "  -x, --ignore-errors        If commands running from FILE, do not exit on error reply of SDM modem, \n"
            "  -h, --help                 Display this help and exit\n"
            "  -p, --port=PORT            Set TCP PORT for connecting the SDM modem. Default is %d\n"
@@ -49,23 +50,26 @@ void show_usage_and_die(int err, char *progname) {
            "Examples:\n"
            "\n"
            "# Connect to 192.168.0.127 port 4200. Enable debug logging\n"
-           "%s 127 -v\n"
-
-           "# Connect to 10.0.0.10 to port 4201. Send SDM 'STOP' at start\n"
-           "%s -sp 4201 10.0.0.10\n"
-
-           "# Connect to 131 port 4200 and run commands from file 'rx.sdmsh'\n"
-           "%s 131 -f rx.sdmsh\n"
-
-            "# Run commands from command line\n"
-           "%s 127 'config 350 0 3; ref examples/1834_polychirp_re_down.dat; rx 2048 rcv'\n"
+           "$ %s 127 -v\n"
            "\n"
-               , progname, SDM_PORT, progname, progname, progname, progname);
+           "# Connect to 10.0.0.10 to port 4201. Send SDM 'STOP' at start\n"
+           "$ %s -sp 4201 10.0.0.10\n"
+           "\n"
+           "# Connect to 131 port 4200 and run commands from file 'rx.sdmsh'\n"
+           "$ %s 131 -f rx.sdmsh\n"
+           "\n"
+           "# Run commands from command line\n"
+           "$ %s 127 -e 'config 350 0 3; ref examples/1834_polychirp_re_down.dat; rx 2048 rcv'\n"
+           "\n"
+           "# Run two script with delay between them\n"
+           "$ %s 127 -f rx.sdmsh -e 'usleep 1000000' -f tx.sdmsh\n"
+               , progname, SDM_PORT, progname, progname, progname, progname, progname);
     exit(err);
 }
 
 struct option long_options[] = {
     {"file",          required_argument, 0, 'f'},
+    {"expression",    required_argument, 0, 'e'},
     {"help",          no_argument,       0, 'h'},
     {"port",          required_argument, 0, 'p'},
     {"stop",          no_argument,       0, 's'},
@@ -84,13 +88,13 @@ int main(int argc, char *argv[])
 
     int port = SDM_PORT;
     int opt, flags = 0;
-    char *script_file = NULL;
     FILE *input = stdin;
 
     progname = basename(argv[0]);
+    shell_input_init(&shell_config);
 
     /* check command line arguments */
-    while ((opt = getopt_long(argc, argv, "hv::sf:p:x", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hv::sf:e:p:x", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'h': flags |= FLAG_SHOW_HELP;   break;
             case 's': flags |= FLAG_SEND_STOP;   break;
@@ -99,6 +103,20 @@ int main(int argc, char *argv[])
                       if (optarg == NULL)
                           show_usage_and_die(2, progname);
                       port = atoi(optarg);
+                      break;
+
+            case 'e':
+                      if (optarg == NULL)
+                          show_usage_and_die(2, progname);
+
+                      flags |= FLAG_EXEC_SCRIPT;
+
+                      rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_ARGV, optarg);
+                      if (rc == -1)
+                          err(2, "Error open file /dev/zero\n");
+                      else if (rc == -2)
+                          errx(1, "Too many inputs. Maximum %d", SHELL_MAX_INPUT);
+
                       break;
 
             case 'f':
@@ -110,7 +128,12 @@ int main(int argc, char *argv[])
                           break;
 
                       flags |= FLAG_EXEC_SCRIPT;
-                      script_file = optarg;
+                      rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_FILE, optarg);
+                      if (rc == -1)
+                          err(2, "Error open script file \"%s\": ", optarg);
+                      else if (rc == -2)
+                          errx(1, "Too many inputs. Maximum %d", SHELL_MAX_INPUT);
+
                       break;
 
             case 'v': {
@@ -169,18 +192,11 @@ int main(int argc, char *argv[])
     if (flags & FLAG_SEND_STOP)
         sdm_cmd(sdm_session, SDM_CMD_STOP);
 
-    if (optind != argc && argv[optind]) {
-        if (flags & FLAG_EXEC_SCRIPT)
-            errx(1, "option -f and commands from parameter can't be used in same time\n");
+    if (optind < argc)
+            show_usage_and_die(2, progname);
 
-        shell_init_input_argv(&shell_config, argc - optind, argv + optind);
-        flags |= FLAG_EXEC_SCRIPT;
-        if ((input = fopen("/dev/zero", "r")) == NULL)
-            err(1, "Error open file /dev/zero");
-    } else if (flags & FLAG_EXEC_SCRIPT) {
-        if ((input = fopen(script_file, "r")) == NULL)
-            err(1, "Error open script file \"%s\": ", script_file);
-        logger (DEBUG_LOG, "Running script file \"%s\".\n", script_file);
+    if (flags & FLAG_EXEC_SCRIPT) {
+        input = shell_config.inputs[0].input;
     } else if (!isatty(STDIN_FILENO)) {
         flags |= FLAG_EXEC_SCRIPT;
     }
@@ -223,8 +239,14 @@ int main(int argc, char *argv[])
         tv.tv_sec  = 1;
         tv.tv_usec = 0;
 
-        if (flags & FLAG_EXEC_SCRIPT && feof(input) && sdm_session->state == SDM_STATE_IDLE)
-            break;
+        if (flags & FLAG_EXEC_SCRIPT)
+            if ((!input || (input && feof(input)))) {
+            struct inputs *p;
+            if ((p = shell_input_next(&shell_config)) == NULL)
+                if (sdm_session->state == SDM_STATE_IDLE)
+                    break;
+            input = p->input;
+        }
 
         if (sdm_session->state == SDM_STATE_INIT) {
             /* In init state we want flush all data what left in modem from last session.
@@ -238,6 +260,8 @@ int main(int argc, char *argv[])
                     sdm_session->state == SDM_STATE_RX)) {
             /* If we running script, we need to wait for reply before run next command */
             maxfd = sdm_session->sockfd;
+        } else if (flags & FLAG_EXEC_SCRIPT && !input) {
+            break;
         } else {
             FD_SET(fileno(input), &rfds);
             maxfd = (sdm_session->sockfd > fileno(input)) ? sdm_session->sockfd : fileno(input);
@@ -254,16 +278,25 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        if (FD_ISSET(fileno(input), &rfds)) {
+        if (input && FD_ISSET(fileno(input), &rfds)) {
             rl_callback_read_char();
-            if((rc = shell_handle(&shell_config)) < 0) {
+            rc = shell_handle(&shell_config);
+
+            if(rc < 0) {
                 /* shell want to quit */
-                rc = rc == SHELL_EOF ? 0 : rc;
                 if (flags & FLAG_EXEC_SCRIPT) {
-                    if (sdm_session->state == SDM_STATE_IDLE)
+                    if (rc == SHELL_EOF) {
+                        input = NULL;
+                        continue;
+                    }
+
+                    rc = rc == SHELL_EOF ? 0 : rc;
+                    if (rc < 0) { /* FIXME: if (sdm_session->state == SDM_STATE_IDLE)???  */
                         break;
-                } else {
-                    /* In interactive mode we want to force quit */
+                    } else if (sdm_session->state == SDM_STATE_IDLE)
+                        break;
+                } else if (rc == SHELL_EOF) {
+                    rc = 0;
                     break;
                 }
             }

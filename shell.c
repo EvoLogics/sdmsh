@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <err.h>
@@ -274,28 +275,95 @@ void shell_show_help(struct shell_config *sc, char *name)
 int rl_hook_argv_getch(FILE *in)
 {
     int ch;
+    struct inputs *p;
     in = in;
 
-    if (shell_config->argv_input.optind == shell_config->argv_input.argc)
+    p = &shell_config->inputs[shell_config->inputs_curr];
+
+    if (*p->pos == 0)
         return EOF;
 
-    ch = shell_config->argv_input.argv[shell_config->argv_input.optind][shell_config->argv_input.pos++];
+    ch = *p->pos++;
 
     if (ch == 0) {
         ch = '\n';
-        shell_config->argv_input.optind++;
-        shell_config->argv_input.pos = 0;
     } else if (ch == ';')
         ch = '\n';
 
     return ch;
 }
 
-void shell_init_input_argv(struct shell_config *sc, int argc, char **argv)
+void shell_input_init(struct shell_config *sc)
 {
-    sc->argv_input.argc = argc;
-    sc->argv_input.argv = argv;
-    sc->argv_input.optind  = 0;
-    sc->argv_input.pos = 0;
-    rl_getc_function = rl_hook_argv_getch;
+    sc->inputs_cnt = 0;
+    sc->inputs_curr = 0;
+}
+
+int shell_input_add(struct shell_config *sc, int type, ...)
+{
+    va_list ap;
+
+    if (sc->inputs_cnt >= SHELL_MAX_INPUT)
+        return -2;
+
+    switch (type) {
+        case SHELL_INPUT_TYPE_FILE: {
+            struct inputs *p;
+
+            p = &sc->inputs[sc->inputs_cnt];
+
+            va_start(ap, type);
+            p->type = type;
+            p->script_file = va_arg(ap, char *);
+
+            if ((p->input = fopen(p->script_file, "r")) == NULL)
+                return -1;
+            logger (DEBUG_LOG, "Open script file \"%s\".\n", p->script_file);
+            va_end(ap);
+
+            break;
+        }
+        case SHELL_INPUT_TYPE_ARGV: {
+            struct inputs *p;
+
+            p = &sc->inputs[sc->inputs_cnt];
+
+            va_start(ap, type);
+            p->type = type;
+            p->script_string = va_arg(ap, char *);
+            p->pos = p->script_string;
+            va_end(ap);
+
+            /* just dummy for select() to make it always ready to read */
+            if ((p->input = fopen("/dev/zero", "r")) == NULL)
+                return -1;
+            break;
+        }
+        default:
+            assert(!"shell_add_input: unknown input type");
+    }
+
+    sc->inputs_cnt++;
+    return 0;
+}
+
+struct inputs* shell_input_next(struct shell_config *sc)
+{
+    if (sc->inputs_curr < sc->inputs_cnt - 1) {
+        sc->inputs_curr++;
+        logger (DEBUG_LOG, "Init next source \"%s\"\n", sc->inputs[sc->inputs_curr].script_file);
+
+        if (sc->inputs[sc->inputs_curr].type == SHELL_INPUT_TYPE_FILE) {
+            rl_getc_function = rl_getc;
+            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
+        } else {
+            rl_getc_function = rl_hook_argv_getch;
+            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
+        }
+
+        sc->shell_quit = 0;
+
+        return &sc->inputs[sc->inputs_curr];
+    }
+    return NULL;
 }
