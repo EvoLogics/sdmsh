@@ -31,7 +31,7 @@ struct commands_t commands[] = {
      {"config",      sdmsh_cmd_config,      SF_NONE,       "config <threshold> <gain> <source level> [<preamp_gain>]", "Config SDM command." }
    , {"usbl_config", sdmsh_cmd_usbl_config, SF_NONE,       "usbl_config <delay> <samples> <gain> <sample_rate>", "Config SDM USBL command."}
    , {"stop",        sdmsh_cmd_stop,        SF_NONE,       "stop", "Stop SDM command."}
-   , {"ref",         sdmsh_cmd_ref,         SF_USE_DRIVER, "ref [<driver>:]<params>", "Update reference signal."}
+   , {"ref",         sdmsh_cmd_ref,         SF_USE_DRIVER, "ref [<number of samples>] [<driver>:]<params>", "Update reference signal."}
    , {"tx",          sdmsh_cmd_tx,          SF_USE_DRIVER, "tx [<number of samples>] [<driver>:]<parameter>", "Send signal."}
    , {"rx",          sdmsh_cmd_rx,          SF_USE_DRIVER, "rx <number of samples> [<driver>:]<params> [[<driver>:]<params>]", "Receive signal [0 is inf]."}
    , {"usbl_rx",     sdmsh_cmd_usbl_rx,     SF_USE_DRIVER, "usbl_rx <channel> <number of samples> [<driver>:]<params>", "Receive signal from USBL channel."}
@@ -153,36 +153,51 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
 int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 {
     int16_t  *data;
-    size_t len = 1024;
+    ssize_t len = 1024;
     sdm_session_t *ss = sc->cookie;
-    unsigned cnt;
-    int rv, cmd; 
+    int rc;
+    int samples_count = len;
 
-    ARGS_RANGE(argc == 2);
+    ARGS_RANGE(argc == 2 || argc == 3);
     sdm_free_streams(ss);
     
-    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1])) {
-        return -1;
+    if (argc == 3) {
+        ARG_LONG("ref: samples-count", argv[1], samples_count, arg >= 1 && arg <= 1024);
+        argv++;
     }
+
+    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1]))
+        return -1;
+
     if (sdm_stream_open(ss->stream[0])) {
         logger(ERR_LOG, "ref: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
         return -1;
     }
-    data = malloc(len * sizeof(int16_t));
-    cnt = sdm_load_samples(ss, data, len);
-    cmd = SDM_CMD_REF;
-    if (cnt == len) {
-        rv = sdm_cmd(ss, cmd, data, len);
-    } else if (cnt > 0) {
-        logger (WARN_LOG, "ref: Padding reference signal to 1024 samples\n");
-        memset(&data[cnt], 0, (len - cnt) * 2);
-        rv = sdm_cmd(ss, cmd, data, len);
+
+    data = calloc(len, sizeof(int16_t));
+
+    rc = sdm_load_samples(ss, data + len - samples_count, samples_count);
+
+    if (rc < 0) {
+        logger(ERR_LOG, "ref: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+        rc = -1;
     } else {
-        rv = -1;
+        if (rc != len) {
+            logger (WARN_LOG, "ref: Padding before reference %d samples, to reference signal to 1024 samples\n", len - rc);
+            if (samples_count == len) {
+                memmove(data + len - rc, data, rc * sizeof(int16_t));
+                memset(data, 0, (len - rc) * sizeof(int16_t));
+            }
+        }
+
+        /* DUMP2LOG(ERR_LOG, (char *)data, len*2); */
+        rc = sdm_cmd(ss, SDM_CMD_REF, data, len);
     }
+
     free(data);
     sdm_set_idle_state(ss);
-    return rv;
+
+    return rc;
 }
 
 int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
@@ -190,20 +205,17 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     size_t len = 1024 * 2, cnt, cmd;
     int16_t *data;
     sdm_session_t *ss = sc->cookie;
-    int rv;
-    unsigned nsamples, passed = 0;
-    int arg_id = 1;
+    int rc;
+    unsigned nsamples = 0, passed = 0;
 
     ARGS_RANGE(argc == 3 || argc == 2);
     if (argc == 3) {
         ARG_LONG("tx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
-        arg_id = 2;
-    } else {
-        nsamples = 0;
-        arg_id = 1;
+        argv++;
     }
+
     sdm_free_streams(ss);
-    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[arg_id])) {
+    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1])) {
         return -1;
     }
     if (nsamples == 0) {
@@ -229,17 +241,17 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
             break;
         }
         if (cnt == len) {
-            rv = sdm_cmd(ss, cmd, nsamples, data, len);
+            rc = sdm_cmd(ss, cmd, nsamples, data, len);
             passed += len;
         } else if (cnt > 0) {
             memset(&data[cnt], 0, (len - cnt) * 2);
-            rv = sdm_cmd(ss, cmd, nsamples, data, 1024 * ((cnt + 1023) / 1024));
+            rc = sdm_cmd(ss, cmd, nsamples, data, 1024 * ((cnt + 1023) / 1024));
             passed += 1024 * ((cnt + 1023) / 1024);
         } else {
-            rv = -1;
+            rc = -1;
         }
         cmd = SDM_CMD_TX_CONTINUE;
-    } while (rv == 0 && passed < nsamples);
+    } while (rc == 0 && passed < nsamples);
     free(data);
     sdm_set_idle_state(ss);
     return 0;

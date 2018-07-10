@@ -70,9 +70,6 @@ static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sa
     if (rv <= 0) {
         return SDM_ERROR_STREAM;
     }
-    if ((unsigned)rv != sample_count) {
-        return SDM_ERROR_STREAM;
-    }
     return rv;
 }
 
