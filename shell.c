@@ -9,7 +9,7 @@
 #include <shell.h>
 #include <utils.h>
 
-int shell_run_cmd(struct shell_config *sc);
+int shell_run_cmd(struct shell_config *sc, char *shell_input);
 
 /* needed for rb_cb_getline() and rl_hook_argv_getch() */
 static struct shell_config *shell_config;
@@ -166,20 +166,20 @@ void shell_deinit(struct shell_config *sc)
 int  shell_handle(struct shell_config *sc)
 {
     int rc = 0;
-    char *p;
+    char *cmd;
     if (sc->shell_quit)
         return SHELL_EOF;
 
     if (!sc->shell_input)
         return 0;
 
-    p = strchopspaces(sc->shell_input);
-    if (!p || p[0] == 0 || p[0] == '#')
+    cmd = strchopspaces(sc->shell_input);
+    if (!cmd || cmd[0] == 0 || cmd[0] == '#')
         return 0;
 
-    rc = shell_run_cmd(sc);
+    rc = shell_run_cmd(sc, cmd);
 
-    shell_add_history(shell_config, p);
+    shell_add_history(shell_config, cmd);
 
     free(sc->shell_input);
     sc->shell_input = NULL;
@@ -201,7 +201,7 @@ void shell_make_argv(char *cmd_line, char ***argv, int *argc)
     (*argv)[*argc] = NULL;
 }
 
-int shell_run_cmd(struct shell_config *sc)
+int shell_run_cmd(struct shell_config *sc, char *shell_input)
 {
     struct commands_t *cmd;
     char **argv;
@@ -209,10 +209,10 @@ int shell_run_cmd(struct shell_config *sc)
     int rc;
     char *cmd_line;
 
-    if (!sc->shell_input || *sc->shell_input == 0)
+    if (!shell_input || *shell_input == 0)
         return -1;
 
-    cmd_line = strdup(sc->shell_input);
+    cmd_line = strdup(shell_input);
 
     logger(DEBUG_LOG, "call: %s\n", cmd_line);
     shell_make_argv(cmd_line, &argv, &argc);
