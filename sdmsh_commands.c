@@ -240,7 +240,8 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
             cmd = SDM_CMD_STOP;
             break;
         }
-        if (cnt == len) {
+
+        if (cnt == len && nsamples >= 1024) {
             rc = sdm_cmd(ss, cmd, nsamples, data, len);
             passed += len;
         } else if (cnt > 0) {

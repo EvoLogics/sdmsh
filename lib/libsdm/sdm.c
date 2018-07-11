@@ -148,6 +148,8 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
             d             = va_arg(ap, char *);
             data_len      = va_arg(ap, int);
 
+            /* FIXME: quick fix. Padding up to 1024 samples here */
+            cmd->data_len = ((cmd->data_len + 1023) / 1024) * 1024;
             cmd = realloc(cmd, sizeof(sdm_pkt_t) + data_len * 2);
             memcpy(cmd->data, d, data_len * 2);
 
