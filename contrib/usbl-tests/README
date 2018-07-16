@@ -1,0 +1,63 @@
+== Manual test ==
+0.
+{{{
+ln -s ../../examples
+}}}
+
+1.
+{{{
+side1> ./usbl-range.exp 190 passive
+spawn ../../sdmsh 190 -sf usbl-range-passive.sdmsh -v0
+current_time = 2216925187, tx_time = 2145319905, rx_time = 2215225600
+current_time = 2218423904, tx_time = 2218122786, rx_time = 2215225600
+passive delta: 2897186
+}}}
+
+2.
+{{{
+side2> ./usbl-range.exp 188 active
+spawn ../../sdmsh 188 -sf usbl-range-active.sdmsh -v0
+current_time = 2215332064, tx_time = 2215030840, rx_time = 2145125700
+current_time = 2219945287, tx_time = 2215030840, rx_time = 2217928409
+active delta: 2897569
+}}}
+
+3.
+{{{
+$ ./usbl-range-calc.exp 2897569 2897186
+191.5 us. distance 0.28 m
+}}}
+
+
+== Auto test ==
+{{{
+$ ./usbl-range-2.exp
+passive: spawn ../../sdmsh 190 -sf usbl-range-passive.sdmsh -v0
+active:  spawn ../../sdmsh 188 -sf usbl-range-active.sdmsh -v0
+active:  current_time = 2380421751, tx_time = 2380120814, rx_time = 2217928409
+passive: current_time = 2382012785, tx_time = 2218122786, rx_time = 2380315942
+passive: current_time = 2383507629, tx_time = 2383206504, rx_time = 2380315942
+passive: delta 2890562
+active:  current_time = 2385032795, tx_time = 2380120814, rx_time = 2383011770
+active:  delta 2890956
+active: 2.890956, passive: 2.890562.
+197.0 us. distance 0.29 m
+}}}
+
+
+== Use short reference (for ex. 768 samples) ==
+{{{
+$ ./usbl-range.exp -s 768 190 passive
+}}}
+
+
+== Use Jupyter Notebook for visualisation ==
+1.
+{{{
+$ sudo apt-get install jupyter-notebook
+$ jupyter notebook
+}}}
+
+2.
+Open sdm-usbl.ipynb
+

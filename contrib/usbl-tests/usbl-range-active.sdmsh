@@ -1,0 +1,13 @@
+stop
+config 200 0 3 1
+tx ascii:examples/0717-up-10.dat
+systime
+ref ascii:examples/0717-up.dat
+usbl_config 0 51200 3 5
+rx 102400 raw:rx.raw
+usbl_rx 0 51200 raw:u0.raw
+usbl_rx 1 51200 raw:u1.raw
+usbl_rx 2 51200 raw:u2.raw
+usbl_rx 3 51200 raw:u3.raw
+usbl_rx 4 51200 raw:u4.raw
+systime

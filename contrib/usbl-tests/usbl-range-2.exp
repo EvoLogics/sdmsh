@@ -1,0 +1,213 @@
+#!/bin/sh
+# vim: ft=tcl
+# the next line restarts using expect \
+    LC_TYPE=C exec expect -f "$0" -- "$@"
+
+array set ::opt {
+    verbose 0
+    ref_sample_number 1024
+    usbl-range-active  {./usbl-range.exp -s $::opt(ref_sample_number) 188 active}
+    usbl-range-passive {./usbl-range.exp -s $::opt(ref_sample_number) 190 passive}
+    #usbl-range-passive {ssh evologics@192.168.169.10 "cd work/proj/am/sdmsh; ./usbl-range.exp 190 passive"}
+}
+
+remove_nulls -d 0
+remove_nulls 0
+log_user 0
+
+# NOTE: problems with binary data in stdin/stdout
+#   * fconfigure help only for stdin (?)
+#   * >>>>> 'send_*' and 'interact' corrupt binary data, use puts -nonewline <<<<<
+#
+fconfigure stdin  -translation binary -buffering none
+fconfigure stdout -translation binary -buffering none
+
+# need to prevent internal encoding conversion
+encoding system iso8859-1
+
+#stty raw -echo
+
+match_max 2000
+set timeout -1
+
+############## start: help function ######################
+array set c {
+    none  "\033\[0m"    white "\033\[1;37m"
+    red   "\033\[0;31m" lred  "\033\[1;31m"
+    grn   "\033\[0;32m" lgrn  "\033\[1;32m"
+    yel   "\033\[0;33m" lyel  "\033\[1;33m"
+    mag   "\033\[0;35m" lmag  "\033\[1;35m"
+    lblue "\033\[1;36m" cyan  "\033\[0;36m"
+}
+
+proc die {msg} {
+    upvar c c
+    puts stderr "die: $c(lred)$msg$c(none)"
+    exit 1
+}
+
+proc fail {msg} {
+    upvar c c
+    puts -nonewline " $c(lred)fail:\n$msg$c(none)"
+    flush stdout
+}
+
+proc warn {msg} {
+    upvar c c
+    puts -nonewline $c(yel)$msg$c(none)
+    flush stdout
+}
+
+proc ok {} {
+    upvar c c
+    puts " $c(lgrn) ok$c(none)"
+}
+
+#proc msg {msg} {
+#    upvar c c
+#    puts -nonewline $c(cyan)$msg$c(none)
+#    flush stdout
+#}
+# TODO: loglevel
+proc msg {type msg} {
+    upvar c c
+    switch $type {
+        fail    {set col $c(lred)}
+        warn    {set col $c(lmag)}
+        note    {set col $c(lyel)}
+        info    {set col $c(cyan)}
+        dbg     {set col $c(lmag)}
+        norm    {set col {}}
+        stage   {
+            set col $c(yel)
+            set msg "\n====== $msg ======\n"
+        }
+        default {set col {}}
+    }
+    puts -nonewline $col$msg$c(none)
+    flush stdout
+}
+
+proc hexdump string {
+    binary scan $string H* hex
+    regexp -all -inline .. $hex
+}
+
+proc beep {} {
+    after 0 {
+        send_tty "\x07"
+        for {set i 0} {$i < 5} {incr i} {
+            sleep 1
+            send_tty "\x07"
+        }
+    }
+}
+
+proc rand {min max} {
+    return [expr {int(rand() * ($max - $min + 1) + $min)}]
+}
+
+proc check_for_following {type} {
+    global argv0
+    if {![llength [uplevel set argv]]} {
+        send_error "$argv0: [uplevel set flag] requires following $type"
+        exit 2
+    }
+}
+
+############## end: help function ######################
+
+proc show_help_and_die {} {
+    global argv0 image_types
+    send_error "Usage: [regsub .*/ $argv0 {}] \[-h|--help] \[-v] \[-s ref_sample_number]\n\
+    -s  - referece samples number for referense less then 1024 samples.\n\
+    \n\
+    -h  - this help\n\
+    -v  - verbose output\n\
+    "
+    exit 1
+}
+
+while { [llength $argv] > 0 } {
+    set flag [lindex $argv 0]
+    if {0 == [regexp "^-" $flag]} break
+    set argv [lrange $argv 1 end]
+    switch -- $flag {
+        -s    {
+            set ::opt(ref_sample_number) [lindex $argv 0]
+            check_for_following number
+            set argv [lrange $argv 1 end]
+        }
+        -v    { set opt(verbose) 1 }
+        -h -
+        --help { show_help_and_die }
+        --    { incr i; break }
+        ^-      { die "unknown option: \"$flag\"" }
+    }
+}
+
+set argv [string trim $argv \{\}]
+set argc [llength $argv]
+
+#if {$argc != 1} {
+#    show_help_and_die
+#}
+
+spawn {*}[subst $::opt(usbl-range-passive)]
+set id(passive) $spawn_id
+
+sleep 3
+
+spawn {*}[subst $::opt(usbl-range-active)]
+set id(active) $spawn_id
+
+expect -i id(active) -re {delta: (\d+)[^\r\n]*\r*\n} {
+    set active $expect_out(1,string)
+    puts "active:  delta $expect_out(1,string)"
+    exp_continue
+} -re {([^\n\r]*)\r*\n} {
+    puts "active:  $expect_out(1,string)"
+    exp_continue
+} eof {
+    wait -i $id(active) reason
+    if {[info exist reason] && [lindex $reason 3] != 0} {
+        die fail\n
+    }
+
+    if {![info exist passive]} {
+        spawn cat
+        set id(active) $spawn_id
+        exp_continue
+    }
+    catch exp_close $id(active)
+} -i id(passive) -re {delta: (\d+)[^\r\n]*\r*\n} {
+    set passive $expect_out(1,string)
+    puts "passive: delta $expect_out(1,string)"
+    exp_continue
+} -re {([^\n\r]*)\r*\n} {
+    puts "passive: $expect_out(1,string)"
+    exp_continue
+} eof {
+    wait -i $id(passive) reason
+    if {[info exist reason] && [lindex $reason 3] != 0} {
+        die fail\n
+    }
+
+    if {![info exist active]} {
+        spawn cat
+        set id(passive) $spawn_id
+        exp_continue
+    }
+    catch exp_close $id(passive)
+}
+
+if {![info exist active] || ![info exist passive]} {
+    die fail\n
+}
+
+msg warn "active: [expr $active / 1000000.], passive: [expr $passive / 1000000.].\n"
+set us [expr ($active - $passive) / 2. ]
+
+set m  [format %0.2f [expr $us / 1000000. * 1450.]]
+
+msg note "$us us. distance $m m\n"
