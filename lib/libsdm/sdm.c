@@ -512,7 +512,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
                     /* TODO: check "received" >= "reported" number of sample */
                     break;
                 case SDM_REPLAY_REPORT_NO_SDM_MODE:
-                    return -SDM_ERR_NO_SDM_MODE;
+                    return SDM_ERR_NO_SDM_MODE;
                 case SDM_REPLAY_REPORT_SYSTIME:
                 case SDM_REPLAY_REPORT_DROP:
                 case SDM_REPLAY_REPORT_UNKNOWN:
