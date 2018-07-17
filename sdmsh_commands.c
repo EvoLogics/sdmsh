@@ -43,8 +43,8 @@ struct commands_t commands[] = {
 };
 
 struct driver_t drivers[] = {
-    {"ascii:", SF_DRIVER_FILENAME, "ascii:<filename>", "This is default driver File format: float (-1.0 .. 1.0) or short interger as text line, one value per line" }
-  , {"raw:",   SF_DRIVER_FILENAME, "raw:<filename>", "Binary format: int16_t per value" }
+    {"ascii:", SF_DRIVER_FILENAME, "ascii:<filename> or file extension \".dat\" or \".txt\"", "This is default driver File format: float (-1.0 .. 1.0) or short interger as text line, one value per line" }
+  , {"raw:",   SF_DRIVER_FILENAME, "raw:<filename> or file extension \".raw\", \".bin\" or \".dmp\"", "Binary format: int16_t per value" }
   , {"tcp:",   SF_DRIVER_NET,      "tcp:<connect|listen>:<ip>:<port>", "Opens TCP socket to send or receive data, int16_t per value" }
   , {NULL}
 };
@@ -74,7 +74,15 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
             goto stream_new_error;
         }
     } else {
-        drv = default_drv;
+        char *ext = strrchr(arg, '.');
+
+        if (!strcmp(ext, ".dat") || !strcmp(ext, ".txt"))
+            drv = "ascii";
+        else if (!strcmp(ext, ".raw") || !strcmp(ext, ".bin")
+              || !strcmp(ext, ".dmp"))
+            drv = "raw";
+        else
+            drv = default_drv;
         drv_param = arg;
     }
     /* if (ss->stream)  */

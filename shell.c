@@ -246,7 +246,7 @@ void shell_show_help_drivers(struct shell_config *sc, char *shift)
 
     printf("%s<driver> is:\n", shift);
     for (drv = sc->drivers; drv->name != NULL; drv++)
-         printf("\t%s%s. %s\n", shift, drv->usage, drv->help);
+         printf("\t%s%s.\n\t%s%s\n\n", shift, drv->usage, shift, drv->help);
 }
 
 void shell_show_help(struct shell_config *sc, char *name)
