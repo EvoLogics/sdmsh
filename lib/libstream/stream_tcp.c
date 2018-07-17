@@ -224,12 +224,11 @@ static const char* stream_get_error_op(sdm_stream_t *stream)
 
 static int stream_count(sdm_stream_t* stream)
 {
-    if (stream->direction == STREAM_OUTPUT) {
+    if (stream->direction == STREAM_OUTPUT)
         return 0;
-    }
-    struct stat st;
-    stat(stream->args, &st);
-    return st.st_size / 2;
+
+    errno = EAFNOSUPPORT;
+    return -1;
 }
 
 int sdm_stream_tcp_new(sdm_stream_t *stream)

@@ -200,15 +200,18 @@ static int stream_count(sdm_stream_t* stream)
     char line[80];
     int lines=0;
 
-    if (stream->direction == STREAM_OUTPUT) {
+    if (stream->direction == STREAM_OUTPUT)
         return 0;
-    }
+
     fp = fopen(stream->args,"r");
     if (fp == NULL)
-        return 0;
+        return -1;
+
     while (fgets(line, sizeof(line), fp))
         lines++;
+
     fclose(fp);
+
     return lines;
 }
 

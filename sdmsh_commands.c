@@ -62,10 +62,10 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
         logger(ERR_LOG, "Too many streams open: %d\n", ss->stream_cnt);
         return -1;
     }
-    if (strchr(parameter, ':')) {
-        drv = strtok(parameter, ":");
+    if (strchr(arg, ':')) {
+        drv = strtok(arg, ":");
         if (drv == NULL) {
-            logger(ERR_LOG, "Output format error: %s\n", parameter);
+            logger(ERR_LOG, "Output format error: %s\n", arg);
             goto stream_new_error;
         }
         drv_param = strtok(NULL, "");
@@ -75,7 +75,7 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
         }
     } else {
         drv = default_drv;
-        drv_param = parameter;
+        drv_param = arg;
     }
     /* if (ss->stream)  */
     /*     sdm_stream_free(ss->stream); */
@@ -219,12 +219,16 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
     if (nsamples == 0) {
-        nsamples = sdm_stream_count(ss->stream[0]);
-        if (nsamples == 0) {
+        rc = sdm_stream_count(ss->stream[0]);
+        if (rc < 0) {
+            logger(ERR_LOG, "tx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+            return -1;
+        } else if (rc == 0) {
             logger(ERR_LOG, "tx: Zero samples\n");
             return -1;
         }
     }
+    nsamples = rc;
     
     if (sdm_stream_open(ss->stream[0])) {
         logger(ERR_LOG, "tx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));

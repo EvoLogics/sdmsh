@@ -105,11 +105,14 @@ static const char* stream_get_error_op(sdm_stream_t *stream)
 
 static int stream_count(sdm_stream_t* stream)
 {
-    if (stream->direction == STREAM_OUTPUT) {
-        return 0;
-    }
     struct stat st;
-    stat(stream->args, &st);
+
+    if (stream->direction == STREAM_OUTPUT)
+        return 0;
+
+    if (stat(stream->args, &st) < 0)
+        return -1;
+
     return st.st_size / 2;
 }
 
