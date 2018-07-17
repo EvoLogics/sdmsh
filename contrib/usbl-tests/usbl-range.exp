@@ -196,6 +196,7 @@ if {![info exist start] || ![info exist end]} {
     if {$rc == 42} {
         die "Modem not in SDM mode. Please run command: echo +++ATP | nc 192.168.0.[regexp -inline {\d+$} $ip] 9200"
     }
+    die fail
 }
 
 if {$end < $start} {
