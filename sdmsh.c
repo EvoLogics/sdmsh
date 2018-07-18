@@ -211,6 +211,7 @@ int main(int argc, char *argv[])
     shell_config.cookie   = sdm_session;
     shell_config.commands = commands;
     shell_config.drivers  = drivers;
+    shell_config.flags    |= flags & FLAG_EXEC_SCRIPT ? SF_SCRIPT_MODE : 0;
     shell_init(&shell_config);
     shell_input_init_current(&shell_config);
 
@@ -315,7 +316,7 @@ int main(int argc, char *argv[])
             do {
                 rc = sdm_handle_rx_data(sdm_session, buf, len);
                 if (len && (sdm_session->rx_data_len == 0 || rc == 0))
-                    rl_forced_update_display();
+                    shell_forced_update_display(&shell_config);
                 len = 0;
             } while (rc > 0);
 

@@ -30,6 +30,9 @@ void shell_history_init(struct shell_config *sc)
 
 void shell_history_deinit(struct shell_config *sc)
 {
+    if (sc->flags & SF_SCRIPT_MODE)
+        return;
+
     if (sc->history_file) {
         stifle_history(history_max_entries);
         write_history(sc->history_file);
@@ -42,8 +45,7 @@ void shell_add_history(struct shell_config *sc, char *cmdline)
 {
     int off;
 
-    /* is interactive mode */
-    if (!sc->prompt || !*sc->prompt)
+    if (sc->flags & SF_SCRIPT_MODE)
         return;
 
     if(is_no_history_cmd(sc, cmdline))

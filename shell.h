@@ -31,11 +31,13 @@
     out = arg;                                                    \
 } while(0)
 
-#define SF_NONE            0
-#define SF_USE_DRIVER      (1 << 0)
-#define SF_NO_HISTORY      (1 << 1)
-#define SF_DRIVER_FILENAME (1 << 2)
-#define SF_DRIVER_NET      (1 << 3)
+#define SF_SCRIPT_MODE      (1 << 1)
+
+#define SCF_NONE            0
+#define SCF_USE_DRIVER      (1 << 0)
+#define SCF_NO_HISTORY      (1 << 1)
+#define SCF_DRIVER_FILENAME (1 << 2)
+#define SCF_DRIVER_NET      (1 << 3)
 
 struct shell_config;
 typedef int (*command_handler)(struct shell_config *sc, char *argv[], int argc);
@@ -80,6 +82,7 @@ struct shell_config {
     FILE *input;
     char *prompt;
     void *cookie;  /** point to custom data for commands */
+    unsigned int flags;
     struct inputs inputs[SHELL_MAX_INPUT];
     int inputs_cnt;
     int inputs_curr;
@@ -98,6 +101,8 @@ void shell_init_input_argv(struct shell_config *sc, int argc, char **argv);
 void shell_deinit(struct shell_config *sc);
 int  shell_handle(struct shell_config *sc);
 void shell_show_help(struct shell_config *sc, char *name);
+
+void shell_forced_update_display(struct shell_config *sc);
 
 void shell_input_init(struct shell_config *sc);
 void shell_input_init_current(struct shell_config *sc);

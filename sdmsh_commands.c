@@ -28,24 +28,24 @@ int sdmsh_cmd_usleep     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_history    (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
-     {"config",      sdmsh_cmd_config,      SF_NONE,       "config <threshold> <gain> <source level> [<preamp_gain>]", "Config SDM command." }
-   , {"usbl_config", sdmsh_cmd_usbl_config, SF_NONE,       "usbl_config <delay> <samples> <gain> <sample_rate>", "Config SDM USBL command."}
-   , {"stop",        sdmsh_cmd_stop,        SF_NONE,       "stop", "Stop SDM command."}
-   , {"ref",         sdmsh_cmd_ref,         SF_USE_DRIVER, "ref [<number of samples>] [<driver>:]<params>", "Update reference signal."}
-   , {"tx",          sdmsh_cmd_tx,          SF_USE_DRIVER, "tx [<number of samples>] [<driver>:]<parameter>", "Send signal."}
-   , {"rx",          sdmsh_cmd_rx,          SF_USE_DRIVER, "rx <number of samples> [<driver>:]<params> [[<driver>:]<params>]", "Receive signal [0 is inf]."}
-   , {"usbl_rx",     sdmsh_cmd_usbl_rx,     SF_USE_DRIVER, "usbl_rx <channel> <number of samples> [<driver>:]<params>", "Receive signal from USBL channel."}
-   , {"systime",     sdmsh_cmd_systime,     SF_NONE,       "systime", "Request systime."}
-   , {"usleep",      sdmsh_cmd_usleep,      SF_NO_HISTORY, "usleep <usec>", "Delay in usec."}
-   , {"help",        sdmsh_cmd_help,        SF_NONE,       "help [command]", "This help"}
-   , {"history",     sdmsh_cmd_history,     SF_NO_HISTORY, "history [number-lines]", "Display history. Optional [number-lines] by default is 10."}
+     {"config",      sdmsh_cmd_config,      SCF_NONE,       "config <threshold> <gain> <source level> [<preamp_gain>]", "Config SDM command." }
+   , {"usbl_config", sdmsh_cmd_usbl_config, SCF_NONE,       "usbl_config <delay> <samples> <gain> <sample_rate>", "Config SDM USBL command."}
+   , {"stop",        sdmsh_cmd_stop,        SCF_NONE,       "stop", "Stop SDM command."}
+   , {"ref",         sdmsh_cmd_ref,         SCF_USE_DRIVER, "ref [<number of samples>] [<driver>:]<params>", "Update reference signal."}
+   , {"tx",          sdmsh_cmd_tx,          SCF_USE_DRIVER, "tx [<number of samples>] [<driver>:]<parameter>", "Send signal."}
+   , {"rx",          sdmsh_cmd_rx,          SCF_USE_DRIVER, "rx <number of samples> [<driver>:]<params> [[<driver>:]<params>]", "Receive signal [0 is inf]."}
+   , {"usbl_rx",     sdmsh_cmd_usbl_rx,     SCF_USE_DRIVER, "usbl_rx <channel> <number of samples> [<driver>:]<params>", "Receive signal from USBL channel."}
+   , {"systime",     sdmsh_cmd_systime,     SCF_NONE,       "systime", "Request systime."}
+   , {"usleep",      sdmsh_cmd_usleep,      SCF_NO_HISTORY, "usleep <usec>", "Delay in usec."}
+   , {"help",        sdmsh_cmd_help,        SCF_NONE,       "help [command]", "This help"}
+   , {"history",     sdmsh_cmd_history,     SCF_NO_HISTORY, "history [number-lines]", "Display history. Optional [number-lines] by default is 10."}
    , {NULL}
 };
 
 struct driver_t drivers[] = {
-    {"ascii:", SF_DRIVER_FILENAME, "ascii:<filename> or file extension \".dat\" or \".txt\"", "This is default driver File format: float (-1.0 .. 1.0) or short interger as text line, one value per line" }
-  , {"raw:",   SF_DRIVER_FILENAME, "raw:<filename> or file extension \".raw\", \".bin\" or \".dmp\"", "Binary format: int16_t per value" }
-  , {"tcp:",   SF_DRIVER_NET,      "tcp:<connect|listen>:<ip>:<port>", "Opens TCP socket to send or receive data, int16_t per value" }
+    {"ascii:", SCF_DRIVER_FILENAME, "ascii:<filename> or file extension \".dat\" or \".txt\"", "This is default driver File format: float (-1.0 .. 1.0) or short interger as text line, one value per line" }
+  , {"raw:",   SCF_DRIVER_FILENAME, "raw:<filename> or file extension \".raw\", \".bin\" or \".dmp\"", "Binary format: int16_t per value" }
+  , {"tcp:",   SCF_DRIVER_NET,      "tcp:<connect|listen>:<ip>:<port>", "Opens TCP socket to send or receive data, int16_t per value" }
   , {NULL}
 };
 
@@ -223,9 +223,9 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     }
 
     sdm_free_streams(ss);
-    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1])) {
+    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1]))
         return -1;
-    }
+
     if (nsamples == 0) {
         rc = sdm_stream_count(ss->stream[0]);
         if (rc < 0) {

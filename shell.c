@@ -35,7 +35,7 @@ char* shell_rl_driver_completion(const char *text, int index)
                 return strdup(drv->name);
 
     for (drv = shell_config->drivers; drv->name != NULL; drv++)
-        if (drv->flags & SF_DRIVER_FILENAME && strstart((char *)text, drv->name)) {
+        if (drv->flags & SCF_DRIVER_FILENAME && strstart((char *)text, drv->name)) {
             char *fn;
             char *fn_with_prefix;
 
@@ -135,7 +135,8 @@ void shell_init(struct shell_config *sc)
     sc->shell_input = NULL;
     sc->history_file = NULL;
 
-    if (sc->input != stdin || !isatty(STDIN_FILENO)) {
+    if (sc->input != stdin || !isatty(STDIN_FILENO)
+     || sc->flags & SF_SCRIPT_MODE) {
         sc->prompt = strdup("");
         rl_instream = sc->input;
         rl_outstream = sc->input;
@@ -157,7 +158,11 @@ void shell_init(struct shell_config *sc)
 
 void shell_deinit(struct shell_config *sc)
 {
-    shell_history_deinit(sc);
+
+    if (!(sc->flags & SF_SCRIPT_MODE)) {
+        rl_clear_visible_line();
+        shell_history_deinit(sc);
+    }
 
     rl_callback_handler_remove();
     free(sc->prompt);
@@ -223,21 +228,31 @@ int shell_run_cmd(struct shell_config *sc, char *shell_input)
 
     for (cmd = sc->commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
-            printf ("\r");
+            if (!(sc->flags & SF_SCRIPT_MODE))
+                printf ("\r");
+
             rc = cmd->handler(sc, argv, argc);
-            rl_forced_update_display();
+
+            if (!(sc->flags & SF_SCRIPT_MODE))
+                shell_forced_update_display(sc);
             break;
         }
     }
 
     if (cmd->name == NULL) {
         fprintf(stderr, "\rUnknown command: %s\n", argv[0]);
-        rl_forced_update_display();
+        shell_forced_update_display(sc);
     }
 
     free(cmd_line);
     free(argv);
     return rc;
+}
+
+void shell_forced_update_display(struct shell_config *sc)
+{
+    if (!(sc->flags & SF_SCRIPT_MODE))
+        rl_forced_update_display();
 }
 
 void shell_show_help_drivers(struct shell_config *sc, char *shift)
@@ -257,7 +272,7 @@ void shell_show_help(struct shell_config *sc, char *name)
             printf ("%-10s-\t%s\n", cmd->name, cmd->help);
             printf ("%-10s \tUsage: %s\n", " ", cmd->usage ? cmd->usage : cmd->name);
             if (name) {
-                if (cmd->flags & SF_USE_DRIVER)
+                if (cmd->flags & SCF_USE_DRIVER)
                     shell_show_help_drivers(sc, "\t\t");
                 break;
             }
