@@ -315,11 +315,11 @@ int shell_input_add(struct shell_config *sc, int type, ...)
             va_start(ap, type);
             p->type = type;
             p->script_file = va_arg(ap, char *);
+            va_end(ap);
 
             if ((p->input = fopen(p->script_file, "r")) == NULL)
                 return -1;
             logger (DEBUG_LOG, "Open script file \"%s\".\n", p->script_file);
-            va_end(ap);
 
             break;
         }
@@ -337,6 +337,8 @@ int shell_input_add(struct shell_config *sc, int type, ...)
             /* just dummy for select() to make it always ready to read */
             if ((p->input = fopen("/dev/zero", "r")) == NULL)
                 return -1;
+            logger (DEBUG_LOG, "Add command from command line \"%s\".\n", p->script_string);
+
             break;
         }
         default:
@@ -347,21 +349,34 @@ int shell_input_add(struct shell_config *sc, int type, ...)
     return 0;
 }
 
+void shell_input_init_current(struct shell_config *sc)
+{
+
+    switch (sc->inputs[sc->inputs_curr].type) {
+        case SHELL_INPUT_TYPE_FILE:
+            rl_getc_function = rl_getc;
+            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
+            break;
+
+        case SHELL_INPUT_TYPE_ARGV:
+            rl_getc_function = rl_hook_argv_getch;
+            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
+            break;
+
+        default:
+            ;
+    }
+
+    sc->shell_quit = 0;
+}
+
 struct inputs* shell_input_next(struct shell_config *sc)
 {
     if (sc->inputs_curr < sc->inputs_cnt - 1) {
         sc->inputs_curr++;
         logger (DEBUG_LOG, "Init next source \"%s\"\n", sc->inputs[sc->inputs_curr].script_file);
 
-        if (sc->inputs[sc->inputs_curr].type == SHELL_INPUT_TYPE_FILE) {
-            rl_getc_function = rl_getc;
-            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
-        } else {
-            rl_getc_function = rl_hook_argv_getch;
-            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
-        }
-
-        sc->shell_quit = 0;
+        shell_input_init_current(sc);
 
         return &sc->inputs[sc->inputs_curr];
     }

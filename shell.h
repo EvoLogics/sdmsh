@@ -100,7 +100,7 @@ int  shell_handle(struct shell_config *sc);
 void shell_show_help(struct shell_config *sc, char *name);
 
 void shell_input_init(struct shell_config *sc);
-int  shell_input_add(struct shell_config *sc, int type, ...);
+void shell_input_init_current(struct shell_config *sc);
 int  shell_input_add(struct shell_config *sc, int type, ...);
 struct inputs* shell_input_next(struct shell_config *sc);
 

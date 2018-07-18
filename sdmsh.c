@@ -212,6 +212,7 @@ int main(int argc, char *argv[])
     shell_config.commands = commands;
     shell_config.drivers  = drivers;
     shell_init(&shell_config);
+    shell_input_init_current(&shell_config);
 
     for (;;) {
         fd_set rfds;
