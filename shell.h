@@ -2,6 +2,7 @@
 #define SHELL_H
 
 #include <stdio.h> /* FILE* */
+#include <sys/queue.h>
 
 #define SHELL_EOF -256
 
@@ -62,8 +63,10 @@ enum {
     SHELL_INPUT_TYPE_ARGV = 2
 };
 
-struct inputs {
-    /* FILE inputs[SDM_MAX_SCRIPTS]; */
+struct shell_input;
+struct shell_input {
+    STAILQ_ENTRY(shell_input) next_input;
+
     int type;
     FILE *input;
     union {
@@ -83,9 +86,8 @@ struct shell_config {
     char *prompt;
     void *cookie;  /** point to custom data for commands */
     unsigned int flags;
-    struct inputs inputs[SHELL_MAX_INPUT];
-    int inputs_cnt;
-    int inputs_curr;
+    STAILQ_HEAD(inputs_list, shell_input) inputs_list;
+    int inputs_count;
     struct commands_t *commands;
     struct driver_t *drivers;
 
@@ -107,6 +109,6 @@ void shell_forced_update_display(struct shell_config *sc);
 void shell_input_init(struct shell_config *sc);
 void shell_input_init_current(struct shell_config *sc);
 int  shell_input_add(struct shell_config *sc, int type, ...);
-struct inputs* shell_input_next(struct shell_config *sc);
+struct shell_input* shell_input_next(struct shell_config *sc);
 
 #endif

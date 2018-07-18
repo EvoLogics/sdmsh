@@ -290,15 +290,15 @@ void shell_show_help(struct shell_config *sc, char *name)
 int rl_hook_argv_getch(FILE *in)
 {
     int ch;
-    struct inputs *p;
+    struct shell_input *si;
     in = in;
 
-    p = &shell_config->inputs[shell_config->inputs_curr];
+    si = STAILQ_FIRST(&shell_config->inputs_list);
 
-    if (*p->pos == 0)
+    if (*si->pos == 0)
         return EOF;
 
-    ch = *p->pos++;
+    ch = *si->pos++;
 
     if (ch == 0) {
         ch = '\n';
@@ -310,49 +310,49 @@ int rl_hook_argv_getch(FILE *in)
 
 void shell_input_init(struct shell_config *sc)
 {
-    sc->inputs_cnt = 0;
-    sc->inputs_curr = 0;
+    STAILQ_INIT(&sc->inputs_list);
+    sc->inputs_count = 0;
 }
 
 int shell_input_add(struct shell_config *sc, int type, ...)
 {
     va_list ap;
 
-    if (sc->inputs_cnt >= SHELL_MAX_INPUT)
+    if (sc->inputs_count >= SHELL_MAX_INPUT)
         return -2;
 
     switch (type) {
         case SHELL_INPUT_TYPE_FILE: {
-            struct inputs *p;
+            struct shell_input *si = malloc(sizeof(struct shell_input));
 
-            p = &sc->inputs[sc->inputs_cnt];
+            STAILQ_INSERT_TAIL(&sc->inputs_list, si, next_input);
 
             va_start(ap, type);
-            p->type = type;
-            p->script_file = va_arg(ap, char *);
+            si->type = type;
+            si->script_file = va_arg(ap, char *);
             va_end(ap);
 
-            if ((p->input = fopen(p->script_file, "r")) == NULL)
+            if ((si->input = fopen(si->script_file, "r")) == NULL)
                 return -1;
-            logger (DEBUG_LOG, "Open script file \"%s\".\n", p->script_file);
+            logger (DEBUG_LOG, "Open script file \"%s\".\n", si->script_file);
 
             break;
         }
         case SHELL_INPUT_TYPE_ARGV: {
-            struct inputs *p;
+            struct shell_input *si = malloc(sizeof(struct shell_input));
 
-            p = &sc->inputs[sc->inputs_cnt];
+            STAILQ_INSERT_TAIL(&sc->inputs_list, si, next_input);
 
             va_start(ap, type);
-            p->type = type;
-            p->script_string = va_arg(ap, char *);
-            p->pos = p->script_string;
+            si->type = type;
+            si->script_string = va_arg(ap, char *);
+            si->pos = si->script_string;
             va_end(ap);
 
             /* just dummy for select() to make it always ready to read */
-            if ((p->input = fopen("/dev/zero", "r")) == NULL)
+            if ((si->input = fopen("/dev/zero", "r")) == NULL)
                 return -1;
-            logger (DEBUG_LOG, "Add command from command line \"%s\".\n", p->script_string);
+            logger (DEBUG_LOG, "Add command from command line \"%s\".\n", si->script_string);
 
             break;
         }
@@ -360,22 +360,26 @@ int shell_input_add(struct shell_config *sc, int type, ...)
             assert(!"shell_add_input: unknown input type");
     }
 
-    sc->inputs_cnt++;
+    sc->inputs_count++;
     return 0;
 }
 
 void shell_input_init_current(struct shell_config *sc)
 {
+    struct shell_input *si = STAILQ_FIRST(&sc->inputs_list);
 
-    switch (sc->inputs[sc->inputs_curr].type) {
+    if (!si)
+        return;
+
+    switch (si->type) {
         case SHELL_INPUT_TYPE_FILE:
             rl_getc_function = rl_getc;
-            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
+            rl_instream = rl_outstream = sc->input = si->input;
             break;
 
         case SHELL_INPUT_TYPE_ARGV:
             rl_getc_function = rl_hook_argv_getch;
-            rl_instream = rl_outstream = sc->input = sc->inputs[sc->inputs_curr].input;
+            rl_instream = rl_outstream = sc->input = si->input;
             break;
 
         default:
@@ -385,15 +389,22 @@ void shell_input_init_current(struct shell_config *sc)
     sc->shell_quit = 0;
 }
 
-struct inputs* shell_input_next(struct shell_config *sc)
+struct shell_input* shell_input_next(struct shell_config *sc)
 {
-    if (sc->inputs_curr < sc->inputs_cnt - 1) {
-        sc->inputs_curr++;
-        logger (DEBUG_LOG, "Init next source \"%s\"\n", sc->inputs[sc->inputs_curr].script_file);
+    struct shell_input *si = STAILQ_FIRST(&sc->inputs_list);
 
-        shell_input_init_current(sc);
+    STAILQ_REMOVE_HEAD(&sc->inputs_list, next_input);
+    free(si);
 
-        return &sc->inputs[sc->inputs_curr];
-    }
-    return NULL;
+    if (STAILQ_EMPTY(&sc->inputs_list))
+        return NULL;
+
+    si = STAILQ_FIRST(&sc->inputs_list);
+
+    sc->inputs_count--;
+    logger (DEBUG_LOG, "Init next source \"%s\"\n", si->script_file);
+
+    shell_input_init_current(sc);
+
+    return si;
 }

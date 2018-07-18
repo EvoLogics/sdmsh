@@ -195,11 +195,10 @@ int main(int argc, char *argv[])
     if (optind < argc)
             show_usage_and_die(2, progname);
 
-    if (flags & FLAG_EXEC_SCRIPT) {
-        input = shell_config.inputs[0].input;
-    } else if (!isatty(STDIN_FILENO)) {
+    if (flags & FLAG_EXEC_SCRIPT)
+        input = STAILQ_FIRST(&shell_config.inputs_list)->input;
+    else if (!isatty(STDIN_FILENO))
         flags |= FLAG_EXEC_SCRIPT;
-    }
 
     if (flags & FLAG_EXEC_SCRIPT)
         shell_config.prompt = NULL;
@@ -243,12 +242,14 @@ int main(int argc, char *argv[])
 
         if (flags & FLAG_EXEC_SCRIPT)
             if ((!input || (input && feof(input)))) {
-            struct inputs *p;
-            if ((p = shell_input_next(&shell_config)) == NULL)
-                if (sdm_session->state == SDM_STATE_IDLE)
-                    break;
-            input = p->input;
-        }
+                struct shell_input *si = shell_input_next(&shell_config);
+
+                if (si == NULL)
+                    if (sdm_session->state == SDM_STATE_IDLE)
+                        break;
+
+                input = si->input;
+            }
 
         if (sdm_session->state == SDM_STATE_INIT) {
             /* In init state we want flush all data what left in modem from last session.
