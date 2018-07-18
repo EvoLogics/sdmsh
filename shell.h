@@ -59,8 +59,9 @@ struct driver_t {
 };
 
 enum {
-    SHELL_INPUT_TYPE_FILE = 1,
-    SHELL_INPUT_TYPE_ARGV = 2
+    SHELL_INPUT_TYPE_STDIO = 1,
+    SHELL_INPUT_TYPE_FILE  = 2,
+    SHELL_INPUT_TYPE_ARGV  = 3
 };
 
 struct shell_input;

@@ -131,20 +131,20 @@ void shell_init(struct shell_config *sc)
 {
     shell_config = sc;
 
-    sc->shell_quit = 0;
     sc->shell_input = NULL;
     sc->history_file = NULL;
 
-    if (sc->input != stdin || !isatty(STDIN_FILENO)
-     || sc->flags & SF_SCRIPT_MODE) {
+    if (STAILQ_EMPTY(&sc->inputs_list))
+        shell_input_add(sc, SHELL_INPUT_TYPE_STDIO);
+
+    shell_input_init_current(sc);
+
+    if (sc->flags & SF_SCRIPT_MODE) {
         sc->prompt = strdup("");
-        rl_instream = sc->input;
-        rl_outstream = sc->input;
+        rl_outstream = fopen("/dev/zero", "w");;
     } else {
         if (sc->prompt == NULL)
             sc->prompt = strdup("> ");
-        rl_instream = stdin;
-        rl_outstream = stdout;
 
         shell_history_init(sc);
 
@@ -153,6 +153,7 @@ void shell_init(struct shell_config *sc)
         rl_attempted_completion_function = shell_cb_completion;
         rl_completion_entry_function = shell_rl_hook_dummy;
     }
+
     rl_callback_handler_install(sc->prompt, (rl_vcpfunc_t*) &rl_cb_getline);
 }
 
@@ -172,8 +173,10 @@ int  shell_handle(struct shell_config *sc)
 {
     int rc = 0;
     char *cmd;
-    if (sc->shell_quit)
+    if (sc->shell_quit) {
+        sc->input = NULL;
         return SHELL_EOF;
+    }
 
     if (!sc->shell_input)
         return 0;
@@ -317,16 +320,22 @@ void shell_input_init(struct shell_config *sc)
 int shell_input_add(struct shell_config *sc, int type, ...)
 {
     va_list ap;
+    struct shell_input *si;
 
     if (sc->inputs_count >= SHELL_MAX_INPUT)
         return -2;
 
+    si = malloc(sizeof(struct shell_input));
+    STAILQ_INSERT_TAIL(&sc->inputs_list, si, next_input);
+
     switch (type) {
-        case SHELL_INPUT_TYPE_FILE: {
-            struct shell_input *si = malloc(sizeof(struct shell_input));
+        case SHELL_INPUT_TYPE_STDIO:
+            si->type = type;
+            si->input = stdin;
+            logger (DEBUG_LOG, "Use stdin.\n");
+            break;
 
-            STAILQ_INSERT_TAIL(&sc->inputs_list, si, next_input);
-
+        case SHELL_INPUT_TYPE_FILE:
             va_start(ap, type);
             si->type = type;
             si->script_file = va_arg(ap, char *);
@@ -337,12 +346,8 @@ int shell_input_add(struct shell_config *sc, int type, ...)
             logger (DEBUG_LOG, "Open script file \"%s\".\n", si->script_file);
 
             break;
-        }
-        case SHELL_INPUT_TYPE_ARGV: {
-            struct shell_input *si = malloc(sizeof(struct shell_input));
 
-            STAILQ_INSERT_TAIL(&sc->inputs_list, si, next_input);
-
+        case SHELL_INPUT_TYPE_ARGV:
             va_start(ap, type);
             si->type = type;
             si->script_string = va_arg(ap, char *);
@@ -355,7 +360,7 @@ int shell_input_add(struct shell_config *sc, int type, ...)
             logger (DEBUG_LOG, "Add command from command line \"%s\".\n", si->script_string);
 
             break;
-        }
+
         default:
             assert(!"shell_add_input: unknown input type");
     }
@@ -372,20 +377,20 @@ void shell_input_init_current(struct shell_config *sc)
         return;
 
     switch (si->type) {
+        case SHELL_INPUT_TYPE_STDIO:
         case SHELL_INPUT_TYPE_FILE:
             rl_getc_function = rl_getc;
-            rl_instream = rl_outstream = sc->input = si->input;
             break;
 
         case SHELL_INPUT_TYPE_ARGV:
             rl_getc_function = rl_hook_argv_getch;
-            rl_instream = rl_outstream = sc->input = si->input;
             break;
 
         default:
             ;
     }
 
+    rl_instream = sc->input = si->input;
     sc->shell_quit = 0;
 }
 

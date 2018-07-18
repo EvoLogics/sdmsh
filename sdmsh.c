@@ -88,7 +88,6 @@ int main(int argc, char *argv[])
 
     int port = SDM_PORT;
     int opt, flags = 0;
-    FILE *input = stdin;
 
     progname = basename(argv[0]);
     shell_input_init(&shell_config);
@@ -123,14 +122,17 @@ int main(int argc, char *argv[])
                       if (optarg == NULL)
                           show_usage_and_die(2, progname);
 
+                      flags |= FLAG_EXEC_SCRIPT;
+
                       /* POSIX standard: read script from stdin if file name '-' */
                       if (optarg[0] == '-' && optarg[1] == 0)
-                          break;
+                          rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_STDIO);
+                      else
+                          rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_FILE, optarg);
 
-                      flags |= FLAG_EXEC_SCRIPT;
-                      rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_FILE, optarg);
                       if (rc == -1)
-                          err(2, "Error open script file \"%s\": ", optarg);
+                          err(2, "Error open script file \"%s\": "
+                                  , optarg[0] == '-' && optarg[1] == 0 ? "stdin" : optarg);
                       else if (rc == -2)
                           errx(1, "Too many inputs. Maximum %d", SHELL_MAX_INPUT);
 
@@ -195,9 +197,7 @@ int main(int argc, char *argv[])
     if (optind < argc)
             show_usage_and_die(2, progname);
 
-    if (flags & FLAG_EXEC_SCRIPT)
-        input = STAILQ_FIRST(&shell_config.inputs_list)->input;
-    else if (!isatty(STDIN_FILENO))
+    if (!isatty(STDIN_FILENO))
         flags |= FLAG_EXEC_SCRIPT;
 
     if (flags & FLAG_EXEC_SCRIPT)
@@ -206,13 +206,11 @@ int main(int argc, char *argv[])
         asprintf(&shell_config.prompt, "%s> ", strrchr(host, '.') + 1);
 
     shell_config.progname = progname;
-    shell_config.input    = input;
     shell_config.cookie   = sdm_session;
     shell_config.commands = commands;
     shell_config.drivers  = drivers;
-    shell_config.flags    |= flags & FLAG_EXEC_SCRIPT ? SF_SCRIPT_MODE : 0;
+    shell_config.flags   |= flags & FLAG_EXEC_SCRIPT ? SF_SCRIPT_MODE : 0;
     shell_init(&shell_config);
-    shell_input_init_current(&shell_config);
 
     for (;;) {
         fd_set rfds;
@@ -241,14 +239,14 @@ int main(int argc, char *argv[])
         tv.tv_usec = 0;
 
         if (flags & FLAG_EXEC_SCRIPT)
-            if ((!input || (input && feof(input)))) {
+            if ((!shell_config.input || (shell_config.input && feof(shell_config.input)))) {
                 struct shell_input *si = shell_input_next(&shell_config);
 
                 if (si == NULL)
                     if (sdm_session->state == SDM_STATE_IDLE)
                         break;
 
-                input = si->input;
+                shell_config.input = si->input;
             }
 
         if (sdm_session->state == SDM_STATE_INIT) {
@@ -263,11 +261,11 @@ int main(int argc, char *argv[])
                     sdm_session->state == SDM_STATE_RX)) {
             /* If we running script, we need to wait for reply before run next command */
             maxfd = sdm_session->sockfd;
-        } else if (flags & FLAG_EXEC_SCRIPT && !input) {
+        } else if (flags & FLAG_EXEC_SCRIPT && !shell_config.input) {
             break;
         } else {
-            FD_SET(fileno(input), &rfds);
-            maxfd = (sdm_session->sockfd > fileno(input)) ? sdm_session->sockfd : fileno(input);
+            FD_SET(fileno(shell_config.input), &rfds);
+            maxfd = (sdm_session->sockfd > fileno(shell_config.input)) ? sdm_session->sockfd : fileno(shell_config.input);
         }
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
@@ -281,17 +279,15 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        if (input && FD_ISSET(fileno(input), &rfds)) {
+        if (shell_config.input && FD_ISSET(fileno(shell_config.input), &rfds)) {
             rl_callback_read_char();
             rc = shell_handle(&shell_config);
 
             if(rc < 0) {
                 /* shell want to quit */
                 if (flags & FLAG_EXEC_SCRIPT) {
-                    if (rc == SHELL_EOF) {
-                        input = NULL;
+                    if (rc == SHELL_EOF)
                         continue;
-                    }
 
                     rc = rc == SHELL_EOF ? 0 : rc;
                     if (rc < 0) { /* FIXME: if (sdm_session->state == SDM_STATE_IDLE)???  */
