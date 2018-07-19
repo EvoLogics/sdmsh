@@ -102,6 +102,21 @@ char* shell_rl_cmd_gen(const char *text, int state)
     return NULL;
 }
 
+static int is_driver_completion_command(struct shell_config *sc, char *input)
+{
+    struct commands_t *cmd;
+
+    for (cmd = sc->commands; cmd->name != NULL; cmd++)
+        if (cmd->flags & SCF_USE_DRIVER) {
+            unsigned int clen = strlen(cmd->name);
+            if (clen + 1 <= strlen(input) && input[clen] == ' ')
+                if (strstart(input, cmd->name))
+                        return 1;
+        }
+
+    return 0;
+}
+
 char** shell_cb_completion(const char *text, int start, int end)
 {
     char **matches = NULL;
@@ -112,9 +127,9 @@ char** shell_cb_completion(const char *text, int start, int end)
     else if (!strncmp(rl_line_buffer, "help ", 5)) {
         rl_completion_suppress_append = 0;
         matches = rl_completion_matches(text, shell_rl_cmd_gen);
-    } else if ((!strncmp(rl_line_buffer, "ref ", 4) && (start == 4 || start != end))
-            || (!strncmp(rl_line_buffer, "tx ",  3) && (start == 3 || start != end))) {
+    } else if (is_driver_completion_command(shell_config, rl_line_buffer)) {
         rl_completion_suppress_append = 1;
+        rl_sort_completion_matches = 0;
         matches = rl_completion_matches(text, shell_rl_driver_gen);
     }
 
