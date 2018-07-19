@@ -25,6 +25,7 @@ int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_rx    (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_systime    (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usleep     (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_source     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_history    (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
@@ -37,6 +38,7 @@ struct commands_t commands[] = {
    , {"usbl_rx",     sdmsh_cmd_usbl_rx,     SCF_USE_DRIVER, "usbl_rx <channel> <number of samples> [<driver>:]<params>", "Receive signal from USBL channel."}
    , {"systime",     sdmsh_cmd_systime,     SCF_NONE,       "systime", "Request systime."}
    , {"usleep",      sdmsh_cmd_usleep,      SCF_NO_HISTORY, "usleep <usec>", "Delay in usec."}
+   , {"source",      sdmsh_cmd_source,      SCF_NONE,       "source <source-file>", "Run commands from file."}
    , {"help",        sdmsh_cmd_help,        SCF_NONE,       "help [command]", "This help"}
    , {"history",     sdmsh_cmd_history,     SCF_NO_HISTORY, "history [number-lines]", "Display history. Optional [number-lines] by default is 10."}
    , {NULL}
@@ -367,4 +369,22 @@ int sdmsh_cmd_history(struct shell_config *sc, char *argv[], int argc)
     shell_show_history(hist_num);
 
     return 0;
+}
+
+int sdmsh_cmd_source(struct shell_config *sc, char *argv[], int argc)
+{
+    int rc;
+
+    ARGS_RANGE(argc == 2);
+
+    rc = shell_input_add(sc, SHELL_INPUT_PUT_HEAD|SHELL_INPUT_TYPE_FILE, argv[1]);
+
+    if (rc == -1)
+        fprintf(stderr, "source: %s error \"%s\": ", argv[1], strerror(errno));
+    else if (rc == -2)
+        fprintf(stderr, "Too many inputs. Maximum %d", SHELL_MAX_INPUT);
+
+    shell_input_init_current(sc);
+
+    return rc;
 }

@@ -58,6 +58,10 @@ struct driver_t {
     char *help;
 };
 
+#define SHELL_INPUT_PUT_HEAD    (1 << 6)
+#define SHELL_INPUT_INTERACTIVE (1 << 7)
+#define SHELL_INPUT_MASK_TYPE   0x0f
+
 enum {
     SHELL_INPUT_TYPE_STDIO = 1,
     SHELL_INPUT_TYPE_FILE  = 2,
@@ -68,9 +72,10 @@ struct shell_input;
 struct shell_input {
     STAILQ_ENTRY(shell_input) next_input;
 
-    int type;
+    int flags;
     FILE *input;
     union {
+        char *source_name;
         char *script_file;
         struct {
             char *script_string;
@@ -109,7 +114,9 @@ void shell_forced_update_display(struct shell_config *sc);
 
 void shell_input_init(struct shell_config *sc);
 void shell_input_init_current(struct shell_config *sc);
-int  shell_input_add(struct shell_config *sc, int type, ...);
+int  shell_input_add(struct shell_config *sc, int flags, ...);
 struct shell_input* shell_input_next(struct shell_config *sc);
+
+int is_interactive_mode(struct shell_config *sc);
 
 #endif

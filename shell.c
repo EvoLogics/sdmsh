@@ -142,6 +142,11 @@ char* shell_rl_hook_dummy(const char *text, int state)
     return NULL;
 }
 
+int is_interactive_mode(struct shell_config *sc)
+{
+    return !(sc->flags & SF_SCRIPT_MODE);
+}
+
 void shell_init(struct shell_config *sc)
 {
     shell_config = sc;
@@ -150,32 +155,29 @@ void shell_init(struct shell_config *sc)
     sc->history_file = NULL;
 
     if (STAILQ_EMPTY(&sc->inputs_list))
-        shell_input_add(sc, SHELL_INPUT_TYPE_STDIO);
+        shell_input_add(sc, SHELL_INPUT_INTERACTIVE|SHELL_INPUT_TYPE_STDIO);
 
-    shell_input_init_current(sc);
-
-    if (sc->flags & SF_SCRIPT_MODE) {
+    if (!is_interactive_mode(sc)) {
         sc->prompt = strdup("");
-        rl_outstream = fopen("/dev/zero", "w");;
     } else {
         if (sc->prompt == NULL)
             sc->prompt = strdup("> ");
 
         shell_history_init(sc);
+        shell_completion_init(sc);
 
         /* Allow conditional parsing of the ~/.inputrc file. */
         rl_readline_name = sc->progname;
-        rl_attempted_completion_function = shell_cb_completion;
-        rl_completion_entry_function = shell_rl_hook_dummy;
     }
 
     rl_callback_handler_install(sc->prompt, (rl_vcpfunc_t*) &rl_cb_getline);
+
+    shell_input_init_current(sc);
 }
 
 void shell_deinit(struct shell_config *sc)
 {
-
-    if (!(sc->flags & SF_SCRIPT_MODE)) {
+    if (is_interactive_mode(sc)) {
         rl_clear_visible_line();
         shell_history_deinit(sc);
     }
@@ -189,8 +191,10 @@ int  shell_handle(struct shell_config *sc)
     int rc = 0;
     char *cmd;
     if (sc->shell_quit) {
-        sc->input = NULL;
-        return SHELL_EOF;
+        struct shell_input *si = shell_input_next(sc);
+
+        if (si == NULL)
+            return SHELL_EOF;
     }
 
     if (!sc->shell_input)
@@ -246,13 +250,12 @@ int shell_run_cmd(struct shell_config *sc, char *shell_input)
 
     for (cmd = sc->commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
-            if (!(sc->flags & SF_SCRIPT_MODE))
-                printf ("\r");
+            if (is_interactive_mode(sc))
+                rl_clear_visible_line();
 
             rc = cmd->handler(sc, argv, argc);
 
-            if (!(sc->flags & SF_SCRIPT_MODE))
-                shell_forced_update_display(sc);
+            shell_forced_update_display(sc);
             break;
         }
     }
@@ -269,7 +272,7 @@ int shell_run_cmd(struct shell_config *sc, char *shell_input)
 
 void shell_forced_update_display(struct shell_config *sc)
 {
-    if (!(sc->flags & SF_SCRIPT_MODE))
+    if (is_interactive_mode(sc))
         rl_forced_update_display();
 }
 
@@ -332,39 +335,43 @@ void shell_input_init(struct shell_config *sc)
     sc->inputs_count = 0;
 }
 
-int shell_input_add(struct shell_config *sc, int type, ...)
+int shell_input_add(struct shell_config *sc, int flags, ...)
 {
     va_list ap;
     struct shell_input *si;
+    int type = flags & SHELL_INPUT_MASK_TYPE;
 
     if (sc->inputs_count >= SHELL_MAX_INPUT)
         return -2;
 
     si = malloc(sizeof(struct shell_input));
-    STAILQ_INSERT_TAIL(&sc->inputs_list, si, next_input);
+    if (flags & SHELL_INPUT_PUT_HEAD)
+        STAILQ_INSERT_HEAD(&sc->inputs_list, si, next_input);
+    else
+        STAILQ_INSERT_TAIL(&sc->inputs_list, si, next_input);
+
+    si->flags = flags;
 
     switch (type) {
         case SHELL_INPUT_TYPE_STDIO:
-            si->type = type;
             si->input = stdin;
-            logger (DEBUG_LOG, "Use stdin.\n");
+            si->source_name = "stdin";
+            logger(DEBUG_LOG, "Use stdin.\n");
             break;
 
         case SHELL_INPUT_TYPE_FILE:
-            va_start(ap, type);
-            si->type = type;
+            va_start(ap, flags);
             si->script_file = va_arg(ap, char *);
             va_end(ap);
 
             if ((si->input = fopen(si->script_file, "r")) == NULL)
                 return -1;
-            logger (DEBUG_LOG, "Open script file \"%s\".\n", si->script_file);
+            logger(DEBUG_LOG, "Open script file \"%s\".\n", si->script_file);
 
             break;
 
         case SHELL_INPUT_TYPE_ARGV:
-            va_start(ap, type);
-            si->type = type;
+            va_start(ap, flags);
             si->script_string = va_arg(ap, char *);
             si->pos = si->script_string;
             va_end(ap);
@@ -372,12 +379,12 @@ int shell_input_add(struct shell_config *sc, int type, ...)
             /* just dummy for select() to make it always ready to read */
             if ((si->input = fopen("/dev/zero", "r")) == NULL)
                 return -1;
-            logger (DEBUG_LOG, "Add command from command line \"%s\".\n", si->script_string);
+            logger(DEBUG_LOG, "Add command from command line \"%s\".\n", si->script_string);
 
             break;
 
         default:
-            assert(!"shell_add_input: unknown input type");
+            assert(!"shell_add_input: unknown input type\n");
     }
 
     sc->inputs_count++;
@@ -387,11 +394,12 @@ int shell_input_add(struct shell_config *sc, int type, ...)
 void shell_input_init_current(struct shell_config *sc)
 {
     struct shell_input *si = STAILQ_FIRST(&sc->inputs_list);
+    static FILE *dev_null = NULL;
 
     if (!si)
         return;
 
-    switch (si->type) {
+    switch (si->flags & SHELL_INPUT_MASK_TYPE) {
         case SHELL_INPUT_TYPE_STDIO:
         case SHELL_INPUT_TYPE_FILE:
             rl_getc_function = rl_getc;
@@ -403,6 +411,16 @@ void shell_input_init_current(struct shell_config *sc)
 
         default:
             ;
+    }
+
+    if (si->flags & SHELL_INPUT_INTERACTIVE) {
+        sc->flags &= ~SF_SCRIPT_MODE;
+        rl_outstream = stdout;
+    } else {
+        if (!dev_null)
+            dev_null = fopen("/dev/null", "w");;
+        sc->flags |= SF_SCRIPT_MODE;
+        rl_outstream = dev_null;
     }
 
     rl_instream = sc->input = si->input;
@@ -422,7 +440,7 @@ struct shell_input* shell_input_next(struct shell_config *sc)
     si = STAILQ_FIRST(&sc->inputs_list);
 
     sc->inputs_count--;
-    logger (DEBUG_LOG, "Init next source \"%s\"\n", si->script_file);
+    logger (DEBUG_LOG, "Init next source \"%s\"\n", si->source_name);
 
     shell_input_init_current(sc);
 

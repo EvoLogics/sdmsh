@@ -238,17 +238,6 @@ int main(int argc, char *argv[])
         tv.tv_sec  = 1;
         tv.tv_usec = 0;
 
-        if (flags & FLAG_EXEC_SCRIPT)
-            if ((!shell_config.input || (shell_config.input && feof(shell_config.input)))) {
-                struct shell_input *si = shell_input_next(&shell_config);
-
-                if (si == NULL)
-                    if (sdm_session->state == SDM_STATE_IDLE)
-                        break;
-
-                shell_config.input = si->input;
-            }
-
         if (sdm_session->state == SDM_STATE_INIT) {
             /* In init state we want flush all data what left in modem from last session.
              * So we did't read user input till hit timeout.
@@ -286,8 +275,6 @@ int main(int argc, char *argv[])
             if(rc < 0) {
                 /* shell want to quit */
                 if (flags & FLAG_EXEC_SCRIPT) {
-                    if (rc == SHELL_EOF)
-                        continue;
 
                     rc = rc == SHELL_EOF ? 0 : rc;
                     if (rc < 0) { /* FIXME: if (sdm_session->state == SDM_STATE_IDLE)???  */

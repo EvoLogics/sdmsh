@@ -30,7 +30,7 @@ void shell_history_init(struct shell_config *sc)
 
 void shell_history_deinit(struct shell_config *sc)
 {
-    if (sc->flags & SF_SCRIPT_MODE)
+    if (!is_interactive_mode(sc))
         return;
 
     if (sc->history_file) {
@@ -45,7 +45,7 @@ void shell_add_history(struct shell_config *sc, char *cmdline)
 {
     int off;
 
-    if (sc->flags & SF_SCRIPT_MODE)
+    if (!is_interactive_mode(sc))
         return;
 
     if(is_no_history_cmd(sc, cmdline))
