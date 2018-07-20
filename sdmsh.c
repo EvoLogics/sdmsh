@@ -29,8 +29,7 @@
 enum {
     FLAG_SHOW_HELP     = 0x01,
     FLAG_SEND_STOP     = 0x02,
-    FLAG_EXEC_SCRIPT   = 0x04,
-    FLAG_IGNORE_ERRORS = 0x08,
+    FLAG_IGNORE_ERRORS = 0x04,
 };
 
 struct shell_config shell_config;
@@ -108,8 +107,6 @@ int main(int argc, char *argv[])
                       if (optarg == NULL)
                           show_usage_and_die(2, progname);
 
-                      flags |= FLAG_EXEC_SCRIPT;
-
                       rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_ARGV, optarg);
                       if (rc == -1)
                           err(2, "Error open file /dev/zero\n");
@@ -121,8 +118,6 @@ int main(int argc, char *argv[])
             case 'f':
                       if (optarg == NULL)
                           show_usage_and_die(2, progname);
-
-                      flags |= FLAG_EXEC_SCRIPT;
 
                       /* POSIX standard: read script from stdin if file name '-' */
                       if (optarg[0] == '-' && optarg[1] == 0)
@@ -197,19 +192,11 @@ int main(int argc, char *argv[])
     if (optind < argc)
             show_usage_and_die(2, progname);
 
-    if (!isatty(STDIN_FILENO))
-        flags |= FLAG_EXEC_SCRIPT;
-
-    if (flags & FLAG_EXEC_SCRIPT)
-        shell_config.prompt = NULL;
-    else
-        asprintf(&shell_config.prompt, "%s> ", strrchr(host, '.') + 1);
-
+    asprintf(&shell_config.prompt, "%s> ", strrchr(host, '.') + 1);
     shell_config.progname = progname;
     shell_config.cookie   = sdm_session;
     shell_config.commands = commands;
     shell_config.drivers  = drivers;
-    shell_config.flags   |= flags & FLAG_EXEC_SCRIPT ? SF_SCRIPT_MODE : 0;
     shell_init(&shell_config);
 
     for (;;) {
@@ -245,12 +232,12 @@ int main(int argc, char *argv[])
             tv.tv_sec  = 0;
             tv.tv_usec = 10;
             maxfd = sdm_session->sockfd;
-        } else if (flags & FLAG_EXEC_SCRIPT &&
+        } else if (!is_interactive_mode(&shell_config) &&
                    (sdm_session->state == SDM_STATE_WAIT_REPLY ||
                     sdm_session->state == SDM_STATE_RX)) {
             /* If we running script, we need to wait for reply before run next command */
             maxfd = sdm_session->sockfd;
-        } else if (flags & FLAG_EXEC_SCRIPT && !shell_config.input) {
+        } else if (!is_interactive_mode(&shell_config) && !shell_config.input) {
             break;
         } else {
             FD_SET(fileno(shell_config.input), &rfds);
@@ -274,7 +261,7 @@ int main(int argc, char *argv[])
 
             if(rc < 0) {
                 /* shell want to quit */
-                if (flags & FLAG_EXEC_SCRIPT) {
+                if (!is_interactive_mode(&shell_config)) {
 
                     rc = rc == SHELL_EOF ? 0 : rc;
                     if (rc < 0) { /* FIXME: if (sdm_session->state == SDM_STATE_IDLE)???  */
@@ -305,7 +292,7 @@ int main(int argc, char *argv[])
             } while (rc > 0);
 
             if (rc < 0)
-                if (flags & FLAG_EXEC_SCRIPT && !(flags & FLAG_IGNORE_ERRORS))
+                if (!is_interactive_mode(&shell_config) && !(flags & FLAG_IGNORE_ERRORS))
                     break;
         }
     }

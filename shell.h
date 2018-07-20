@@ -32,7 +32,7 @@
     out = arg;                                                    \
 } while(0)
 
-#define SF_SCRIPT_MODE      (1 << 1)
+#define SF_SCRIPT_MODE      (1 << 0)
 
 #define SCF_NONE            0
 #define SCF_USE_DRIVER      (1 << 0)

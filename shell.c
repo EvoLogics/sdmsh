@@ -38,7 +38,7 @@ void shell_init(struct shell_config *sc)
     sc->history_file = NULL;
 
     if (STAILQ_EMPTY(&sc->inputs_list))
-        shell_input_add(sc, SHELL_INPUT_INTERACTIVE|SHELL_INPUT_TYPE_STDIO);
+        shell_input_add(sc, SHELL_INPUT_TYPE_STDIO);
 
     if (!is_interactive_mode(sc)) {
         sc->prompt = strdup("");
@@ -245,7 +245,6 @@ int shell_input_add(struct shell_config *sc, int flags, ...)
 void shell_input_init_current(struct shell_config *sc)
 {
     struct shell_input *si = STAILQ_FIRST(&sc->inputs_list);
-    static FILE *dev_null = NULL;
 
     if (!si)
         return;
@@ -253,6 +252,11 @@ void shell_input_init_current(struct shell_config *sc)
     switch (si->flags & SHELL_INPUT_MASK_TYPE) {
         case SHELL_INPUT_TYPE_STDIO:
         case SHELL_INPUT_TYPE_FILE:
+            if (isatty(fileno(si->input)))
+                si->flags |= SHELL_INPUT_INTERACTIVE;
+            else
+                si->flags &= ~SHELL_INPUT_INTERACTIVE;
+
             rl_getc_function = rl_getc;
             break;
 
@@ -268,10 +272,12 @@ void shell_input_init_current(struct shell_config *sc)
         sc->flags &= ~SF_SCRIPT_MODE;
         rl_outstream = stdout;
     } else {
+        static FILE *dev_null = NULL;
         if (!dev_null)
             dev_null = fopen("/dev/null", "w");;
         sc->flags |= SF_SCRIPT_MODE;
         rl_outstream = dev_null;
+        rl_tty_set_echoing(0);
     }
 
     rl_instream = sc->input = si->input;
