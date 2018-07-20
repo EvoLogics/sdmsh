@@ -5,13 +5,14 @@
 
 #include <readline/readline.h>
 
-#include <history.h>
 #include <shell.h>
 #include <utils.h>
+#include <history.h>
+#include <completion.h>
 
 int shell_run_cmd(struct shell_config *sc, char *shell_input);
 
-/* needed for rb_cb_getline() and rl_hook_argv_getch() */
+/* needed for rb_cb_getline() and such callback function */
 static struct shell_config *shell_config;
 
 void rl_cb_getline(char* line)
@@ -21,125 +22,6 @@ void rl_cb_getline(char* line)
         shell_config->shell_quit = 1;
         return;
     }
-}
-
-char* shell_rl_driver_completion(const char *text, int index)
-{
-    int cnt = 0;
-    struct driver_t *drv;
-
-
-    for (drv = shell_config->drivers; drv->name != NULL; drv++)
-        if (*text == 0 || strstart(drv->name, text))
-            if(cnt++ == index)
-                return strdup(drv->name);
-
-    for (drv = shell_config->drivers; drv->name != NULL; drv++)
-        if (drv->flags & SCF_DRIVER_FILENAME && strstart((char *)text, drv->name)) {
-            char *fn;
-            char *fn_with_prefix;
-
-            rl_filename_completion_desired = 1;
-            fn = rl_filename_completion_function(text + strlen(drv->name), index - cnt);
-            if (!fn)
-                return NULL;
-
-            fn_with_prefix = malloc(strlen(fn) + strlen(drv->name) + 1 + 1);
-            sprintf(fn_with_prefix, "%s%s", drv->name, fn);
-            free(fn);
-            return fn_with_prefix;
-        }
-
-    return rl_filename_completion_function(text, index - cnt);
-}
-
-char* shell_rl_driver_gen(const char *text, int state)
-{
-    static int list_index;
-    char *name;
-
-    if (!state)
-        list_index = 0;
-
-    if ((name = shell_rl_driver_completion(text, list_index)) != NULL) {
-        list_index++;
-        return name;
-    }
-
-    return NULL;
-}
-
-
-char* shell_rl_command_completion(const char *text, int index)
-{
-    char *name = NULL;
-    int cnt = 0;
-    struct commands_t *cmd;
-
-    for (cmd = shell_config->commands; cmd->name != NULL; cmd++)
-        if (*text == 0 || strstart(cmd->name, text))
-            if(cnt++ == index) {
-                name = cmd->name;
-                break;
-            }
-
-    return name;
-}
-
-char* shell_rl_cmd_gen(const char *text, int state)
-{
-    static int list_index;
-    char *name;
-
-    if (!state)
-        list_index = 0;
-
-    if ((name = shell_rl_command_completion(text, list_index)) != NULL) {
-        list_index++;
-        return strdup(name);
-    }
-
-    return NULL;
-}
-
-static int is_driver_completion_command(struct shell_config *sc, char *input)
-{
-    struct commands_t *cmd;
-
-    for (cmd = sc->commands; cmd->name != NULL; cmd++)
-        if (cmd->flags & SCF_USE_DRIVER) {
-            unsigned int clen = strlen(cmd->name);
-            if (clen + 1 <= strlen(input) && input[clen] == ' ')
-                if (strstart(input, cmd->name))
-                        return 1;
-        }
-
-    return 0;
-}
-
-char** shell_cb_completion(const char *text, int start, int end)
-{
-    char **matches = NULL;
-    end = end;
-
-    if (start == 0)
-        matches = rl_completion_matches(text, shell_rl_cmd_gen);
-    else if (!strncmp(rl_line_buffer, "help ", 5)) {
-        rl_completion_suppress_append = 0;
-        matches = rl_completion_matches(text, shell_rl_cmd_gen);
-    } else if (is_driver_completion_command(shell_config, rl_line_buffer)) {
-        rl_completion_suppress_append = 1;
-        rl_sort_completion_matches = 0;
-        matches = rl_completion_matches(text, shell_rl_driver_gen);
-    }
-
-    return matches;
-}
-
-char* shell_rl_hook_dummy(const char *text, int state)
-{
-    text = text; state = state;
-    return NULL;
 }
 
 int is_interactive_mode(struct shell_config *sc)
@@ -204,9 +86,9 @@ int  shell_handle(struct shell_config *sc)
     if (!cmd || cmd[0] == 0 || cmd[0] == '#')
         return 0;
 
-    rc = shell_run_cmd(sc, cmd);
-
     shell_add_history(shell_config, cmd);
+
+    rc = shell_run_cmd(sc, cmd);
 
     free(sc->shell_input);
     sc->shell_input = NULL;
