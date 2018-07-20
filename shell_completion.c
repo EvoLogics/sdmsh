@@ -6,7 +6,7 @@
 
 #include <readline/readline.h>
 
-#include <completion.h>
+#include <shell_completion.h>
 #include <utils.h>
 
 typedef int shell_filter_func_t(char *name);

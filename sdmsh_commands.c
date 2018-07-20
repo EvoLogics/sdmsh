@@ -11,7 +11,8 @@
 
 #include <sdm.h>
 #include <sdmsh_commands.h>
-#include <history.h>
+#include <shell_history.h>
+#include <shell_help.h>
 
 #include <stream.h>
 
@@ -107,7 +108,7 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
 int sdmsh_cmd_help(struct shell_config *sc, char *argv[], int argc)
 {
     argc = argc;
-    shell_show_help(sc, argv[1]);
+    shell_help_show(sc, argv[1]);
     return 0;
 }
 

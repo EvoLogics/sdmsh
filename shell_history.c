@@ -5,7 +5,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include <history.h>
+#include <shell_history.h>
 
 static int is_no_history_cmd(struct shell_config *sc, char *cmd_line);
 
@@ -15,7 +15,7 @@ void shell_history_init(struct shell_config *sc)
 
     using_history();
 
-    history_write_timestamps = 1; /* ?? do not work? test it */
+    history_write_timestamps = 1;
     history_comment_char = '#';
 
     if (!history_max_entries)

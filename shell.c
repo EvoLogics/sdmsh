@@ -6,9 +6,10 @@
 #include <readline/readline.h>
 
 #include <shell.h>
+#include <shell_completion.h>
+#include <shell_history.h>
+#include <shell_help.h>
 #include <utils.h>
-#include <history.h>
-#include <completion.h>
 
 int shell_run_cmd(struct shell_config *sc, char *shell_input);
 
@@ -156,38 +157,6 @@ void shell_forced_update_display(struct shell_config *sc)
 {
     if (is_interactive_mode(sc))
         rl_forced_update_display();
-}
-
-void shell_show_help_drivers(struct shell_config *sc, char *shift)
-{
-    struct driver_t *drv;
-
-    printf("%s<driver> is:\n", shift);
-    for (drv = sc->drivers; drv->name != NULL; drv++)
-         printf("\t%s%s.\n\t%s%s\n\n", shift, drv->usage, shift, drv->help);
-}
-
-void shell_show_help(struct shell_config *sc, char *name)
-{
-    struct commands_t *cmd;
-    for (cmd = sc->commands; cmd->name != NULL; cmd++) {
-        if (!name || !strcmp(cmd->name, name)) {
-            printf ("%-10s-\t%s\n", cmd->name, cmd->help);
-            printf ("%-10s \tUsage: %s\n", " ", cmd->usage ? cmd->usage : cmd->name);
-            if (name) {
-                if (cmd->flags & SCF_USE_DRIVER)
-                    shell_show_help_drivers(sc, "\t\t");
-                break;
-            }
-        }
-    }
-
-    if (!name)
-        shell_show_help_drivers(sc, "");
-
-    if (name && cmd->name == NULL) {
-        fprintf(stderr, "Unknown topic: %s\n", name);
-    }
 }
 
 int rl_hook_argv_getch(FILE *in)
