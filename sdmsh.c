@@ -246,6 +246,9 @@ int main(int argc, char *argv[])
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
+        if (rc == -1 && errno == EINTR)
+            continue;
+
         if (rc == -1)
             err(1, "select()");
         /* timeout */

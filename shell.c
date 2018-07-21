@@ -1,7 +1,8 @@
 #include <assert.h>
-#include <stdlib.h>
-#include <stdarg.h>
 #include <err.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdlib.h>
 
 #include <readline/readline.h>
 
@@ -30,6 +31,17 @@ int is_interactive_mode(struct shell_config *sc)
     return !(sc->flags & SF_SCRIPT_MODE);
 }
 
+static void handle_signals(int signo) {
+    switch (signo) {
+        case SIGINT:
+            rl_replace_line("", 0);
+            rl_redisplay();
+            break;
+        default:
+            break;
+    }
+}
+
 void shell_init(struct shell_config *sc)
 {
     shell_config = sc;
@@ -53,6 +65,11 @@ void shell_init(struct shell_config *sc)
         rl_readline_name = sc->progname;
     }
 
+    if (signal(SIGINT, handle_signals) == SIG_ERR) {
+        logger(WARN_LOG, "Failed set signal handler\n");
+    }
+    rl_set_signals();
+
     rl_callback_handler_install(sc->prompt, (rl_vcpfunc_t*) &rl_cb_getline);
 
     shell_input_init_current(sc);
@@ -66,6 +83,9 @@ void shell_deinit(struct shell_config *sc)
     }
 
     rl_callback_handler_remove();
+    rl_clear_signals();
+    signal(SIGINT, SIG_IGN);
+
     free(sc->prompt);
 }
 
