@@ -78,6 +78,12 @@ int  shell_handle(struct shell_config *sc)
 
         if (si == NULL)
             return SHELL_EOF;
+
+        /* Hack to show prompt after `source` */
+        if (is_interactive_mode(sc)) {
+            rl_stuff_char('\n');
+            rl_callback_read_char();
+        }
     }
 
     if (!sc->shell_input)
