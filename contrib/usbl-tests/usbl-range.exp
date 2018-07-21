@@ -195,6 +195,8 @@ if {![info exist start] || ![info exist end]} {
     set rc [lindex $reason 3]
     if {$rc == 42} {
         die "Modem not in SDM mode. Please run command: echo +++ATP | nc 192.168.0.[regexp -inline {\d+$} $ip] 9200"
+    } elseif {$rc == 43} {
+        die "Modem in BUSY mode. Try switch to normal mode ++ATA and then back to SDM mode ++ATP"
     }
     die fail
 }

@@ -9,6 +9,7 @@
 #include <stream.h>
 
 #define SDM_ERR_NO_SDM_MODE -42
+#define SDM_ERR_BUSY        -43
 
 #define BUFSIZE  (1024 * 4)
 
