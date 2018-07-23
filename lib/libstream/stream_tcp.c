@@ -224,11 +224,13 @@ static const char* stream_get_error_op(sdm_stream_t *stream)
 
 static int stream_count(sdm_stream_t* stream)
 {
+    struct private_data_t *pdata = stream->pdata;
     if (stream->direction == STREAM_OUTPUT)
         return 0;
 
-    errno = EAFNOSUPPORT;
-    return -1;
+    pdata->error = errno = EAFNOSUPPORT;
+    pdata->error_op = "tcp stream count not supported";
+    return SDM_ERROR_NOT_FOUND;
 }
 
 int sdm_stream_tcp_new(sdm_stream_t *stream)
