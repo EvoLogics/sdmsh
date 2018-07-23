@@ -1,8 +1,14 @@
 #ifndef SHELL_H
 #define SHELL_H
 
+/* for sighandler_t */
+#ifndef __USE_GNU
+#define __USE_GNU
+#endif
+
 #include <stdio.h> /* FILE* */
 #include <sys/queue.h>
+#include <signal.h>
 
 #define SHELL_EOF -256
 
@@ -96,6 +102,7 @@ struct shell_config {
     int inputs_count;
     struct commands_t *commands;
     struct driver_t *drivers;
+    sighandler_t signal_event_hook;
 
     /* internal data */
     int   shell_quit;

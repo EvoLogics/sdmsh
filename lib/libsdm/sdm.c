@@ -451,7 +451,6 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     if (cmd == NULL) {
         sdm_save_samples(ss, ss->rx_data, handled);
         ss->data_len += handled;
-        logger (INFO_LOG, "\rrecv %d samples\r",  ss->data_len / 2);
         sdm_buf_resize(ss, NULL, -handled);
         return handled;
     }

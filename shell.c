@@ -3,7 +3,6 @@
 
 #include <assert.h>
 #include <err.h>
-#include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h> /* strdup() */
@@ -38,12 +37,18 @@ int is_interactive_mode(struct shell_config *sc)
 static void handle_signals(int signo) {
     switch (signo) {
         case SIGINT:
-            rl_replace_line("", 0);
-            rl_redisplay();
+            if (rl_line_buffer) {
+                rl_replace_line("", 0);
+                rl_redisplay();
+            }
             break;
+
         default:
             break;
     }
+
+    if (shell_config->signal_event_hook)
+        shell_config->signal_event_hook(signo);
 }
 
 void shell_init(struct shell_config *sc)

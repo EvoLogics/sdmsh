@@ -22,6 +22,8 @@
 
 #define SDM_PORT    4200
 
+#define SDMSH_UPDATE_RX_STATE_SAMPLES 0x1ffff
+
 enum {
     FLAG_SHOW_HELP     = 0x01,
     FLAG_SEND_STOP     = 0x02,
@@ -29,6 +31,7 @@ enum {
 };
 
 struct shell_config shell_config;
+sdm_session_t *sdm_session;
 
 void show_usage_and_die(int err, char *progname) {
     printf("Usage: %s [OPTIONS] IP/NUM [command; [command;] ...]\n"
@@ -73,19 +76,42 @@ struct option long_options[] = {
 };
 int option_index = 0;
 
-void sdmsh_update_promt_state(struct shell_config *sc, sdm_session_t *ss, char *host)
+static void sdmsh_signal_event_hook(int signo)
+{
+    switch (signo) {
+        case SIGINT:
+            if (sdm_session->state == SDM_STATE_RX) {
+                rl_clear_visible_line();
+                sdm_cmd(sdm_session, SDM_CMD_STOP);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+void sdmsh_update_promt_state(sdm_session_t *ss, char *host)
 {
     static int old_state = -1;
+    static unsigned long data_len = 0;
 
     if(old_state == -1) {
         old_state = ss->state;
         return;
     }
-    if (old_state == ss->state)
+
+    if (old_state == ss->state &&
+      !(ss->state == SDM_STATE_RX && ss->data_len - data_len >= SDMSH_UPDATE_RX_STATE_SAMPLES))
         return;
 
-    shell_update_prompt(sc, "%s%s> ",
-            strrchr(host, '.') + 1, ss->state == SDM_STATE_RX ? ":rx" : "");
+    if (ss->state == SDM_STATE_RX) {
+        rl_message("%s:rx[%d]> ", strrchr(host, '.') + 1, ss->data_len / 2);
+        data_len = ss->data_len;
+    } else {
+        rl_clear_message();
+        data_len = 0;
+    }
 
     old_state = ss->state;
 }
@@ -96,7 +122,6 @@ int main(int argc, char *argv[])
     int rc = 0;
     int len;
     char buf[BUFSIZE];
-    sdm_session_t *sdm_session;
 
     int port = SDM_PORT;
     int opt, flags = 0;
@@ -209,8 +234,10 @@ int main(int argc, char *argv[])
     shell_config.cookie   = sdm_session;
     shell_config.commands = commands;
     shell_config.drivers  = drivers;
+    shell_config.signal_event_hook = sdmsh_signal_event_hook;
     shell_init(&shell_config);
 
+    shell_update_prompt(&shell_config, "%s> ", strrchr(host, '.') + 1);
     for (;;) {
         fd_set rfds;
         int maxfd = sdm_session->sockfd + 1;
@@ -255,7 +282,7 @@ int main(int argc, char *argv[])
             FD_SET(fileno(shell_config.input), &rfds);
             maxfd = (sdm_session->sockfd > fileno(shell_config.input)) ? sdm_session->sockfd : fileno(shell_config.input);
         }
-        sdmsh_update_promt_state(&shell_config, sdm_session, host);
+        sdmsh_update_promt_state(sdm_session, host);
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
