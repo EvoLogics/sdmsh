@@ -1,6 +1,3 @@
-/* for asprintf() */
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +12,6 @@
 #include <endian.h>
 #include <assert.h>
 #include <getopt.h>
-
 #include <libgen.h> /* basename() */
 
 #include <readline/readline.h>
@@ -76,6 +72,23 @@ struct option long_options[] = {
     {"ignore-errors", no_argument,       0, 'x'},
 };
 int option_index = 0;
+
+void sdmsh_update_promt_state(struct shell_config *sc, sdm_session_t *ss, char *host)
+{
+    static int old_state = -1;
+
+    if(old_state == -1) {
+        old_state = ss->state;
+        return;
+    }
+    if (old_state == ss->state)
+        return;
+
+    shell_update_prompt(sc, "%s%s> ",
+            strrchr(host, '.') + 1, ss->state == SDM_STATE_RX ? ":rx" : "");
+
+    old_state = ss->state;
+}
 
 int main(int argc, char *argv[])
 {
@@ -192,7 +205,6 @@ int main(int argc, char *argv[])
     if (optind < argc)
             show_usage_and_die(2, progname);
 
-    asprintf(&shell_config.prompt, "%s> ", strrchr(host, '.') + 1);
     shell_config.progname = progname;
     shell_config.cookie   = sdm_session;
     shell_config.commands = commands;
@@ -243,6 +255,7 @@ int main(int argc, char *argv[])
             FD_SET(fileno(shell_config.input), &rfds);
             maxfd = (sdm_session->sockfd > fileno(shell_config.input)) ? sdm_session->sockfd : fileno(shell_config.input);
         }
+        sdmsh_update_promt_state(&shell_config, sdm_session, host);
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 

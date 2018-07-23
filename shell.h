@@ -111,6 +111,7 @@ int  shell_handle(struct shell_config *sc);
 void shell_show_help(struct shell_config *sc, char *name);
 
 void shell_forced_update_display(struct shell_config *sc);
+void shell_update_prompt(struct shell_config *sc, char *fmt, ...);
 
 void shell_input_init(struct shell_config *sc);
 void shell_input_init_current(struct shell_config *sc);

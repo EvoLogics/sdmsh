@@ -1,8 +1,12 @@
+/* for asprintf() */
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <err.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h> /* strdup() */
 
 #include <readline/readline.h>
 
@@ -69,8 +73,6 @@ void shell_init(struct shell_config *sc)
         logger(WARN_LOG, "Failed set signal handler\n");
     }
     rl_set_signals();
-
-    rl_callback_handler_install(sc->prompt, (rl_vcpfunc_t*) &rl_cb_getline);
 
     shell_input_init_current(sc);
 }
@@ -204,6 +206,31 @@ int rl_hook_argv_getch(FILE *in)
         ch = '\n';
 
     return ch;
+}
+
+void shell_update_prompt(struct shell_config *sc, char *fmt, ...)
+{
+    va_list ap;
+    char *line_buf = NULL;
+
+    if (rl_line_buffer)
+        line_buf = strdup(rl_line_buffer);
+
+    if (sc->prompt)
+        free(sc->prompt);
+
+    va_start(ap, fmt);
+    vasprintf(&sc->prompt, fmt, ap);
+    va_end(ap);
+
+    rl_callback_handler_install(sc->prompt, rl_cb_getline);
+
+    if (line_buf) {
+        rl_insert_text(line_buf);
+        free(line_buf);
+    }
+
+    rl_refresh_line(0, 0);
 }
 
 void shell_input_init(struct shell_config *sc)
