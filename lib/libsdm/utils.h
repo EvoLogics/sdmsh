@@ -57,9 +57,19 @@
 
 #ifdef LOGGER_ENABLED
 
-#include <string.h> /* for strerror */
-#include <errno.h>
 #include <ctype.h>
+#include <errno.h>
+#include <string.h> /* for strerror */
+#include <sys/queue.h>
+
+#define container_of(ptr, type, member) (type*)((char*)(ptr) - __builtin_offsetof(type, member))
+
+#ifndef STAILQ_LAST
+#define STAILQ_LAST(head, type, field)                  \
+        (STAILQ_EMPTY((head)) ? NULL :                  \
+                 container_of((head)->stqh_last, struct type, field.stqe_next))
+
+#endif
 
 #define LOGFILE stdout
 

@@ -122,7 +122,39 @@ int  shell_handle(struct shell_config *sc)
 
     shell_add_history(shell_config, cmd);
 
+    /* Handle commands separated by ';' */
+    if (strchr(cmd, ';')) {
+        if (is_interactive_mode(sc))
+            rl_clear_visible_line();
+        rc = shell_input_add(sc, SHELL_INPUT_PUT_HEAD|SHELL_INPUT_TYPE_STRING, cmd);
+        if (rc == -1) {
+            fprintf(stderr, "Error open file /dev/zero\n");
+            return -1;
+        } else if (rc == -2) {
+            fprintf(stderr, "Too many inputs. Maximum %d", SHELL_MAX_INPUT);
+            return -1;
+        }
+        shell_input_init_current(sc);
+        return 0;
+    }
     rc = shell_run_cmd(sc, cmd);
+
+    /*
+     * If command report error, and first input is interactive
+     * we need remove all inputs but first one.
+     * For example `source` script call another `source` script
+     * and in this script command with error, we need return
+     * to first interactive shell.
+     */
+    if (rc < 0) {
+        struct shell_input *sil = STAILQ_LAST(&sc->inputs_list, shell_input, next_input);
+        if (sil->flags & SHELL_INPUT_INTERACTIVE) {
+            while (sil != STAILQ_FIRST(&sc->inputs_list)) {
+                STAILQ_REMOVE_HEAD(&sc->inputs_list, next_input);
+            }
+            shell_input_init_current(sc);
+        }
+    }
 
     free(sc->shell_input);
     sc->shell_input = NULL;
@@ -194,16 +226,36 @@ void shell_forced_update_display(struct shell_config *sc)
 
 int rl_hook_argv_getch(FILE *in)
 {
-    int ch;
+    static char prev_ch = 0;
+    char ch;
     struct shell_input *si;
     in = in;
 
     si = STAILQ_FIRST(&shell_config->inputs_list);
 
-    if (*si->pos == 0)
-        return EOF;
+    if (*si->pos != 0) {
+        ch = *si->pos++;
+    } else {
+        /* This is workaround bug when running more then
+         * two commands in interactive shell separated by ';'.
+         *
+         * Looks like bug in readline(?).
+         * From documentation:
+         * If `readline` encounters an EOF while reading
+         * the line, and the * line is empty at that point,
+         * then (char *)NULL * is returned.  Otherwise, the
+         * line is ended just as >>if a newline had been typed<<.
+         *
+         * SHELL_INPUT_TYPE_STRING works in argv, but did't work
+         * from interactive shell. Why?
+         *
+         */
 
-    ch = *si->pos++;
+        if (prev_ch == '\n')
+            return EOF;
+        ch = '\n';
+    }
+    prev_ch = ch;
 
     if (ch == 0) {
         ch = '\n';
@@ -279,7 +331,7 @@ int shell_input_add(struct shell_config *sc, int flags, ...)
 
             break;
 
-        case SHELL_INPUT_TYPE_ARGV:
+        case SHELL_INPUT_TYPE_STRING:
             va_start(ap, flags);
             si->script_string = va_arg(ap, char *);
             si->pos = si->script_string;
@@ -288,7 +340,7 @@ int shell_input_add(struct shell_config *sc, int flags, ...)
             /* just dummy for select() to make it always ready to read */
             if ((si->input = fopen("/dev/zero", "r")) == NULL)
                 return -1;
-            logger(DEBUG_LOG, "Add command from command line \"%s\".\n", si->script_string);
+            logger(DEBUG_LOG, "Add input of commands from string \"%s\".\n", si->script_string);
 
             break;
 
@@ -318,7 +370,7 @@ void shell_input_init_current(struct shell_config *sc)
             rl_getc_function = rl_getc;
             break;
 
-        case SHELL_INPUT_TYPE_ARGV:
+        case SHELL_INPUT_TYPE_STRING:
             rl_getc_function = rl_hook_argv_getch;
             break;
 

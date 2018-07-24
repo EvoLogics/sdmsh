@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
                       if (optarg == NULL)
                           show_usage_and_die(2, progname);
 
-                      rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_ARGV, optarg);
+                      rc = shell_input_add(&shell_config, SHELL_INPUT_TYPE_STRING, optarg);
                       if (rc == -1)
                           err(2, "Error open file /dev/zero\n");
                       else if (rc == -2)

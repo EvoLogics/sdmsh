@@ -7,8 +7,9 @@
 #endif
 
 #include <stdio.h> /* FILE* */
-#include <sys/queue.h>
 #include <signal.h>
+
+#include <utils.h>
 
 #define SHELL_EOF -256
 
@@ -71,7 +72,7 @@ struct driver_t {
 enum {
     SHELL_INPUT_TYPE_STDIO = 1,
     SHELL_INPUT_TYPE_FILE  = 2,
-    SHELL_INPUT_TYPE_ARGV  = 3
+    SHELL_INPUT_TYPE_STRING  = 3
 };
 
 struct shell_input;
