@@ -164,7 +164,7 @@ switch $type {
     * { die "secondt parameter must be 'active' or 'passive'" }
 }
 
-spawn $::opt(sdmsh) $ip -sf usbl-range-$type.sdmsh -v0
+spawn $::opt(sdmsh) $ip -sf usbl-range-$type.sdmsh
 
 set stage 0
 expect -re {tx_time = (\d+), rx_time = (\d+)[^\d]} {
