@@ -224,8 +224,15 @@ int main(int argc, char *argv[])
     if (sdm_session == NULL)
         err(1, "sdm_connect(\"%s:%d\"): ", host, port);
 
-    if (flags & FLAG_SEND_STOP)
+    if (flags & FLAG_SEND_STOP) {
         sdm_cmd(sdm_session, SDM_CMD_STOP);
+
+        /*
+         * force to set SDM_STATE_INIT becouse sdm_cmd set it
+         * to SDM_STATE_WAIT_REPLY
+         */
+        sdm_session->state = SDM_STATE_INIT;
+    }
 
     if (optind < argc)
             show_usage_and_die(2, progname);
@@ -254,7 +261,7 @@ int main(int argc, char *argv[])
              * So we did't read user input till hit timeout.
              */
             tv.tv_sec  = 0;
-            tv.tv_usec = 10;
+            tv.tv_usec = 10000;
             maxfd = sdm_session->sockfd;
         } else if (!is_interactive_mode(&shell_config) &&
                    (sdm_session->state == SDM_STATE_WAIT_REPLY ||
@@ -276,6 +283,7 @@ int main(int argc, char *argv[])
 
         if (rc == -1)
             err(1, "select()");
+
         /* timeout */
         if (!rc) {
             if (sdm_session->state == SDM_STATE_INIT)
@@ -304,7 +312,10 @@ int main(int argc, char *argv[])
         }
 
         if (FD_ISSET(sdm_session->sockfd, &rfds)) {
-            len = read(sdm_session->sockfd, buf, sizeof(buf));
+            int state = sdm_session->state;
+            int len_orig;
+
+            len_orig = len = read(sdm_session->sockfd, buf, sizeof(buf));
 
             if (len == 0)
                 break;
@@ -322,6 +333,15 @@ int main(int argc, char *argv[])
             if (rc < 0)
                 if (!is_interactive_mode(&shell_config) && !(flags & FLAG_IGNORE_ERRORS))
                     break;
+
+            if (state == SDM_STATE_INIT) {
+                logger(WARN_LOG, "\rSkip %d received bytes in SDM_STATE_INIT state\n", len_orig);
+                if (is_interactive_mode(&shell_config))
+                        shell_forced_update_display(&shell_config);
+                sdm_session->state = SDM_STATE_INIT;
+                continue;
+            }
+
         }
     }
 
