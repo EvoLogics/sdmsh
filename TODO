@@ -1,0 +1,42 @@
++ fix autocomplition for raw:,ascii:,tcp:
++ do nothing by `history`if there is no interactive mode
++ skip `history` command from history
++ handle ctrl-c for cleaning current command. can interrupt usleep 100000
++ driver "tcp:" cannot be used for tx.
++ add command `source`
++ add possibillity put multiply options `-f` to read many script files
++ add autodetect filetype by extention *.raw -> raw:, .dat,txt -> ascii:
+
++ make ';' as command separator (now it's work only for -e scripts)
+- timeout on SDM_STATE_WAIT_REPLY and SDM_STATE_RX
+    see branch feature/wait-reply-timeout
+- shell_getopts for commands (for ex. `history -t`, `ref -n num file`
+  use history_arg_extract() from libreadline?
+- in rl_hook_argv_getch() get pointer to config_shell from FILE *in
+  with container_of().
+  help not with signals handlers (?)
++ refactor shell_cb_completion() to move specific command completion
+  description to sdmsh_command.c
+
++ fix bug after `source` no prompt
+- fix bug if error in script called from `source`, quit from script
+- fix usleep in interactive shell show prompt just after run
+  ignore usleep in interactive show?
+
+- try to refactor line input. call shell_handler directly from rl_cb_getline().
+  this must fix problems with redraw prompt in call rl_callback_read_char()
+
+- add to command `tx` possibillity get singals from several files
+- add command `exit`
+- add command `set`. and variable `log_level`
+- add parameters to scripts like $1, $2..
+- add support libsox for .wav files and resampling
+- add support libsocat
+- add driver exec:
+
++ in shell_input_add(.. SHELL_INPUT_TYPE_STDIO) check `if (!isatty(STDIN_FILENO))`
+  and set interactive mode
+
+- add to fw error reply on `usbl_rx` if there is no usbl support
+- add to fw command 'change mode to/from SDM mode'
+- add version of firmware request/reply
