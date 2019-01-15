@@ -7,7 +7,6 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <err.h>
-#include <math.h>
 #include <limits.h> /* SHRT_MAX */
 #include <endian.h>
 #include <assert.h>

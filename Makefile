@@ -1,7 +1,11 @@
-PROJ = sdmsh
-
 # Uncomment this if you have readline version 6
 #COMPAT_READLINE6 = 1
+
+# Uncomment this if you want static binary
+#BUILD_STATIC_BIN = 1
+
+##############################
+PROJ = sdmsh
 
 SRC = $(PROJ).c shell.c sdmsh_commands.c shell_history.c shell_completion.c shell_help.c
 OBJ = $(SRC:.c=.o)
@@ -18,17 +22,27 @@ LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 
 CFLAGS = -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
 
-ifneq ($(COMPAT_READLINE6),)
-SRC     +=  compat/readline6.c
-CFLAGS  += -DCOMPAT_READLINE6
-LDFLAGS += -lncurses -ltinfo
+ifdef BUILD_STATIC_BIN
+    LDFLAGS += -static -l:libreadline.a
+else
+    LDFLAGS += -lreadline
+endif
+
+ifdef COMPAT_READLINE6
+    SRC     +=  compat/readline6.c
+    CFLAGS  += -DCOMPAT_READLINE6
+    ifdef BUILD_STATIC_BIN
+        LDFLAGS += -l:libtinfo.a -l:libncurses.a
+    else
+        LDFLAGS += -ltinfo -lncurses
+    endif
 endif
 
 build: lib $(OBJ)
-	$(CC) $(LDFLAGS) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. -lreadline
+	$(CC) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. $(LDFLAGS)
 
 build-dyn: lib $(OBJ)
-	$(CC) $(LDFLAGS) -o $(PROJ) $(OBJ) -L$(LIBSDM_DIR) -I$(LIBSDM_DIR) -L$(LIBSTRM_DIR) -I$(LIBSTRM_DIR) -lreadline -lsdm
+	$(CC) $(LDFLAGS) -o $(PROJ) $(OBJ) -L$(LIBSDM_DIR) -I$(LIBSDM_DIR) -L$(LIBSTRM_DIR) -I$(LIBSTRM_DIR) -lsdm
 
 .PHONY: lib
 lib:
