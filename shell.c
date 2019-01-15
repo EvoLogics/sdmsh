@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h> /* strdup() */
 
+#include <compat/readline6.h>
 #include <readline/readline.h>
 
 #include <shell.h>

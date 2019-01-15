@@ -1,5 +1,8 @@
 PROJ = sdmsh
 
+# Uncomment this if you have readline version 6
+#COMPAT_READLINE6 = 1
+
 SRC = $(PROJ).c shell.c sdmsh_commands.c shell_history.c shell_completion.c shell_help.c
 OBJ = $(SRC:.c=.o)
 
@@ -13,13 +16,19 @@ LIBSTRM_DIR = lib/$(LIBSTRM)
 LIBSTRM_SO  = $(LIBSTRM_DIR)/$(LIBSTRM).so
 LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 
-CFLAGS = -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -lreadline -lm -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
+CFLAGS = -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
+
+ifneq ($(COMPAT_READLINE6),)
+SRC     +=  compat/readline6.c
+CFLAGS  += -DCOMPAT_READLINE6
+LDFLAGS += -lncurses -ltinfo
+endif
 
 build: lib $(OBJ)
-	$(CC) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. -lreadline
+	$(CC) $(LDFLAGS) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. -lreadline
 
 build-dyn: lib $(OBJ)
-	$(CC) -o $(PROJ) $(OBJ) -L$(LIBSDM_DIR) -I$(LIBSDM_DIR) -L$(LIBSTRM_DIR) -I$(LIBSTRM_DIR) -lreadline -lsdm 
+	$(CC) $(LDFLAGS) -o $(PROJ) $(OBJ) -L$(LIBSDM_DIR) -I$(LIBSDM_DIR) -L$(LIBSTRM_DIR) -I$(LIBSTRM_DIR) -lreadline -lsdm
 
 .PHONY: lib
 lib:

@@ -14,6 +14,7 @@
 #include <getopt.h>
 #include <libgen.h> /* basename() */
 
+#include <compat/readline6.h>
 #include <readline/readline.h>
 
 #include <sdm.h>

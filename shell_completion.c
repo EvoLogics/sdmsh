@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-
+#include <compat/readline6.h>
 #include <readline/readline.h>
 
 #include <shell_completion.h>

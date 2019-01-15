@@ -2,6 +2,7 @@
 #include <stdio.h> /* asprintf() */
 #include <stdlib.h>
 
+#include <compat/readline6.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 

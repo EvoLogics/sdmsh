@@ -42,14 +42,14 @@ struct commands_t commands[] = {
    , {"source",      sdmsh_cmd_source,      SCF_NONE,       "source <source-file>", "Run commands from file."}
    , {"help",        sdmsh_cmd_help,        SCF_NONE,       "help [command]", "This help"}
    , {"history",     sdmsh_cmd_history,     SCF_NO_HISTORY, "history [number-lines]", "Display history. Optional [number-lines] by default is 10."}
-   , {NULL}
+   , {NULL, NULL, 0, NULL, NULL }
 };
 
 struct driver_t drivers[] = {
     {"ascii:", SCF_DRIVER_FILENAME, "ascii:<filename> or file extension \".dat\" or \".txt\"", "This is default driver File format: float (-1.0 .. 1.0) or short interger as text line, one value per line" }
   , {"raw:",   SCF_DRIVER_FILENAME, "raw:<filename> or file extension \".raw\", \".bin\" or \".dmp\"", "Binary format: int16_t per value" }
   , {"tcp:",   SCF_DRIVER_NET,      "tcp:<connect|listen>:<ip>:<port>", "Opens TCP socket to send or receive data, int16_t per value" }
-  , {NULL}
+  , {NULL, 0, NULL, NULL }
 };
 
 int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
