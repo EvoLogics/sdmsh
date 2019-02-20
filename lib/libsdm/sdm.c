@@ -12,8 +12,6 @@
 #include <assert.h>
 #include <limits.h>    /* SHORT_MAX  */
 
-#include <readline/readline.h>
-
 #include <sdm.h>
 
 #define ADD_TO_DATA_VAL16bit(data, data_size, data_offset, val) \
