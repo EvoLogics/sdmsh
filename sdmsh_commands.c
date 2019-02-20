@@ -119,7 +119,7 @@ int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
 
     ARGS_RANGE(argc == 4 || argc == 5);
-    ARG_LONG("config: threshold", argv[1], threshold, arg >= 1 && arg <= 4095);
+    ARG_LONG("config: threshold", argv[1], threshold, arg >= 0 && arg <= 4095);
     ARG_LONG("config: gain", argv[2], gain, arg >= 0 && arg <= 1);
     ARG_LONG("config: source level", argv[3], srclvl, arg >= 0 && arg <= 3);
     if (argc == 5) {
