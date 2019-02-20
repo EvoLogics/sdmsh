@@ -289,14 +289,20 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
             logger(INFO_LOG, "%d\n", cmd->param);
             break;
         case SDM_REPLAY_SYSTIME: {
-            unsigned int current_time, tx_time, rx_time;
+            unsigned int current_time, tx_time, rx_time, syncin_time;
             unsigned int *buf = (unsigned int*)ss->rx_data;
 
             current_time = buf[0];
             tx_time = buf[1];
             rx_time = buf[2];
-            printf("current_time = %u, tx_time = %u, rx_time = %u\n"
-                   , current_time, tx_time, rx_time);
+            if (cmd->data_len == 8) {
+                syncin_time = buf[3];
+                printf("current_time = %u, tx_time = %u, rx_time = %u, syncin_time = %u\n"
+                       , current_time, tx_time, rx_time, syncin_time);
+            } else {
+                printf("current_time = %u, tx_time = %u, rx_time = %u\n"
+                       , current_time, tx_time, rx_time);
+            }
             break;
         }
         case SDM_REPLAY_REPORT:
@@ -484,13 +490,13 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
         case SDM_REPLAY_SYSTIME:
             /* cmd->data_len in header in uint16 count */
-            if (handled - data_len < (int)cmd->data_len * 2) {
-                logger(INFO_LOG, "\rwaiting %d bytes\r", cmd->data_len * 2 - handled - data_len);
+            if (handled - data_len < (int)ss->cmd.data_len * 2) {
+                logger(INFO_LOG, "\rwaiting %d bytes\r", ss->cmd.data_len * 2 - handled - data_len);
                 return 0;
             }
 
-            sdm_buf_resize(ss, NULL, -cmd->data_len * 2);
-            handled += cmd->data_len * 2;
+            sdm_buf_resize(ss, NULL, -ss->cmd.data_len * 2);
+            handled += ss->cmd.data_len * 2;
 
             sdm_set_idle_state(ss);
             ss->state = SDM_STATE_IDLE;
