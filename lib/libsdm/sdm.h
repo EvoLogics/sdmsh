@@ -37,6 +37,7 @@ enum {
     SDM_REPLAY_RX      = 2,
     SDM_REPLAY_USBL_RX = 6,
     SDM_REPLAY_SYSTIME = 7,
+    SDM_REPLAY_SYNCIN  = 253,
     SDM_REPLAY_BUSY    = 254,
     SDM_REPLAY_REPORT  = 255,
 };
@@ -122,5 +123,7 @@ const char* strrpbrk(const char *s, const char *accept_only);
 char* sdm_cmd_to_str(uint8_t cmd);
 char* sdm_reply_to_str(uint8_t cmd);
 char* sdm_reply_report_to_str(uint8_t cmd);
+
+int sdm_is_async_reply(uint8_t cmd);
 
 #endif

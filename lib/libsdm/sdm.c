@@ -247,10 +247,20 @@ char* sdm_reply_to_str(uint8_t cmd)
         case SDM_REPLAY_RX:      return "RX";
         case SDM_REPLAY_USBL_RX: return "USBL_RX";
         case SDM_REPLAY_SYSTIME: return "SYSTIME";
+        case SDM_REPLAY_SYNCIN:  return "SYNCIN";
         case SDM_REPLAY_BUSY:    return "BUSY";
         case SDM_REPLAY_REPORT:  return "REPORT";
         default: return "???";
     }
+}
+
+int sdm_is_async_reply(uint8_t cmd)
+{
+    switch (cmd) {
+        case SDM_REPLAY_SYNCIN:
+            return 1;
+    }
+    return 0;
 }
 
 char* sdm_reply_report_to_str(uint8_t cmd)
@@ -272,7 +282,8 @@ char* sdm_reply_report_to_str(uint8_t cmd)
 
 int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 {
-    logger(INFO_LOG, "\rrx cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
+    logger((sdm_is_async_reply(cmd->cmd) ? ASYNC_LOG : INFO_LOG)
+            , "\rrx cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
     DUMP_SHORT(DEBUG_LOG, YELLOW, cmd, sizeof(sdm_pkt_t));
 
     switch (cmd->cmd) {
@@ -303,6 +314,9 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
             }
             break;
         }
+        case SDM_REPLAY_SYNCIN:
+            logger(ASYNC_LOG, "\n");
+            break;
         case SDM_REPLAY_REPORT:
             switch (cmd->param) {
                 case SDM_REPLAY_REPORT_NO_SDM_MODE: logger(INFO_LOG, " %s\n", sdm_reply_report_to_str(SDM_REPLAY_REPORT_NO_SDM_MODE)); break;
@@ -503,6 +517,8 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
         case SDM_REPLAY_BUSY:
             return SDM_ERR_BUSY;
+        case SDM_REPLAY_SYNCIN:
+            return handled;
         case SDM_REPLAY_REPORT:
             ss->state = SDM_STATE_IDLE;
 
@@ -610,6 +626,9 @@ int sdm_rx(sdm_session_t *ss, int cmd, ...)
                         return 0;
                     }
                     if (cmd == SDM_REPLAY_USBL_RX) {
+                        return 0;
+                    }
+                    if (cmd == SDM_REPLAY_SYNCIN) {
                         return 0;
                     }
                     if (cmd == SDM_REPLAY_BUSY) {

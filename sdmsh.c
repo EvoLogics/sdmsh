@@ -43,7 +43,21 @@ void show_usage_and_die(int err, char *progname) {
            "  -h, --help                 Display this help and exit\n"
            "  -p, --port=PORT            Set TCP PORT for connecting the SDM modem. Default is %d\n"
            "  -s, --stop                 Send SMD STOP at start\n"
-           "  -v, --verbose[=log-level]  Set log level. Without parameter enable debug logging\n"
+           "  -v[[a|[=]log-level]]\n"
+           "    --verbose[[=]log-level]  Set log level. Without parameter enable debug logging\n"
+           "\n"
+           "Log levels:\n"
+           "    FATAL      - 0x0001\n"
+           "    ERR        - 0x0002\n"
+           "    WARN       - 0x0004\n"
+           "    INFO       - 0x0008\n"
+           "    DEBUG      - 0x0010\n"
+           "    TRACE      - 0x0020\n"
+           "    DATA       - 0x0040\n"
+           "    LOCATION   - 0x0080\n"
+           "    ASYNC      - 0x0100\n"
+           "\n"
+           "    'a' is alias to ASYNC. See example below\n"
            "\n"
            "Examples:\n"
            "\n"
@@ -61,7 +75,13 @@ void show_usage_and_die(int err, char *progname) {
            "\n"
            "# Run two script with delay between them\n"
            "$ %s 127 -f rx.sdmsh -e 'usleep 1000000' -f tx.sdmsh\n"
-               , progname, SDM_PORT, progname, progname, progname, progname, progname);
+           "\n"
+           "# Run shell with enabled ASYNC log (for ex. SYNCIN), but not DEBUG\n"
+           "$ %s -v=0x010f 127\n"
+           "# or \n"
+           "$ %s -va 127\n"
+               , progname, SDM_PORT, progname, progname, progname
+               , progname, progname, progname, progname);
     exit(err);
 }
 
@@ -175,9 +195,17 @@ int main(int argc, char *argv[])
                       char *endptr;
 
                       if (optarg == NULL) {
-                          log_level |= DEBUG_LOG;
+                          log_level |= DEBUG_LOG|ASYNC_LOG;
                           break;
                       }
+
+                      if (*optarg == 'a') {
+                          log_level |= ASYNC_LOG;
+                          break;
+                      }
+
+                      if (*optarg == '=')
+                          optarg++;
 
                       log_level = strtoul(optarg, &endptr, 0);
                       if ((errno == ERANGE && log_level == ULONG_MAX)
@@ -325,8 +353,9 @@ int main(int argc, char *argv[])
 
             do {
                 rc = sdm_handle_rx_data(sdm_session, buf, len);
-                if (len && (sdm_session->rx_data_len == 0 || rc == 0))
-                    shell_forced_update_display(&shell_config);
+                if (len && !sdm_is_async_reply(sdm_session->cmd.cmd))
+                    if (sdm_session->rx_data_len == 0 || rc == 0)
+                        shell_forced_update_display(&shell_config);
                 len = 0;
             } while (rc > 0);
 

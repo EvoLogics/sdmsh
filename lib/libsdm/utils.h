@@ -9,14 +9,15 @@
 
 #define CACHE_SIZE (16*2)
 
-#define FATAL_LOG            0x01
-#define ERR_LOG              0x02
-#define WARN_LOG             0x04
-#define INFO_LOG             0x08
-#define DEBUG_LOG            0x10
-#define TRACE_LOG            0x20
-#define DATA_LOG             0x40
-#define LOCATION_LOG         0x80
+#define FATAL_LOG            0x0001
+#define ERR_LOG              0x0002
+#define WARN_LOG             0x0004
+#define INFO_LOG             0x0008
+#define DEBUG_LOG            0x0010
+#define TRACE_LOG            0x0020
+#define DATA_LOG             0x0040
+#define LOCATION_LOG         0x0080
+#define ASYNC_LOG            0x0100
 
 #ifndef NO_COLORS
 
