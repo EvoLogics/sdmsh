@@ -25,6 +25,7 @@ int sdmsh_cmd_rx         (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_rx    (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_systime    (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_waitsyncin (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usleep     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_source     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_history    (struct shell_config *sc, char *argv[], int argc);
@@ -38,6 +39,7 @@ struct commands_t commands[] = {
    , {"rx",          sdmsh_cmd_rx,          SCF_USE_DRIVER, "rx <number of samples> [<driver>:]<params> [[<driver>:]<params>]", "Receive signal [0 is inf]."}
    , {"usbl_rx",     sdmsh_cmd_usbl_rx,     SCF_USE_DRIVER, "usbl_rx <channel> <number of samples> [<driver>:]<params>", "Receive signal from USBL channel."}
    , {"systime",     sdmsh_cmd_systime,     SCF_NONE,       "systime", "Request systime."}
+   , {"waitsyncin",  sdmsh_cmd_waitsyncin,  SCF_NONE,       "waitsyncin", "Wait SYNCIN message."}
    , {"usleep",      sdmsh_cmd_usleep,      SCF_NO_HISTORY, "usleep <usec>", "Delay in usec."}
    , {"source",      sdmsh_cmd_source,      SCF_NONE,       "source <source-file>", "Run commands from file."}
    , {"help",        sdmsh_cmd_help,        SCF_NONE,       "help [command]", "This help"}
@@ -342,6 +344,18 @@ int sdmsh_cmd_systime(struct shell_config *sc, char *argv[], int argc)
     ARGS_RANGE(argc == 1);
     sdm_cmd(ss, SDM_CMD_SYSTIME);
     sdm_set_idle_state(ss);
+
+    return 0;
+}
+
+int sdmsh_cmd_waitsyncin(struct shell_config *sc, char *argv[], int argc)
+{
+    sdm_session_t *ss = sc->cookie;
+
+    argv = argv;
+    ARGS_RANGE(argc == 1);
+    sdm_set_idle_state(ss);
+    ss->state = SDM_STATE_WAIT_SYNCIN;
 
     return 0;
 }

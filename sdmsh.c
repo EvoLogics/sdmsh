@@ -128,6 +128,8 @@ void sdmsh_update_promt_state(sdm_session_t *ss, char *host)
     if (ss->state == SDM_STATE_RX) {
         rl_message("%s:rx[%d]> ", strrchr(host, '.') + 1, ss->data_len / 2);
         data_len = ss->data_len;
+    } else if (ss->state == SDM_STATE_WAIT_SYNCIN) {
+        rl_message("%s:wait syncin> ", strrchr(host, '.') + 1);
     } else {
         rl_clear_message();
         data_len = 0;
@@ -293,7 +295,8 @@ int main(int argc, char *argv[])
             maxfd = sdm_session->sockfd;
         } else if (!is_interactive_mode(&shell_config) &&
                    (sdm_session->state == SDM_STATE_WAIT_REPLY ||
-                    sdm_session->state == SDM_STATE_RX)) {
+                    sdm_session->state == SDM_STATE_RX ||
+                    sdm_session->state == SDM_STATE_WAIT_SYNCIN)) {
             /* If we running script, we need to wait for reply before run next command */
             maxfd = sdm_session->sockfd;
         } else if (!is_interactive_mode(&shell_config) && !shell_config.input) {

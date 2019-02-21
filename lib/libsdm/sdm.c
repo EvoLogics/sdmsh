@@ -518,6 +518,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         case SDM_REPLAY_BUSY:
             return SDM_ERR_BUSY;
         case SDM_REPLAY_SYNCIN:
+            ss->state = SDM_STATE_IDLE;
             return handled;
         case SDM_REPLAY_REPORT:
             ss->state = SDM_STATE_IDLE;

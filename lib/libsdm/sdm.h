@@ -78,7 +78,8 @@ enum {
     SDM_STATE_INIT = 1,
     SDM_STATE_IDLE,
     SDM_STATE_WAIT_REPLY,
-    SDM_STATE_RX
+    SDM_STATE_RX,
+    SDM_STATE_WAIT_SYNCIN
 };
 
 enum {
