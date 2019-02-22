@@ -1,3 +1,17 @@
+== Intro ==
+Educational example of using USBL.
+
+There are test for measuring distance between modem by sending signals and checking out
+timestamps with command `systime`. You should have accees to both modem to know
+time delta from remote side. Or send this date in any way.
+This is not real life example, but proof of concept.
+
+Also in this example USBL signals stored and can be visualized in jupyter-notebook (https://jupyter.org/)
+
+*.sdmsh files with sdmsh commands for both sides.
+*.exp it's expect/tcl scripts, used as your python scripts.
+*.ipynb it's project for jupyter-notebook
+
 == Manual test ==
 0.
 {{{
