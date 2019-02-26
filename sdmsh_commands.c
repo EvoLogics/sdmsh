@@ -81,7 +81,9 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
     } else {
         char *ext = strrchr(arg, '.');
 
-        if (!strcmp(ext, ".dat") || !strcmp(ext, ".txt"))
+        if (!ext)
+            drv = default_drv;
+        else if (!strcmp(ext, ".dat") || !strcmp(ext, ".txt"))
             drv = "ascii";
         else if (!strcmp(ext, ".raw") || !strcmp(ext, ".bin")
               || !strcmp(ext, ".dmp"))
