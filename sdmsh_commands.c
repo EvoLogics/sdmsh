@@ -49,7 +49,7 @@ struct commands_t commands[] = {
 
 struct driver_t drivers[] = {
     {"ascii:", SCF_DRIVER_FILENAME, "ascii:<filename> or file extension \".dat\" or \".txt\"", "This is default driver File format: float (-1.0 .. 1.0) or short interger as text line, one value per line" }
-  , {"raw:",   SCF_DRIVER_FILENAME, "raw:<filename> or file extension \".raw\", \".bin\" or \".dmp\"", "Binary format: int16_t per value" }
+  , {"raw:",   SCF_DRIVER_FILENAME, "raw:<filename> or file extension \".raw\", \".bin\", \".dmp\" or \".fifo\"", "Binary format: int16_t per value" }
   , {"tcp:",   SCF_DRIVER_NET,      "tcp:<connect|listen>:<ip>:<port>", "Opens TCP socket to send or receive data, int16_t per value" }
   , {NULL, 0, NULL, NULL }
 };
@@ -86,7 +86,7 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
         else if (!strcmp(ext, ".dat") || !strcmp(ext, ".txt"))
             drv = "ascii";
         else if (!strcmp(ext, ".raw") || !strcmp(ext, ".bin")
-              || !strcmp(ext, ".dmp"))
+              || !strcmp(ext, ".dmp") || !strcmp(ext, ".fifo"))
             drv = "raw";
         else
             drv = default_drv;
