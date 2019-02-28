@@ -54,6 +54,7 @@ static void handle_signals(int signo) {
 
 void shell_init(struct shell_config *sc)
 {
+    struct sigaction act;
     shell_config = sc;
 
     sc->shell_input = NULL;
@@ -75,9 +76,15 @@ void shell_init(struct shell_config *sc)
         rl_readline_name = sc->progname;
     }
 
-    if (signal(SIGINT, handle_signals) == SIG_ERR) {
+    if (sigaction(SIGINT, NULL, &act))
         logger(WARN_LOG, "Failed set signal handler\n");
-    }
+
+    /* Clear SA_RESTART, we need interrupt named pipes */
+    act.sa_flags &= ~SA_RESTART;
+    act.sa_handler = handle_signals;
+    if (sigaction(SIGINT, &act, NULL))
+        logger(WARN_LOG, "Failed set signal handler\n");
+
     rl_set_signals();
 
     shell_input_init_current(sc);
