@@ -104,10 +104,15 @@ unsigned sdm_stream_count(sdm_stream_t *stream)
     return stream->count(stream);
 }
 
-const char* sdm_stream_get_error(sdm_stream_t *stream)
+int sdm_stream_get_errno(sdm_stream_t *stream)
 {
-    sprintf(stream->bfr_error, "%s: %s", stream->get_error_op(stream),
-            stream->get_error(stream));
+    return stream->get_errno(stream);
+}
+
+const char* sdm_stream_strerror(sdm_stream_t *stream)
+{
+    sprintf(stream->bfr_error, "%s \"%s\": %s", stream->get_error_op(stream)
+            , stream->args, stream->strerror(stream));
     return stream->bfr_error;
 }
 

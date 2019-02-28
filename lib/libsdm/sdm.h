@@ -95,6 +95,7 @@ typedef struct {
     int state;
 
     int stream_cnt;
+    int stream_idx; /* Last handled stream. For error report */
     sdm_stream_t *stream[2];
     int data_len;
 

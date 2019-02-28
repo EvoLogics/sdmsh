@@ -185,7 +185,10 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         return -1;
 
     if (sdm_stream_open(ss->stream[0])) {
-        logger(ERR_LOG, "ref: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+        if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+            logger(WARN_LOG, "ref: opening %s was interrupted\n", argv[1]);
+        else
+            logger(ERR_LOG, "ref: error %s\n", sdm_stream_strerror(ss->stream[0]));
         return -1;
     }
 
@@ -194,7 +197,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     rc = sdm_load_samples(ss, data + len - samples_count, samples_count);
 
     if (rc < 0) {
-        logger(ERR_LOG, "ref: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+        logger(ERR_LOG, "ref: error %s\n", sdm_stream_strerror(ss->stream[0]));
         rc = -1;
     } else {
         if (rc != len) {
@@ -236,7 +239,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     if (nsamples == 0) {
         rc = sdm_stream_count(ss->stream[0]);
         if (rc < 0) {
-            logger(ERR_LOG, "tx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+            logger(ERR_LOG, "tx: error %s\n", sdm_stream_strerror(ss->stream[0]));
             return -1;
         } else if (rc == 0) {
             logger(ERR_LOG, "tx: Zero samples. "
@@ -248,7 +251,10 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     nsamples = rc;
     
     if (sdm_stream_open(ss->stream[0])) {
-        logger(ERR_LOG, "tx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+        if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+            logger(WARN_LOG, "tx: opening %s was interrupted\n", argv[1]);
+        else
+            logger(ERR_LOG, "tx: error %s\n", sdm_stream_strerror(ss->stream[0]));
         return -1;
     }
     data = malloc(len * sizeof(int16_t));
@@ -304,7 +310,10 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
             break;
         }
         if (sdm_stream_open(ss->stream[i])) {
-            logger(ERR_LOG, "rx: %s error %s\n", argv[2 + i], sdm_stream_get_error(ss->stream[i]));
+            if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+                logger(WARN_LOG, "rx: opening %s was interrupted\n", argv[2 + i]);
+            else
+                logger(ERR_LOG, "rx: %s error %s\n", sdm_stream_strerror(ss->stream[i]));
             break;
         }
     }
@@ -333,7 +342,10 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
     if (sdm_stream_open(ss->stream[0])) {
-        logger(ERR_LOG, "usbl_rx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+        if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+            logger(WARN_LOG, "rx: opening %s was interrupted\n", argv[1]);
+        else
+            logger(ERR_LOG, "usbl_rx: error %s\n", sdm_stream_strerror(ss->stream[0]));
         return -1;
     }
     sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);

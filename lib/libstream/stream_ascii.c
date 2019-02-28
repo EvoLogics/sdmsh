@@ -182,7 +182,13 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned int sample
     return 0;
 }
 
-static const char* stream_get_error(sdm_stream_t *stream)
+static int stream_get_errno(sdm_stream_t *stream)
+{
+    struct private_data_t *pdata = stream->pdata;
+    return pdata->error;
+}
+
+static const char* stream_strerror(sdm_stream_t *stream)
 {
     struct private_data_t *pdata = stream->pdata;
     return strerror(pdata->error);
@@ -223,7 +229,8 @@ int sdm_stream_ascii_new(sdm_stream_t *stream)
     stream->free = stream_free;
     stream->read = stream_read;
     stream->write = stream_write;
-    stream->get_error = stream_get_error;
+    stream->get_errno = stream_get_errno;
+    stream->strerror = stream_strerror;
     stream->get_error_op = stream_get_error_op;
     stream->count = stream_count;
     strcpy(stream->name, "ASCII");

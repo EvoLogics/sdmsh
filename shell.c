@@ -44,6 +44,9 @@ static void handle_signals(int signo) {
             }
             break;
 
+        case SIGPIPE:
+            break;
+
         default:
             break;
     }
@@ -83,7 +86,10 @@ void shell_init(struct shell_config *sc)
     act.sa_flags &= ~SA_RESTART;
     act.sa_handler = handle_signals;
     if (sigaction(SIGINT, &act, NULL))
-        logger(WARN_LOG, "Failed set signal handler\n");
+        logger(WARN_LOG, "Failed set SIGINT signal handler\n");
+    if (sigaction(SIGPIPE, &act, NULL))
+        logger(WARN_LOG, "Failed set SIGPIPE signal handler\n");
+
 
     rl_set_signals();
 

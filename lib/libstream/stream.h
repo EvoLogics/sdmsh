@@ -33,8 +33,10 @@ struct sdm_stream_t
     int (*write)(sdm_stream_t*, void*, unsigned);
     //! Number of samples in stream, if known.
     int (*count)(sdm_stream_t*);
+    //! Pointer to driver's error function.
+    int (*get_errno)(sdm_stream_t*);
     //! Pointer to driver's error translating function.
-    const char* (*get_error)(sdm_stream_t*);
+    const char* (*strerror)(sdm_stream_t*);
     //! Pointer to driver's error translating function.
     const char* (*get_error_op)(sdm_stream_t*);
     
@@ -104,8 +106,13 @@ unsigned sdm_stream_count(sdm_stream_t *stream);
 
 //! Retrieve the last error.
 //! @param stream output stream object.
-//! @return last error.
-const char* sdm_stream_get_error(sdm_stream_t *stream);
+//! @return last error
+int sdm_stream_get_errno(sdm_stream_t *stream);
+
+//! Retrieve the last error.
+//! @param stream output stream object.
+//! @return last error in string form.
+const char* sdm_stream_strerror(sdm_stream_t *stream);
 
 //! Print stream parameters to standard output.
 //! @param stream output stream object.

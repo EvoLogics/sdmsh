@@ -58,6 +58,7 @@ sdm_session_t* sdm_connect(char *ip, int port)
     ss->rx_data_len = 0;
     ss->state = SDM_STATE_INIT;
     ss->stream_cnt = 0;
+    ss->stream_idx = 0;
     ss->data_len = 0;
 
     return ss;
