@@ -284,7 +284,7 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
     int strm_cnt = argc - 2, i;
 
-    ARGS_RANGE(argc > 3);
+    ARGS_RANGE(argc >= 3);
 
     /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
     ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
