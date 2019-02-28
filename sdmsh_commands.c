@@ -239,7 +239,9 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
             logger(ERR_LOG, "tx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
             return -1;
         } else if (rc == 0) {
-            logger(ERR_LOG, "tx: Zero samples\n");
+            logger(ERR_LOG, "tx: Zero samples. "
+                  "In case sample source is stream (tcp or named pipe), "
+                  "TX command with 0 samples as parameter, do not supported.\n");
             return -1;
         }
     }
@@ -302,7 +304,7 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
             break;
         }
         if (sdm_stream_open(ss->stream[i])) {
-            logger(ERR_LOG, "rx: %s error %s\n", argv[1], sdm_stream_get_error(ss->stream[0]));
+            logger(ERR_LOG, "rx: %s error %s\n", argv[2 + i], sdm_stream_get_error(ss->stream[i]));
             break;
         }
     }
