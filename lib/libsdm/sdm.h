@@ -10,6 +10,7 @@
 
 #define SDM_ERR_NO_SDM_MODE -42
 #define SDM_ERR_BUSY        -43
+#define SDM_ERR_SAVE_FAIL   -44
 
 #define BUFSIZE  (1024 * 4)
 

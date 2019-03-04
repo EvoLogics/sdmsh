@@ -343,9 +343,10 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 
 int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
 {
-    int i;
-    for (i = 0; i < ss->stream_cnt; i++) {
-        sdm_stream_write(ss->stream[i], (int16_t*)buf, len / 2);
+    for (ss->stream_idx = 0; ss->stream_idx < ss->stream_cnt; ss->stream_idx++) {
+        int rc = sdm_stream_write(ss->stream[ss->stream_idx], (int16_t*)buf, len / 2);
+        if (rc < 0)
+            return rc;
     }
     return 0;
 }
@@ -468,7 +469,12 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         return 0;
 
     if (cmd == NULL) {
-        sdm_save_samples(ss, ss->rx_data, handled);
+        int rc = sdm_save_samples(ss, ss->rx_data, handled);
+        if (rc < 0) {
+            logger(ERR_LOG, "\nError %s. %d samples was dropped.\n"
+                    , sdm_stream_strerror(ss->stream[ss->stream_idx]), handled);
+            return SDM_ERR_SAVE_FAIL;
+        }
         ss->data_len += handled;
         sdm_buf_resize(ss, NULL, -handled);
         return handled;
@@ -477,7 +483,12 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     data_len = ((char *)cmd - ss->rx_data);
 
     if (ss->state == SDM_STATE_RX && data_len != 0) {
-        sdm_save_samples(ss, ss->rx_data, data_len);
+        int rc = sdm_save_samples(ss, ss->rx_data, data_len);
+        if (rc < 0) {
+            logger(ERR_LOG, "\nError %s. %d samples was dropped.\n"
+                    , sdm_stream_strerror(ss->stream[ss->stream_idx]), data_len);
+            return SDM_ERR_SAVE_FAIL;
+        }
         ss->data_len += data_len;
     }
 

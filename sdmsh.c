@@ -362,9 +362,13 @@ int main(int argc, char *argv[])
                 len = 0;
             } while (rc > 0);
 
-            if (rc < 0)
+            if (rc < 0) {
+                if (rc == SDM_ERR_SAVE_FAIL)
+                    sdm_cmd(sdm_session, SDM_CMD_STOP);
+
                 if (!is_interactive_mode(&shell_config) && !(flags & FLAG_IGNORE_ERRORS))
                     break;
+            }
 
             if (state == SDM_STATE_INIT) {
                 logger(WARN_LOG, "\rSkip %d received bytes in SDM_STATE_INIT state\n", len_orig);
