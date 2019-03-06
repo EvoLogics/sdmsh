@@ -33,22 +33,26 @@ struct private_data_t
 
 int sdm_autodetect_samples_file_type(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
-    FILE *fp = pdata->fd;
+    struct private_data_t *pdata;
+    FILE *fp;
     long pos;
     char buf[40];
 
+    if (!stream)
+        return SDM_ERROR_STREAM;
+    pdata = stream->pdata;
+    fp = pdata->fd;
     pdata->file_type = 0;
 
     if (fp == NULL)
         return 0;
-    fseek(fp, 0, SEEK_SET);
+
+    if (fseek(fp, 0, SEEK_SET) < 0)
+        RETURN_ERROR("seek in file", errno);
 
     /* read first line. if it's not digit (start not from [-0-9 ]), skip it */
-    if (fgets(buf, sizeof(buf), fp) == NULL) {
-        fprintf (stderr, "\rReading file error: %s\n", strerror(errno));
-        return 0;
-    }
+    if (fgets(buf, sizeof(buf), fp) == NULL)
+        RETURN_ERROR("reading file", errno);
 
     /* remember position a stream, to return it to proper place later */
     pos = ftell(fp);
@@ -63,10 +67,8 @@ int sdm_autodetect_samples_file_type(sdm_stream_t *stream)
     }
 
     /* check second line from file */
-    if (fgets(buf, sizeof(buf), fp) == NULL) {
-        fprintf (stderr, "\rReading file error: %s\n", strerror(errno));
-        return 0;
-    }
+    if (fgets(buf, sizeof(buf), fp) == NULL)
+        RETURN_ERROR("reading file", errno);
     fseek(fp, pos, SEEK_SET);
 
     if (strrpbrk(buf, "-+1234567890 \n") == NULL) {
@@ -82,34 +84,35 @@ int sdm_autodetect_samples_file_type(sdm_stream_t *stream)
 static int stream_open(sdm_stream_t *stream)
 {
     struct private_data_t *pdata = stream->pdata;
+    int rc;
 
     if (stream->direction == STREAM_OUTPUT) {
         pdata->fd = fopen(stream->args, "w");
         pdata->file_type = SDM_FILE_TYPE_INT;        
     } else {
         pdata->fd = fopen(stream->args, "r");
-        sdm_autodetect_samples_file_type(stream);
+        rc = sdm_autodetect_samples_file_type(stream);
     }
-    if (pdata->fd == NULL)
-    {
-        pdata->error_op = "opening file";
-        pdata->error = errno;
-        return SDM_ERROR_STREAM;
-    }
+    if (pdata->fd == NULL || rc < 0)
+        RETURN_ERROR("opening file", errno);
+
     if (pdata->file_type == 0) {
         fclose(pdata->fd);
-        fprintf (stderr, "Can't autodetect signal file type\n");
-        return SDM_ERROR_STREAM;
+        RETURN_ERROR("Can't autodetect signal file type", errno);
     }
     return SDM_ERROR_NONE;
 }
 
 static int stream_close(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return SDM_ERROR_STREAM;
+    pdata = stream->pdata;
 
     if (pdata->fd == NULL)
-        return 0;
+        return SDM_ERROR_STREAM;
 
     fflush(pdata->fd);
     fclose(pdata->fd);
@@ -119,53 +122,55 @@ static int stream_close(sdm_stream_t *stream)
 
 static void stream_free(sdm_stream_t *stream)
 {
-    free(stream->pdata);
+    if (!stream && stream->pdata) {
+        free(stream->pdata);
+        stream->pdata = NULL;
+    }
 }
 
 static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sample_count)
 {
     unsigned n;
     char buf[40];
-    struct private_data_t *pdata = stream->pdata;
-    FILE *fp = pdata->fd;
+    struct private_data_t *pdata;
     int data_offset = 0;
     
-    if (stream->direction == STREAM_OUTPUT) {
+    if (!stream)
         return SDM_ERROR_STREAM;
-    }
+    pdata = stream->pdata;
+
+    if (stream->direction == STREAM_OUTPUT)
+        RETURN_ERROR("writing file", ENOTSUP);
+
     for (n = 0; n < sample_count; n++) {
         double val;
 
-        if ((fgets(buf, sizeof(buf), fp) == NULL)) {
+        if ((fgets(buf, sizeof(buf), pdata->fd) == NULL)) {
             break;
         }
         errno = 0;
         buf[strlen(buf) - 1] = 0;
         val = strtod(buf, NULL);
         if (errno == ERANGE || (errno != 0 && val == 0)) {
-            fprintf(stderr, "Line %d: Error to convert \"%s\" to digit.", n, buf);
-            goto command_ref_error;
+            RETURN_ERROR("Error to convert to digit.", errno);
         }
+
         switch (pdata->file_type) {
             case SDM_FILE_TYPE_FLOAT:
-                if (val > 1. || val < -1.) {
-                    fprintf(stderr, "Line %d: Error float data do not normalized\n", n);
-                    goto command_ref_error;
-                }
+                if (val > 1. || val < -1.)
+                    RETURN_ERROR("Error float data do not normalized", ERANGE);
+
                 samples[data_offset++] = (int16_t)(val * SHRT_MAX);
                 break;
             case SDM_FILE_TYPE_INT:
-                if (val <= SHRT_MIN || val >= SHRT_MAX) {
-                    fprintf(stderr, "Line %d: Error int data must be 16bit\n", n);
-                    goto command_ref_error;
-                }
+                if (val <= SHRT_MIN || val >= SHRT_MAX)
+                    RETURN_ERROR("Error int data must be 16bit", ERANGE);
+
                 samples[data_offset++] = (int16_t)val;
                 break;
         }
     }
     return n;
-command_ref_error:
-    return 0;
 }
 
 static int stream_write(sdm_stream_t *stream, void* samples, unsigned int sample_count)
@@ -173,45 +178,70 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned int sample
     struct private_data_t *pdata = stream->pdata;
     unsigned int i;
 
-    if (stream->direction == STREAM_INPUT) {
+    if (!stream)
         return SDM_ERROR_STREAM;
-    }
+    pdata = stream->pdata;
+
+    if (stream->direction == STREAM_INPUT)
+        RETURN_ERROR("writing file", ENOTSUP);
     
     for (i = 0; i < sample_count; i++)
-        fprintf (pdata->fd, "%d\n", ((int16_t*)samples)[i]);
+        if (fprintf (pdata->fd, "%d\n", ((int16_t*)samples)[i]) < 0)
+            RETURN_ERROR("writing file", errno);
+
     return 0;
 }
 
 static int stream_get_errno(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return EINVAL;
+    pdata = stream->pdata;
+
     return pdata->error;
 }
 
 static const char* stream_strerror(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return "No stream";
+    pdata = stream->pdata;
+
     return strerror(pdata->error);
 }
 
 static const char* stream_get_error_op(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return "No stream";
+    pdata = stream->pdata;
+
     return pdata->error_op;
 }
 
 static int stream_count(sdm_stream_t* stream)
 {
+    struct private_data_t *pdata;
     FILE *fp;
     char line[80];
     int lines=0;
 
+    if (!stream)
+        return SDM_ERROR_STREAM;
+    pdata = stream->pdata;
+
     if (stream->direction == STREAM_OUTPUT)
-        return 0;
+        RETURN_ERROR("reading file", ENOTSUP);
 
     fp = fopen(stream->args,"r");
     if (fp == NULL)
-        return -1;
+        RETURN_ERROR("reading file", errno);
 
     while (fgets(line, sizeof(line), fp))
         lines++;

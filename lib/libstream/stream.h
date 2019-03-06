@@ -53,6 +53,13 @@ enum {
     ,STREAM_INPUT
 };
 
+#define RETURN_ERROR(descr, errno_code)   \
+    do {                                  \
+        pdata->error_op = descr;          \
+        pdata->error = errno_code;        \
+        return SDM_ERROR_STREAM;          \
+    } while (0)
+
 //! Retrieve the list of drivers.
 //! @return list of drivers.
 const char** sdm_stream_get_drivers(void);

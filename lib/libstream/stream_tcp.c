@@ -34,29 +34,32 @@ struct private_data_t
 
 static int stream_open_connect(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
 
-    if ((pdata->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        pdata->error = errno;
-        pdata->error_op = "socket creation error";
+    if (!stream)
         return SDM_ERROR_STREAM;
-    }
+    pdata = stream->pdata;
+
+    if ((pdata->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        RETURN_ERROR("socket creation", errno);
 
     /* TODO: add retry count here */
     if (connect(pdata->fd, (struct sockaddr *)&pdata->saun, sizeof(pdata->saun)) == -1) {
         close(pdata->fd);
-        pdata->error = errno;
-        pdata->error_op = "connecting socket";
-        return SDM_ERROR_STREAM;
+        RETURN_ERROR("connecting socket", errno);
     }
     return SDM_ERROR_NONE;
 }
 
 static int stream_open_listen(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
     int wait_conn_fd = -1;
     int opt;
+
+    if (!stream)
+        return SDM_ERROR_STREAM;
+    pdata = stream->pdata;
 
     if ((wait_conn_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         pdata->error = errno;
@@ -101,24 +104,26 @@ stream_listen_error:
 
 static int stream_open(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
-    int rv = SDM_ERROR_STREAM, port;
+    struct private_data_t *pdata;
+    int rc, port;
     char *args;
     char *socket_type, *ip_s, *port_s;
     
+    if (!stream)
+        return SDM_ERROR_STREAM;
+    pdata = stream->pdata;
+
     /* args: tcp:[connect|listen]:<ip>:<port> */
-    if (stream->args == NULL) {
-        pdata->error = EINVAL;
-        pdata->error_op = "tcp arguments undefined";
-        return rv;
-    }
+    if (stream->args == NULL)
+        RETURN_ERROR("tcp arguments", EINVAL);
+
     args = strdup(stream->args);
     socket_type = strtok(args, ":");
     ip_s = strtok(NULL, ":");
     port_s = strtok(NULL, ":");
     if (!socket_type || !ip_s || !port_s) {
         pdata->error = EINVAL;
-        pdata->error_op = "arguments parsing error";
+        pdata->error_op = "arguments parsing";
         goto stream_open_finish;
     }
     port = atoi(port_s);
@@ -128,115 +133,148 @@ static int stream_open(sdm_stream_t *stream)
     pdata->saun.sin_port = htons(port);
 
     if (strcmp(socket_type, "connect") == 0) {
-        rv = stream_open_connect(stream);
+        rc = stream_open_connect(stream);
     } else if (strcmp(socket_type, "listen") == 0) {
-        rv = stream_open_listen(stream);
+        rc = stream_open_listen(stream);
     } else {
         pdata->error = EINVAL;
-        pdata->error_op = "connection type undefiend";
+        pdata->error_op = "connection type";
+    }
+    if (rc < 0) {
+        pdata->error = errno;
+        pdata->error_op = "opening stream";
     }
   stream_open_finish:
     free(args);
-    return rv;
+    return rc;
 }
 
 static int stream_close(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
 
-    if (pdata->fd >= 0) {
+    if (!stream)
+        return SDM_ERROR_STREAM;
+    pdata = stream->pdata;
+
+    if (pdata->fd >= 0)
         close(pdata->fd);
-    }
     
     return SDM_ERROR_NONE;
 }
 
 static void stream_free(sdm_stream_t *stream)
 {
-    free(stream->pdata);
+    if (!stream && stream->pdata) {
+        free(stream->pdata);
+        stream->pdata = NULL;
+    }
 }
 
 static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sample_count)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
     int rv, offset = 0;
     int requested_length = 2 * sample_count;
     
-    if (stream->direction == STREAM_OUTPUT) {
+    if (!stream)
         return SDM_ERROR_STREAM;
-    }
+    pdata = stream->pdata;
+
+    if (stream->direction == STREAM_OUTPUT)
+        RETURN_ERROR("reading from stream", ENOTSUP);
+
     do {
         rv = read(pdata->fd, &((char*)samples)[offset], requested_length - offset);
         if (rv > 0) {
             offset += rv;
         } else {
-            if (rv < 0 && (errno == EAGAIN || errno == EINTR)) continue;
-            break;
+            if (rv < 0 && (errno == EAGAIN || errno == EINTR))
+                continue;
+            RETURN_ERROR("reading from stream", errno);
         }
     } while (offset < requested_length);
 
-    if (rv == 0) {
+    if (rv == 0)
         return offset / 2;
-    } else if (offset == requested_length) {
-        return sample_count;
-    } else {
+    if (offset != requested_length)
         return SDM_ERROR_STREAM;
-    }
+
+    return sample_count;
 }
 
 static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_count)
 {
-    struct private_data_t *pdata = stream->pdata;
-    int rv, offset = 0;
+    struct private_data_t *pdata;
+    int rc, offset = 0;
     int requested_length = 2 * sample_count;
     
-    if (stream->direction == STREAM_INPUT) {
+    if (!stream)
         return SDM_ERROR_STREAM;
-    }
+    pdata = stream->pdata;
+
+    if (stream->direction == STREAM_INPUT)
+        RETURN_ERROR("writing to stream", ENOTSUP);
+
     do {
-        rv = write(pdata->fd, &((char*)samples)[offset], requested_length - offset);
-        if (rv > 0) {
-            offset += rv;
+        rc = write(pdata->fd, &((char*)samples)[offset], requested_length - offset);
+        if (rc > 0) {
+            offset += rc;
         } else {
-            if (rv < 0 && (errno == EAGAIN || errno == EINTR)) continue;
-            break;
+            if (rc < 0 && (errno == EAGAIN || errno == EINTR))
+                continue;
+            RETURN_ERROR("writing to stream", errno);
         }
     } while (offset < requested_length);
   
-    if (offset == requested_length) {
-        return sample_count;
-    } else {
+    if (offset == requested_length)
         return SDM_ERROR_STREAM;
-    }
+
+    return sample_count;
 }
 
 static int stream_get_errno(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return EINVAL;
+    pdata = stream->pdata;
+
     return pdata->error;
 }
 
 static const char* stream_strerror(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return "No stream";
+    pdata = stream->pdata;
+
     return strerror(pdata->error);
 }
 
 static const char* stream_get_error_op(sdm_stream_t *stream)
 {
-    struct private_data_t *pdata = stream->pdata;
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return "No stream";
+    pdata = stream->pdata;
+
     return pdata->error_op;
 }
 
 static int stream_count(sdm_stream_t* stream)
 {
-    struct private_data_t *pdata = stream->pdata;
-    if (stream->direction == STREAM_OUTPUT)
-        return 0;
+    struct private_data_t *pdata;
 
-    pdata->error = errno = EAFNOSUPPORT;
-    pdata->error_op = "tcp stream count not supported";
-    return SDM_ERROR_NOT_FOUND;
+    if (!stream)
+        return SDM_ERROR_STREAM;
+    pdata = stream->pdata;
+
+    RETURN_ERROR("stream count", EAFNOSUPPORT);
 }
 
 int sdm_stream_tcp_new(sdm_stream_t *stream)
