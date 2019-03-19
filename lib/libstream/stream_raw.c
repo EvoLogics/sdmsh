@@ -35,7 +35,7 @@ static int stream_open(sdm_stream_t *stream)
     pdata = stream->pdata;
     
     if (stream->direction == STREAM_OUTPUT) {
-        pdata->fd = open(stream->args, O_CREAT|O_WRONLY);
+        pdata->fd = open(stream->args, O_CREAT|O_WRONLY, 0664);
     } else {
         pdata->fd = open(stream->args, O_RDONLY);
     }
