@@ -35,7 +35,7 @@ static int stream_open(sdm_stream_t *stream)
     pdata = stream->pdata;
     
     if (stream->direction == STREAM_OUTPUT) {
-        pdata->fd = open(stream->args, O_CREAT|O_WRONLY);
+        pdata->fd = open(stream->args, O_CREAT|O_WRONLY, 0664);
     } else {
         pdata->fd = open(stream->args, O_RDONLY);
     }
@@ -108,7 +108,7 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_cou
     if (rc < 0)
         RETURN_ERROR("writing file", errno);
 
-    if ((unsigned)rc != sample_count)
+    if ((unsigned)rc != stream->sample_size * sample_count)
         return SDM_ERROR_STREAM;
 
     return rc;
