@@ -98,7 +98,7 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
             
             va_start(ap, cmd_code);
             cmd->threshold =       va_arg(ap, int);
-            cmd->gain_and_srclvl = va_arg(ap, int) << 8;
+            cmd->gain_and_srclvl = va_arg(ap, int) << 7;
             cmd->gain_and_srclvl |= va_arg(ap, int);
             preamp_gain = (va_arg(ap, int) & 0xf) << 12;
             va_end(ap);
