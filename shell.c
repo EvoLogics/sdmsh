@@ -38,9 +38,13 @@ int is_interactive_mode(struct shell_config *sc)
 static void handle_signals(int signo) {
     switch (signo) {
         case SIGINT:
-            if (rl_line_buffer) {
-                rl_replace_line("", 0);
-                rl_redisplay();
+            if (is_interactive_mode(shell_config)) {
+                if (rl_line_buffer) {
+                    rl_replace_line("", 0);
+                    rl_redisplay();
+                }
+            } else {
+                shell_config->shell_quit = 1;
             }
             break;
 

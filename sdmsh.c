@@ -309,8 +309,11 @@ int main(int argc, char *argv[])
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
-        if (rc == -1 && errno == EINTR)
+        if (rc == -1 && errno == EINTR) {
+            if(shell_config.shell_quit)
+                break;
             continue;
+        }
 
         if (rc == -1)
             err(1, "select()");
