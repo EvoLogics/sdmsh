@@ -188,7 +188,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
             logger(WARN_LOG, "ref: opening %s was interrupted\n", argv[1]);
         else
-            logger(ERR_LOG, "ref: error %s\n", sdm_stream_strerror(ss->stream[0]));
+            logger(ERR_LOG, "ref: open error %s\n", sdm_stream_strerror(ss->stream[0]));
         return -1;
     }
 
@@ -197,7 +197,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     rc = sdm_load_samples(ss, data + len - samples_count, samples_count);
 
     if (rc < 0) {
-        logger(ERR_LOG, "ref: error %s\n", sdm_stream_strerror(ss->stream[0]));
+        logger(ERR_LOG, "ref: read error %s\n", sdm_stream_strerror(ss->stream[0]));
         rc = -1;
     } else {
         if (rc != len) {
@@ -239,7 +239,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     if (nsamples == 0) {
         rc = sdm_stream_count(ss->stream[0]);
         if (rc < 0) {
-            logger(ERR_LOG, "tx: error %s\n", sdm_stream_strerror(ss->stream[0]));
+            logger(ERR_LOG, "tx: stream count error %s\n", sdm_stream_strerror(ss->stream[0]));
             return -1;
         } else if (rc == 0) {
             logger(ERR_LOG, "tx: Zero samples. "
@@ -254,7 +254,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
             logger(WARN_LOG, "tx: opening %s was interrupted\n", argv[1]);
         else
-            logger(ERR_LOG, "tx: error %s\n", sdm_stream_strerror(ss->stream[0]));
+            logger(ERR_LOG, "tx: open error %s\n", sdm_stream_strerror(ss->stream[0]));
         return -1;
     }
     data = malloc(len * sizeof(int16_t));
