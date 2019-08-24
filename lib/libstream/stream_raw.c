@@ -88,7 +88,7 @@ static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sa
     if (rc < 0)
         RETURN_ERROR("reading file", errno);
 
-    return rc;
+    return rc / stream->sample_size;
 }
 
 static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_count)
@@ -111,7 +111,7 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_cou
     if ((unsigned)rc != stream->sample_size * sample_count)
         return SDM_ERROR_STREAM;
 
-    return rc;
+    return rc / stream->sample_size;
 }
 
 static int stream_get_errno(sdm_stream_t *stream)
