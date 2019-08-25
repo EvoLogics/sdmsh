@@ -93,6 +93,7 @@ struct option long_options[] = {
     {"stop",          no_argument,       0, 's'},
     {"verbose",       optional_argument, 0, 'v'},
     {"ignore-errors", no_argument,       0, 'x'},
+    { NULL,           0,                 0, 0  }
 };
 int option_index = 0;
 
