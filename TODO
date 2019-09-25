@@ -40,3 +40,5 @@
 - add to fw error reply on `usbl_rx` if there is no usbl support
 - add to fw command 'change mode to/from SDM mode'
 - add version of firmware request/reply
+
+- FIXME: refactor to avoid -fpack-struct in CFLAGS
