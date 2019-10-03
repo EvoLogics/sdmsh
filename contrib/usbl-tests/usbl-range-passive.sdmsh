@@ -5,5 +5,5 @@ usbl_config 0 51200 3 5
 rx 102400 raw:rx.raw
 systime
 usleep 1000000
-tx ascii:examples/0717-up-10.dat
+tx ascii:examples/0717-up.dat
 systime

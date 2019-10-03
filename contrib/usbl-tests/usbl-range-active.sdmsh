@@ -1,6 +1,6 @@
 stop
 config 200 0 3 1
-tx ascii:examples/0717-up-10.dat
+tx ascii:examples/0717-up.dat
 systime
 ref ascii:examples/0717-up.dat
 usbl_config 0 51200 3 5
