@@ -171,11 +171,11 @@ expect -re {tx_time = (\d+), rx_time = (\d+)[^\d]} {
     if {$type == "active"} {
         switch $stage {
             0 { set start $expect_out(1,string) }
-            1 { set end   [expr $expect_out(2,string) + (1024 - $::opt(ref_sample_number)) * 16] }
+            1 { set end   [expr $expect_out(2,string) - $::opt(ref_sample_number) * 16] }
         }
     } else {
         switch $stage {
-            0 { set start [expr $expect_out(2,string) + (1024 - $::opt(ref_sample_number)) * 16] }
+            0 { set start [expr $expect_out(2,string) - $::opt(ref_sample_number) * 16] }
             1 { set end   $expect_out(1,string) }
         }
     }
