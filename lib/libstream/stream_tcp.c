@@ -227,7 +227,7 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_cou
         }
     } while (offset < requested_length);
   
-    if (offset == requested_length)
+    if (offset != requested_length)
         return SDM_ERROR_STREAM;
 
     return sample_count;
