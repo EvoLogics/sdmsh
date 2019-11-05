@@ -22,6 +22,7 @@ int sdmsh_cmd_stop       (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_ref        (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_tx         (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_rx         (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_rx_janus   (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usbl_rx    (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_systime    (struct shell_config *sc, char *argv[], int argc);
@@ -37,6 +38,7 @@ struct commands_t commands[] = {
    , {"ref",         sdmsh_cmd_ref,         SCF_USE_DRIVER, "ref [<number of samples>] [<driver>:]<params>", "Update reference signal."}
    , {"tx",          sdmsh_cmd_tx,          SCF_USE_DRIVER, "tx [<number of samples>] [<driver>:]<parameter>", "Send signal."}
    , {"rx",          sdmsh_cmd_rx,          SCF_USE_DRIVER, "rx <number of samples> [<driver>:]<params> [[<driver>:]<params>]", "Receive signal [0 is inf]."}
+   , {"rx_janus",    sdmsh_cmd_rx_janus,    SCF_USE_DRIVER, "rx_janus <number of samples> [<driver>:]<params> [[<driver>:]<params>]", "Receive signal [0 is inf]."}
    , {"usbl_rx",     sdmsh_cmd_usbl_rx,     SCF_USE_DRIVER, "usbl_rx <channel> <number of samples> [<driver>:]<params>", "Receive signal from USBL channel."}
    , {"systime",     sdmsh_cmd_systime,     SCF_NONE,       "systime", "Request systime."}
    , {"waitsyncin",  sdmsh_cmd_waitsyncin,  SCF_NONE,       "waitsyncin", "Wait SYNCIN message."}
@@ -285,7 +287,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     return 0;
 }
 
-int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
+int sdmsh_cmd_rx_helper(struct shell_config *sc, char *argv[], int argc, int code)
 {
     long nsamples = 0;
     /* FILE *fp; */
@@ -295,7 +297,11 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
     ARGS_RANGE(argc >= 3);
 
     /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
-    ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+    if (code == SDM_CMD_RX) {
+        ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+    } else {
+        ARG_LONG("rx_janus: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+    }
 
     if (nsamples % 1024) {
         long old = nsamples;
@@ -321,10 +327,20 @@ int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
         sdm_free_streams(ss);
         return -1;
     }
-    sdm_cmd(ss, SDM_CMD_RX, nsamples);
+    sdm_cmd(ss, code, nsamples);
     /* rl_message("Waiting for receiving %ld samples to file %s\n", nsamples, ss->filename); */
     
     return 0;
+}
+
+int sdmsh_cmd_rx(struct shell_config *sc, char *argv[], int argc)
+{
+    return sdmsh_cmd_rx_helper(sc, argv, argc, SDM_CMD_RX);
+}
+
+int sdmsh_cmd_rx_janus(struct shell_config *sc, char *argv[], int argc)
+{
+    return sdmsh_cmd_rx_helper(sc, argv, argc, SDM_CMD_RX_JANUS);
 }
 
 int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
