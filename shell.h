@@ -46,6 +46,7 @@
 #define SCF_NO_HISTORY      (1 << 1)
 #define SCF_DRIVER_FILENAME (1 << 2)
 #define SCF_DRIVER_NET      (1 << 3)
+#define SCF_DRIVER_SH_LINE  (1 << 4)
 
 struct shell_config;
 typedef int (*command_handler)(struct shell_config *sc, char *argv[], int argc);

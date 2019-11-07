@@ -25,7 +25,7 @@ struct private_data_t
     int error;
     // Last error operation.
     const char* error_op;
-    
+
     // socket handle.
     int fd;
     // socket parameters
@@ -73,7 +73,7 @@ static int stream_open_listen(sdm_stream_t *stream)
         pdata->error_op = "setting socket parameters";
         goto stream_listen_error;
     }
-  
+
     if (bind(wait_conn_fd,(struct sockaddr *)&pdata->saun, sizeof(pdata->saun)) < 0) {
         pdata->error = errno;
         pdata->error_op = "binding socket";
@@ -85,7 +85,7 @@ static int stream_open_listen(sdm_stream_t *stream)
         pdata->error_op = "listening socket";
         goto stream_listen_error;
     }
-  
+
     pdata->fd = accept(wait_conn_fd, NULL, NULL);
     if (pdata->fd < 0) {
         pdata->error = errno;
@@ -108,7 +108,7 @@ static int stream_open(sdm_stream_t *stream)
     int rc, port;
     char *args;
     char *socket_type, *ip_s, *port_s;
-    
+
     if (!stream)
         return SDM_ERROR_STREAM;
     pdata = stream->pdata;
@@ -127,7 +127,7 @@ static int stream_open(sdm_stream_t *stream)
         goto stream_open_finish;
     }
     port = atoi(port_s);
-    
+
     pdata->saun.sin_family = AF_INET;
     pdata->saun.sin_addr.s_addr = inet_addr(ip_s);
     pdata->saun.sin_port = htons(port);
@@ -159,7 +159,7 @@ static int stream_close(sdm_stream_t *stream)
 
     if (pdata->fd >= 0)
         close(pdata->fd);
-    
+
     return SDM_ERROR_NONE;
 }
 
@@ -176,7 +176,7 @@ static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sa
     struct private_data_t *pdata;
     int rv, offset = 0;
     int requested_length = 2 * sample_count;
-    
+
     if (!stream)
         return SDM_ERROR_STREAM;
     pdata = stream->pdata;
@@ -208,7 +208,7 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_cou
     struct private_data_t *pdata;
     int rc, offset = 0;
     int requested_length = 2 * sample_count;
-    
+
     if (!stream)
         return SDM_ERROR_STREAM;
     pdata = stream->pdata;
@@ -226,7 +226,7 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_cou
             RETURN_ERROR("writing to stream", errno);
         }
     } while (offset < requested_length);
-  
+
     if (offset != requested_length)
         return SDM_ERROR_STREAM;
 
@@ -290,6 +290,6 @@ int sdm_stream_tcp_new(sdm_stream_t *stream)
     stream->get_error_op = stream_get_error_op;
     stream->count = stream_count;
     strcpy(stream->name, "TCP");
-    
+
     return SDM_ERROR_NONE;
 }

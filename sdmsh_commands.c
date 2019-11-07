@@ -53,6 +53,7 @@ struct driver_t drivers[] = {
     {"ascii:", SCF_DRIVER_FILENAME, "ascii:<filename> or file extension \".dat\" or \".txt\"", "This is default driver File format: float (-1.0 .. 1.0) or short interger as text line, one value per line" }
   , {"raw:",   SCF_DRIVER_FILENAME, "raw:<filename> or file extension \".raw\", \".bin\", \".dmp\" or \".fifo\"", "Binary format: int16_t per value" }
   , {"tcp:",   SCF_DRIVER_NET,      "tcp:<connect|listen>:<ip>:<port>", "Opens TCP socket to send or receive data, int16_t per value" }
+  , {"popen:", SCF_DRIVER_SH_LINE,  "popen:\"command-line\"", "Call external program to send or receive data, int16_t per value" }
   , {NULL, 0, NULL, NULL }
 };
 

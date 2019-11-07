@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h> /* strdup() */
+#include <wordexp.h>
 
 #include <compat/readline6.h>
 #include <readline/readline.h>
@@ -180,18 +181,33 @@ int  shell_handle(struct shell_config *sc)
     return rc;
 }
 
-void shell_make_argv(char *cmd_line, char ***argv, int *argc)
+int shell_make_argv(char *cmd_line, char ***argv, int *argc)
 {
-    char *p;
-    *argc = 0;
-    *argv = calloc(1, sizeof(char *));
+    wordexp_t result;
 
-    for (p = strtok(cmd_line, " "); p; p = strtok(NULL, " ")) {
-        (*argv)[(*argc)++] = p;
-        *argv = realloc(*argv, (*argc + 1) * sizeof(char *));
+    switch (wordexp(cmd_line, &result, 0))
+    {
+        case 0:
+            break;
+        case WRDE_NOSPACE:
+            wordfree (&result);
+            /* FALLTHROUGH */
+        default:
+            return -1;
     }
 
-    (*argv)[*argc] = NULL;
+    *argc = result.we_wordc;
+    *argv = result.we_wordv;
+
+    return 0;
+}
+
+void shell_free_argv(char **argv, int argc)
+{
+    int i;
+    for (i = 0; i < argc; i++)
+        free(argv[i]);
+    free(argv);
 }
 
 int shell_run_cmd(struct shell_config *sc, char *shell_input)
@@ -207,12 +223,12 @@ int shell_run_cmd(struct shell_config *sc, char *shell_input)
 
     cmd_line = strdup(shell_input);
 
-    logger(DEBUG_LOG, "call: %s\n", cmd_line);
-    shell_make_argv(cmd_line, &argv, &argc);
-    if (argv == NULL || *argv == NULL) {
-        free(cmd_line);
+    if (shell_make_argv(cmd_line, &argv, &argc) == -1) {
+        fprintf(stderr, "\rCommand syntax error: \"%s\"\n", cmd_line);
         return -1;
     }
+
+    logger(DEBUG_LOG, "call: %s\n", cmd_line);
 
     for (cmd = sc->commands; cmd->name != NULL; cmd++) {
         if (!strcmp(cmd->name, argv[0])) {
@@ -232,7 +248,7 @@ int shell_run_cmd(struct shell_config *sc, char *shell_input)
     }
 
     free(cmd_line);
-    free(argv);
+    shell_free_argv(argv, argc);
     return rc;
 }
 
