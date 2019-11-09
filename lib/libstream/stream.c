@@ -116,6 +116,20 @@ const char* sdm_stream_strerror(sdm_stream_t *stream)
     return stream->bfr_error;
 }
 
+const char* sdm_stream_get_name(sdm_stream_t *stream)
+{
+    if (!stream)
+        return "No stream";
+    return stream->name;
+}
+
+const char* sdm_stream_get_args(sdm_stream_t *stream)
+{
+    if (!stream)
+        return "No stream";
+    return stream->args;
+}
+
 void sdm_stream_dump(sdm_stream_t *stream)
 {
     fprintf(stderr, "Stream Driver: %s", stream->name);

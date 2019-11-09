@@ -10,6 +10,7 @@
 #include <readline/readline.h>
 
 #include <sdm.h>
+#include <janus/janus.h>
 #include <sdmsh_commands.h>
 #include <shell_history.h>
 #include <shell_help.h>
@@ -66,7 +67,7 @@ int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
     /* argv[2]: driver:parameter */
     /* raw:rx.raw */
 
-    if (ss->stream_cnt >= 2) {
+    if (ss->stream_cnt >= SDM_STREAMS_MAX) {
         logger(ERR_LOG, "Too many streams open: %d\n", ss->stream_cnt);
         return -1;
     }
@@ -293,15 +294,22 @@ int sdmsh_cmd_rx_helper(struct shell_config *sc, char *argv[], int argc, int cod
     long nsamples = 0;
     /* FILE *fp; */
     sdm_session_t *ss = sc->cookie;
-    int strm_cnt = argc - 2, i;
-
-    ARGS_RANGE(argc >= 3);
+    int strm_cnt = 0, i;
+    char **args_sink;
 
     /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
     if (code == SDM_CMD_RX) {
+        ARGS_RANGE(argc >= 3);
         ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+        strm_cnt  = argc - 2;
+        args_sink = argv + 2;
     } else {
-        ARG_LONG("rx_janus: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+        if (sdm_janus_rx_check_executable() != 0)
+            return -1;
+
+        ARGS_RANGE(argc >= 0);
+        strm_cnt  = argc - 1;
+        args_sink = argv + 1;
     }
 
     if (nsamples % 1024) {
@@ -313,21 +321,23 @@ int sdmsh_cmd_rx_helper(struct shell_config *sc, char *argv[], int argc, int cod
 
     sdm_free_streams(ss);
     for (i = 0; i < strm_cnt; i++) {
-        if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[2 + i])) {
+        if (sdmsh_stream_new(ss, STREAM_OUTPUT, args_sink[i])) {
             break;
         }
         if (sdm_stream_open(ss->stream[i])) {
             if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
-                logger(WARN_LOG, "rx: opening %s was interrupted\n", argv[2 + i]);
+                logger(WARN_LOG, "rx: opening %s was interrupted\n", args_sink[i]);
             else
                 logger(ERR_LOG, "rx: %s error %s\n", sdm_stream_strerror(ss->stream[i]));
             break;
         }
     }
+
     if (i != strm_cnt) {
         sdm_free_streams(ss);
         return -1;
     }
+
     sdm_cmd(ss, code, nsamples);
     /* rl_message("Waiting for receiving %ld samples to file %s\n", nsamples, ss->filename); */
     

@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <unistd.h>     /* write() */
 #include <err.h>        /* err() */
@@ -13,6 +14,10 @@
 #include <limits.h>    /* SHORT_MAX  */
 
 #include <sdm.h>
+
+#include <stream.h>
+#include <error.h>
+#include <janus/janus.h>
 
 #define ADD_TO_DATA_VAL16bit(data, data_size, data_offset, val) \
     ADD_TO_DATA_VAL(2, data, data_size, data_offset, val)
@@ -69,8 +74,10 @@ void sdm_close(sdm_session_t *ss)
     int i;
     close(ss->sockfd);
     for (i = 0; i < ss->stream_cnt; i++) {
-        if (ss->stream[i])
+        if (ss->stream[i]) {
+            sdm_stream_close(ss->stream[i]);
             sdm_stream_free(ss->stream[i]);
+        }
     }
     if (ss->rx_data)
         free(ss->rx_data);
@@ -250,7 +257,7 @@ char* sdm_reply_to_str(uint8_t cmd)
         case SDM_REPLY_STOP:    return "STOP";
         case SDM_REPLY_RX:      return "RX";
         case SDM_REPLY_RX_JANUS:return "RX_JANUS";
-        case SDM_REPLY_JANUS_DETECTED: return "JANUS_DETECED";
+        case SDM_REPLY_JANUS_DETECTED: return "JANUS_DETECTED";
         case SDM_REPLY_USBL_RX: return "USBL_RX";
         case SDM_REPLY_SYSTIME: return "SYSTIME";
         case SDM_REPLY_SYNCIN:  return "SYNCIN";
@@ -330,7 +337,7 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
             float janus_doppler;
             memcpy(&janus_nshift, &ss->rx_data[0], 4);
             memcpy(&janus_doppler, &ss->rx_data[4], 4);
-            printf("janus_nshift = %d, janus_doppler = %f\n", janus_nshift, janus_doppler);
+            logger (INFO_LOG, " janus_nshift = %d, janus_doppler = %f\n", janus_nshift, janus_doppler);
             break;
         }
         case SDM_REPLY_REPORT:
@@ -358,12 +365,30 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 
 int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
 {
+    int error = 0;
+
     for (ss->stream_idx = 0; ss->stream_idx < ss->stream_cnt; ss->stream_idx++) {
         int rc = sdm_stream_write(ss->stream[ss->stream_idx], (int16_t*)buf, len / 2);
-        if (rc < 0)
-            return rc;
+        if (rc <= 0) {
+            error = rc;
+            if (rc == SDM_ERROR_EOS) {
+                logger(INFO_LOG, "\nSink was closed: %s:%s\n",
+                        sdm_stream_get_name(ss->stream[ss->stream_idx]),
+                        sdm_stream_get_args(ss->stream[ss->stream_idx]));
+            } else {
+                logger(ERR_LOG, "\nError %s.\n", sdm_stream_strerror(ss->stream[ss->stream_idx]));
+            }
+            sdm_stream_close(ss->stream[ss->stream_idx]);
+            sdm_stream_free(ss->stream[ss->stream_idx]);
+            if (ss->stream_idx != ss->stream_cnt) {
+                memmove(&ss->stream[ss->stream_idx], &ss->stream[ss->stream_idx + 1], ss->stream_cnt - ss->stream_idx);
+                ss->stream_idx--;
+            }
+            ss->stream_cnt--;
+        }
     }
-    return 0;
+
+    return error;
 }
 
 int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len)
@@ -380,6 +405,7 @@ int sdm_free_streams(sdm_session_t *ss)
     int i;
     for (i = 0; i < ss->stream_cnt; i++) {
         sdm_stream_close(ss->stream[i]);
+        sdm_stream_free(ss->stream[i]);
     }
     ss->stream_cnt = 0;
     return 0;
@@ -486,10 +512,12 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     if (cmd == NULL) {
         int rc = sdm_save_samples(ss, ss->rx_data, handled);
         if (rc < 0) {
-            logger(ERR_LOG, "\nError %s. %d samples was dropped.\n"
-                    , sdm_stream_strerror(ss->stream[ss->stream_idx]), handled);
+            logger(INFO_LOG, "\n%d samples was dropped.\n", handled);
+            if (rc == SDM_ERROR_EOS)
+                return SDM_ERR_SAVE_EOF;
             return SDM_ERR_SAVE_FAIL;
         }
+
         ss->data_len += handled;
         sdm_buf_resize(ss, NULL, -handled);
         return handled;
@@ -500,8 +528,9 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     if (ss->state == SDM_STATE_RX && data_len != 0) {
         int rc = sdm_save_samples(ss, ss->rx_data, data_len);
         if (rc < 0) {
-            logger(ERR_LOG, "\nError %s. %d samples was dropped.\n"
-                    , sdm_stream_strerror(ss->stream[ss->stream_idx]), data_len);
+            logger(INFO_LOG, "\n%d samples was dropped.\n", handled);
+            if (rc == SDM_ERROR_EOS)
+                return SDM_ERR_SAVE_EOF;
             return SDM_ERR_SAVE_FAIL;
         }
         ss->data_len += data_len;
@@ -549,6 +578,8 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
                 logger(INFO_LOG, "\rwaiting %d bytes\r", ss->cmd.data_len * 2 - handled - data_len);
                 return 0;
             }
+
+            sdm_handle_janus_detect(ss);
 
             sdm_buf_resize(ss, NULL, -ss->cmd.data_len * 2);
             handled += ss->cmd.data_len * 2;

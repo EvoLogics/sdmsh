@@ -4,8 +4,10 @@
 #include <assert.h>
 #include <err.h>
 #include <stdarg.h>
+#include <stdio.h>  /* FILE* */
 #include <stdlib.h>
 #include <string.h> /* strdup() */
+#include <sys/queue.h>
 #include <wordexp.h>
 
 #include <compat/readline6.h>

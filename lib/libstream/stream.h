@@ -121,6 +121,16 @@ int sdm_stream_get_errno(sdm_stream_t *stream);
 //! @return last error in string form.
 const char* sdm_stream_strerror(sdm_stream_t *stream);
 
+//! Retrieve the name of stream
+//! @param stream output stream object.
+//! @return name of strem
+const char* sdm_stream_get_name(sdm_stream_t *stream);
+
+//! Retrieve the arguments of stream
+//! @param stream output stream object.
+//! @return arguments of strem
+const char* sdm_stream_get_args(sdm_stream_t *stream);
+
 //! Print stream parameters to standard output.
 //! @param stream output stream object.
 void sdm_stream_dump(sdm_stream_t *stream);

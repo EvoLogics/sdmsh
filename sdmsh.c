@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
             } while (rc > 0);
 
             if (rc < 0) {
-                if (rc == SDM_ERR_SAVE_FAIL)
+                if (rc == SDM_ERR_SAVE_FAIL || rc == SDM_ERR_SAVE_EOF)
                     sdm_cmd(sdm_session, SDM_CMD_STOP);
 
                 if (!is_interactive_mode(&shell_config) && !(flags & FLAG_IGNORE_ERRORS))

@@ -11,6 +11,7 @@
 #define SDM_ERR_NO_SDM_MODE -42
 #define SDM_ERR_BUSY        -43
 #define SDM_ERR_SAVE_FAIL   -44
+#define SDM_ERR_SAVE_EOF    -45
 
 #define BUFSIZE  (1024 * 4)
 
@@ -92,6 +93,8 @@ enum {
     SDM_BIN16
 };
 
+#define SDM_STREAMS_MAX 3
+
 typedef struct {
     int  sockfd;
     char *rx_data;
@@ -101,7 +104,7 @@ typedef struct {
 
     int stream_cnt;
     int stream_idx; /* Last handled stream. For error report */
-    sdm_stream_t *stream[2];
+    sdm_stream_t *stream[SDM_STREAMS_MAX];
     int data_len;
 
     sdm_pkt_t cmd; /* last received command */

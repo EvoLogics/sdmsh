@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <errno.h>
 
 #include <stream.h>
 #include <error.h>
@@ -99,8 +100,13 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned int sample
     do {
         rc = fwrite(samples + offset, 2, samples_count - offset, pdata->fd);
         if (rc != samples_count - offset) {
-            if (ferror(pdata->fd))
+            if (ferror(pdata->fd)) {
+                if (errno == EPIPE) {
+                    errno = 0;
+                    return SDM_ERROR_EOS;
+                }
                 RETURN_ERROR("writing to stream", errno);
+            }
 
             if (feof(pdata->fd))
                 return SDM_ERROR_STREAM;
