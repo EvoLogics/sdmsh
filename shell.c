@@ -396,7 +396,7 @@ void shell_input_init_current(struct shell_config *sc)
     switch (si->flags & SHELL_INPUT_MASK_TYPE) {
         case SHELL_INPUT_TYPE_STDIO:
         case SHELL_INPUT_TYPE_FILE:
-            if (isatty(fileno(si->input)))
+            if (si->input && isatty(fileno(si->input)))
                 si->flags |= SHELL_INPUT_INTERACTIVE;
             else
                 si->flags &= ~SHELL_INPUT_INTERACTIVE;
