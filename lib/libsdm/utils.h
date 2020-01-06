@@ -2,10 +2,11 @@
 #define __LOGGER_H
 
 /* NOTE: basename version of uclibc in libgen is dangerous, it modifies original string */
-#include <stdio.h>
 #include <stdarg.h>
-#include <unistd.h> /* ssize_t */
+#include <stddef.h> /* offsetof() */
+#include <stdio.h>
 #include <libgen.h> /* basename() */
+#include <unistd.h> /* ssize_t */
 
 #define CACHE_SIZE (16*2)
 
