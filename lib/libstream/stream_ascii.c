@@ -189,7 +189,7 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned int sample
         if (fprintf (pdata->fd, "%d\n", ((int16_t*)samples)[i]) < 0)
             RETURN_ERROR("writing file", errno);
 
-    return 0;
+    return sample_count;
 }
 
 static int stream_get_errno(sdm_stream_t *stream)
