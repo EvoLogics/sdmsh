@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <wordexp.h>
 
 #include <stream.h>
 #include <error.h>
@@ -29,8 +30,16 @@ sdm_stream_t *sdm_stream_new(int direction, const char* driver, const char* args
 {
     sdm_stream_t *stream = (sdm_stream_t*)calloc(1, sizeof(sdm_stream_t));
     int rv = 0;
+    wordexp_t wbuf;
 
-    strcpy(stream->args, args);
+    /* Need to expand ~ after <driver>: prefix */
+    wordexp(args, &wbuf, WRDE_NOCMD);
+    if (wbuf.we_wordc == 1)
+        strcpy(stream->args, wbuf.we_wordv[0]);
+    else
+        strcpy(stream->args, args);
+    wordfree(&wbuf);
+
     stream->sample_size = sizeof(int16_t);
     stream->direction = direction;
     sdm_stream_set_fs(stream, 62500);
