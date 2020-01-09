@@ -112,6 +112,13 @@ static void sdmsh_signal_event_hook(int signo)
     }
 }
 
+char *short_hostname(char *host) {
+    char *p = strrchr(host, '.');
+    if (p)
+        return p + 1;
+    return host;
+}
+
 void sdmsh_update_promt_state(sdm_session_t *ss, char *host)
 {
     static int old_state = -1;
@@ -127,10 +134,10 @@ void sdmsh_update_promt_state(sdm_session_t *ss, char *host)
         return;
 
     if (ss->state == SDM_STATE_RX) {
-        rl_message("%s:rx[%d]> ", strrchr(host, '.') + 1, ss->data_len / 2);
+        rl_message("%s:rx[%d]> ", short_hostname(host), ss->data_len / 2);
         data_len = ss->data_len;
     } else if (ss->state == SDM_STATE_WAIT_SYNCIN) {
-        rl_message("%s:wait syncin> ", strrchr(host, '.') + 1);
+        rl_message("%s:wait syncin> ", short_hostname(host));
     } else {
         rl_clear_message();
         data_len = 0;
@@ -275,7 +282,7 @@ int main(int argc, char *argv[])
     shell_config.signal_event_hook = sdmsh_signal_event_hook;
     shell_init(&shell_config);
 
-    shell_update_prompt(&shell_config, "%s> ", strrchr(host, '.') + 1);
+    shell_update_prompt(&shell_config, "%s> ", short_hostname(host));
     
     for (;;) {
         static fd_set rfds;
