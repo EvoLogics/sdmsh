@@ -3,7 +3,7 @@ PROJ = libsdm
 SRC = sdm.c utils.c janus/janus.c
 OBJ = $(SRC:.c=.o)
 
-CFLAGS = -W -Wall -I. -I../libstream -lm -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
+CFLAGS = -W -Wall -I. -I../libstream -lm -ggdb -DLOGGER_ENABLED -fPIC
 
 $(PROJ): $(PROJ).so $(PROJ).a
 

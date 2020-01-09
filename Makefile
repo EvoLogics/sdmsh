@@ -20,7 +20,7 @@ LIBSTRM_DIR = lib/$(LIBSTRM)
 LIBSTRM_SO  = $(LIBSTRM_DIR)/$(LIBSTRM).so
 LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 
-CFLAGS = -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC -fpack-struct
+CFLAGS = -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC
 
 ifdef BUILD_STATIC_BIN
     LDFLAGS += -static -l:libreadline.a
