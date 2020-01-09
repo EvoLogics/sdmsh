@@ -85,6 +85,7 @@ struct shell_input {
 
     int flags;
     FILE *input;
+    FILE *output;
     union {
         char *source_name;
         char *script_file;

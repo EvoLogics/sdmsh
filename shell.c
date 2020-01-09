@@ -268,7 +268,6 @@ int rl_hook_argv_getch(FILE *in)
     in = in;
 
     si = STAILQ_FIRST(&shell_config->inputs_list);
-
     if (*si->pos != 0) {
         ch = *si->pos++;
     } else {
@@ -417,12 +416,13 @@ void shell_input_init_current(struct shell_config *sc)
     if (si->flags & SHELL_INPUT_INTERACTIVE) {
         sc->flags &= ~SF_SCRIPT_MODE;
         rl_outstream = stdout;
+        si->output = NULL;
     } else {
         static FILE *dev_null = NULL;
         if (!dev_null)
             dev_null = fopen("/dev/null", "w");;
         sc->flags |= SF_SCRIPT_MODE;
-        rl_outstream = dev_null;
+        si->output = rl_outstream = dev_null;
         rl_tty_set_echoing(0);
     }
 
@@ -433,6 +433,11 @@ void shell_input_init_current(struct shell_config *sc)
 struct shell_input* shell_input_next(struct shell_config *sc)
 {
     struct shell_input *si = STAILQ_FIRST(&sc->inputs_list);
+
+    if (si->input)
+        fclose(si->input);
+    if (si->output)
+        fclose(si->output);
 
     STAILQ_REMOVE_HEAD(&sc->inputs_list, next_input);
     free(si);
