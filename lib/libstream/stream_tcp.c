@@ -165,7 +165,7 @@ static int stream_close(sdm_stream_t *stream)
 
 static void stream_free(sdm_stream_t *stream)
 {
-    if (!stream && stream->pdata) {
+    if (stream && stream->pdata) {
         free(stream->pdata);
         stream->pdata = NULL;
     }

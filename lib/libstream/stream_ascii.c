@@ -84,7 +84,7 @@ int sdm_autodetect_samples_file_type(sdm_stream_t *stream)
 static int stream_open(sdm_stream_t *stream)
 {
     struct private_data_t *pdata = stream->pdata;
-    int rc;
+    int rc = 0;
 
     if (stream->direction == STREAM_OUTPUT) {
         pdata->fd = fopen(stream->args, "w");
@@ -122,7 +122,7 @@ static int stream_close(sdm_stream_t *stream)
 
 static void stream_free(sdm_stream_t *stream)
 {
-    if (!stream && stream->pdata) {
+    if (stream && stream->pdata) {
         free(stream->pdata);
         stream->pdata = NULL;
     }
