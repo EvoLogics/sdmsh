@@ -4,7 +4,7 @@
 #include <sys/types.h>  /* socket() */
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <arpa/inet.h>  /* inet_addr() */
+#include <netdb.h>      /* getaddrinfo()() */
 #include <string.h>     /* memset() */
 #include <stdarg.h>
 #include <errno.h>
@@ -36,25 +36,44 @@
 
 unsigned long log_level = FATAL_LOG | ERR_LOG | WARN_LOG | INFO_LOG;
 
-sdm_session_t* sdm_connect(char *ip, int port)
+sdm_session_t* sdm_connect(char *host, int port)
 {
-    struct sockaddr_in serveraddr;
+    sdm_session_t* ss;
+    struct addrinfo hints, *resolv, *rp;
     int sockfd;
+    char buf_host[NI_MAXHOST];
+    char buf_port[NI_MAXSERV];
 
-    sdm_session_t* ss = malloc(sizeof(sdm_session_t));
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    snprintf(buf_port, sizeof(buf_port), "%d", port);
+
+    if (getaddrinfo(host, buf_port, &hints, &resolv) != 0)
+        return NULL;
+
+    for (rp = resolv; rp != NULL; rp = rp->ai_next) {
+        sockfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sockfd < 0)
+            continue;
+
+        if (getnameinfo(rp->ai_addr, rp->ai_addrlen, buf_host, sizeof (buf_host), buf_port, sizeof(buf_port), NI_NUMERICHOST) < 0)
+            return NULL;
+        logger(DEBUG_LOG, "Try connect to %s:%s..\n", buf_host, buf_port);
+
+        if (connect(sockfd, rp->ai_addr, rp->ai_addrlen) >= 0)
+            break; /* success */
+
+        close(sockfd);
+    }
+
+    if (rp == NULL)
+        return NULL;
+
+    freeaddrinfo(resolv);
+
+    ss = malloc(sizeof(sdm_session_t));
     if (ss == NULL)
-        return NULL;
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-        return NULL;
-
-    memset((char *)&serveraddr, 0, sizeof(serveraddr));
-    serveraddr.sin_addr.s_addr = inet_addr(ip);
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = htons(port);
-
-    if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
         return NULL;
 
     ss->sockfd = sockfd;

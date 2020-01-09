@@ -110,7 +110,7 @@ typedef struct {
     sdm_pkt_t cmd; /* last received command */
 } sdm_session_t;
 
-sdm_session_t* sdm_connect(char *ip, int port);
+sdm_session_t* sdm_connect(char *host, int port);
 void  sdm_close(sdm_session_t *ss);
 
 int   sdm_cmd(sdm_session_t *sd, int cmd_code, ...);
