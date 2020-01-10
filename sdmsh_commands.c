@@ -251,8 +251,8 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
                   "TX command with 0 samples as parameter, do not supported.\n");
             return -1;
         }
+        nsamples = rc;
     }
-    nsamples = rc;
     
     if (sdm_stream_open(ss->stream[0])) {
         if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
