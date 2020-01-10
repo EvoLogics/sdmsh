@@ -434,8 +434,10 @@ struct shell_input* shell_input_next(struct shell_config *sc)
 {
     struct shell_input *si = STAILQ_FIRST(&sc->inputs_list);
 
-    if (si->input)
+    /* closing stdin will cause terminal corrupion after sdmsh quit */
+    if (si->input && ((si->flags & SHELL_INPUT_MASK_TYPE ) != SHELL_INPUT_TYPE_STDIO))
         fclose(si->input);
+
     if (si->output)
         fclose(si->output);
 
