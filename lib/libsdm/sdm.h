@@ -62,6 +62,20 @@ enum {
 };
 
 
+enum {
+    SDM_PKT_T_OFFSET_MAGIC      = 0,
+    SDM_PKT_T_OFFSET_CMD        = 8,
+    SDM_PKT_T_OFFSET_THRESHOLD  = 9,
+    SDM_PKT_T_OFFSET_PARAM      = 9,
+    SDM_PKT_T_OFFSET_RX_LEN     = 9,
+    SDM_PKT_T_OFFSET_GAIN_LVL   = 11,
+    SDM_PKT_T_OFFSET_DUMMY      = 11,
+    SDM_PKT_T_OFFSET_DATA_LEN   = 12,
+    SDM_PKT_T_OFFSET_DATA       = 16
+};
+
+#define SDM_PKT_T_SIZE 16
+
 typedef struct sdm_pkt_t {
     uint64_t magic;
     uint8_t  cmd;
@@ -69,16 +83,16 @@ typedef struct sdm_pkt_t {
         struct {
             uint16_t threshold;
             uint8_t  gain_and_srclvl;
-        } __attribute__((packed));
+        };
         struct {
             uint16_t param;
             uint8_t  dummy;
-        } __attribute__((packed));
+        };
         char rx_len[3];
     };
     uint32_t data_len; /* in 16bit words */
     uint16_t data[0];
-} __attribute__((packed)) sdm_pkt_t;
+} sdm_pkt_t;
 
 enum {
     SDM_STATE_INIT = 1,
@@ -107,7 +121,7 @@ typedef struct {
     sdm_stream_t *stream[SDM_STREAMS_MAX];
     int data_len;
 
-    sdm_pkt_t cmd; /* last received command */
+    sdm_pkt_t *cmd; /* last received command */
 } sdm_session_t;
 
 sdm_session_t* sdm_connect(char *host, int port);
