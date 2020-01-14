@@ -438,14 +438,15 @@ struct shell_input* shell_input_next(struct shell_config *sc)
     if (si->input && ((si->flags & SHELL_INPUT_MASK_TYPE ) != SHELL_INPUT_TYPE_STDIO))
         fclose(si->input);
 
-    if (si->output)
-        fclose(si->output);
-
     STAILQ_REMOVE_HEAD(&sc->inputs_list, next_input);
-    free(si);
 
-    if (STAILQ_EMPTY(&sc->inputs_list))
+    if (STAILQ_EMPTY(&sc->inputs_list)) {
+        if (si->output)
+            fclose(si->output);
+        free(si);
         return NULL;
+    }
+    free(si);
 
     si = STAILQ_FIRST(&sc->inputs_list);
 
