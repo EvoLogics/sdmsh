@@ -107,8 +107,6 @@ enum {
     SDM_BIN16
 };
 
-#define SDM_STREAMS_MAX 3
-
 typedef struct {
     int  sockfd;
     char *rx_data;
@@ -116,10 +114,8 @@ typedef struct {
 
     int state;
 
-    int stream_cnt;
-    int stream_idx; /* Last handled stream. For error report */
-    sdm_stream_t *stream[SDM_STREAMS_MAX];
     int data_len;
+    struct streams_t streams;
 
     sdm_pkt_t *cmd; /* last received command */
 } sdm_session_t;
@@ -130,7 +126,7 @@ void  sdm_close(sdm_session_t *ss);
 int   sdm_cmd(sdm_session_t *sd, int cmd_code, ...);
 int   sdm_extract_reply(char *buf, size_t len, sdm_pkt_t **cmd);
 
-int   sdm_rx(sdm_session_t *ss, int cmd, ...);
+int   sdm_expect(sdm_session_t *ss, int cmd, ...);
 int   sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len);
 
 void  sdm_set_idle_state(sdm_session_t *ss);
@@ -140,9 +136,6 @@ int   sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd);
 int       sdm_save_samples(sdm_session_t *ss, char *buf, size_t len);
 /* int       sdm_save_samples(sdm_session_t *ss, char *filename, char *buf, size_t len); */
 int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len);
-int sdm_free_streams(sdm_session_t *ss);
-
-const char* strrpbrk(const char *s, const char *accept_only);
 
 char* sdm_cmd_to_str(uint8_t cmd);
 char* sdm_reply_to_str(uint8_t cmd);

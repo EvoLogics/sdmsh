@@ -29,7 +29,7 @@ void sdm_handle_janus_detect(sdm_session_t *ss)
     int32_t janus_nshift;
     float janus_doppler;
     char *janus_cmd;
-    sdm_stream_t *stream;
+    stream_t *stream;
 
     memcpy(&janus_nshift, &ss->rx_data[0], 4);
     memcpy(&janus_doppler, &ss->rx_data[4], 4);
@@ -39,19 +39,20 @@ void sdm_handle_janus_detect(sdm_session_t *ss)
 
     asprintf(&janus_cmd, JANUS_RX_CMD_FMT, janus_nshift, janus_doppler);
 
-    stream = sdm_stream_new(STREAM_OUTPUT, "popen", janus_cmd);
+    stream = stream_new(STREAM_OUTPUT, "popen", janus_cmd);
     if (stream == NULL) {
         logger(ERR_LOG, "janus: Stream creation error\n");
         sdm_cmd(ss, SDM_CMD_STOP);
         sdm_set_idle_state(ss);
     } else {
-        if (sdm_stream_open(stream)) {
-            logger(ERR_LOG, "janus: %s error %s\n", sdm_stream_strerror(stream));
+        if (stream_open(stream)) {
+            logger(ERR_LOG, "janus: %s error %s\n", stream_strerror(stream));
             sdm_cmd(ss, SDM_CMD_STOP);
             sdm_set_idle_state(ss);
-        } else {
-            ss->stream[ss->stream_cnt] = stream;
-            ss->stream_cnt++;
+        } else if (streams_add(&ss->streams, stream) < 0) {
+            logger(ERR_LOG, "janus: Too many streams\n");
+            sdm_cmd(ss, SDM_CMD_STOP);
+            sdm_set_idle_state(ss);
         }
     }
     free(janus_cmd);

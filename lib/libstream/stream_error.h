@@ -14,22 +14,22 @@
 // Author: Oleksiy Kebkal                                                 *
 //*************************************************************************
 
-#ifndef SDM_ERROR_H_INCLUDED_
-#define SDM_ERROR_H_INCLUDED_
+#ifndef STREAM_ERROR_H_INCLUDED_
+#define STREAM_ERROR_H_INCLUDED_
 
 //! No error.
-#define SDM_ERROR_NONE          0
+#define STREAM_ERROR_NONE          0
 //! Resource not found.
-#define SDM_ERROR_NOT_FOUND    -1
-#define SDM_ERROR_FILE         -2
+#define STREAM_ERROR_NOT_FOUND    -1
+#define STREAM_ERROR_FILE         -2
 //! Stream error.
-#define SDM_ERROR_STREAM       -3
-#define SDM_ERROR_OTHER        -4
+#define STREAM_ERROR              -3
+#define STREAM_ERROR_OTHER        -4
 //! End of stream.
-#define SDM_ERROR_EOS          -5
+#define STREAM_ERROR_EOS          -5
 //! Buffer overrun.
-#define SDM_ERROR_OVERRUN      -6
+#define STREAM_ERROR_OVERRUN      -6
 //! Buffer underrun.
-#define SDM_ERROR_UNDERRUN     -7
+#define STREAM_ERROR_UNDERRUN     -7
 
 #endif

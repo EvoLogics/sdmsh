@@ -2,14 +2,16 @@
 // Authors: Oleksiy Kebkal                                                *
 //*************************************************************************
 
-#ifndef SDM_STREAM_H_INCLUDED_
-#define SDM_STREAM_H_INCLUDED_
+#ifndef STREAM_H_INCLUDED_
+#define STREAM_H_INCLUDED_
 
 #include <stdint.h>
 
-typedef struct sdm_stream_t sdm_stream_t;
+#include <stream_error.h>
 
-struct sdm_stream_t
+typedef struct stream_t stream_t;
+
+struct stream_t
 {
     //! Sampling frequency (Hz).
     unsigned fs;
@@ -22,23 +24,23 @@ struct sdm_stream_t
     char args[256];
     
     //! Pointer to driver's open function.
-    int (*open)(sdm_stream_t*);
+    int (*open)(stream_t*);
     //! Pointer to driver's close function.
-    int (*close)(sdm_stream_t*);
+    int (*close)(stream_t*);
     //! Pointer to driver's free function.
-    void (*free)(sdm_stream_t*);
+    void (*free)(stream_t*);
     //! Pointer to driver's read function.
-    int (*read)(const sdm_stream_t*, int16_t*, unsigned);
+    int (*read)(const stream_t*, int16_t*, unsigned);
     //! Pointer to driver's write function.
-    int (*write)(sdm_stream_t*, void*, unsigned);
+    int (*write)(stream_t*, void*, unsigned);
     //! Number of samples in stream, if known.
-    int (*count)(sdm_stream_t*);
+    int (*count)(stream_t*);
     //! Pointer to driver's error function.
-    int (*get_errno)(sdm_stream_t*);
+    int (*get_errno)(stream_t*);
     //! Pointer to driver's error translating function.
-    const char* (*strerror)(sdm_stream_t*);
+    const char* (*strerror)(stream_t*);
     //! Pointer to driver's error translating function.
-    const char* (*get_error_op)(sdm_stream_t*);
+    const char* (*get_error_op)(stream_t*);
     
     //! Private data used by stream implementation.
     void* pdata;
@@ -53,86 +55,123 @@ enum {
     ,STREAM_INPUT
 };
 
+typedef struct streams_t streams_t;
+#define STREAMS_MAX 3
+struct streams_t {
+    unsigned int count;
+    stream_t *streams[STREAMS_MAX];
+    int error_index; /* Last handled stream. For error report */
+};
+
 #define RETURN_ERROR(descr, errno_code)   \
     do {                                  \
         pdata->error_op = descr;          \
         pdata->error = errno_code;        \
-        return SDM_ERROR_STREAM;          \
+        return STREAM_ERROR;              \
     } while (0)
 
 //! Retrieve the list of drivers.
 //! @return list of drivers.
-const char** sdm_stream_get_drivers(void);
+const char** stream_get_drivers(void);
 
 //! Create output stream object.
+//! @param direction STREAM_OUTPUT or STREAM_INPUT
 //! @param driver driver's name.
 //! @param args driver's arguments.
 //! @return output stream object.
-sdm_stream_t *sdm_stream_new(int direction, const char* driver, const char* args);
+stream_t *stream_new(int direction, const char* driver, const char* args);
+
+//! Create output stream object.
+//! @param direction STREAM_OUTPUT or STREAM_INPUT
+//! @param description driver's description
+//! @return output stream object.
+stream_t* stream_new_by_description(int direction, char *description);
 
 //! Free output stream.
 //! @param stream output stream.
-void sdm_stream_free(sdm_stream_t *stream);
+void stream_free(stream_t *stream);
 
 //! Set sampling frequency.
 //! @param stream output stream object.
 //! @param fs sampling frequency (Hz).
-void sdm_stream_set_fs(sdm_stream_t *stream, unsigned fs);
+void stream_set_fs(stream_t *stream, unsigned fs);
 
 //! Retrieve sampling frequency.
 //! @param stream output stream object.
 //! @return sampling frequency (Hz).
-unsigned sdm_stream_get_fs(sdm_stream_t *stream);
+unsigned stream_get_fs(stream_t *stream);
 
 //! Retrieve sample size.
 //! @param stream output stream object.
 //! @return sample size in bytes.
-unsigned sdm_stream_get_sample_size(sdm_stream_t *stream);
+unsigned stream_get_sample_size(stream_t *stream);
 
 //! Open stream.
 //! @param stream output stream object.
-int sdm_stream_open(sdm_stream_t *stream);
+int stream_open(stream_t *stream);
 
 //! Close stream.
 //! @param stream output stream object.
-int sdm_stream_close(sdm_stream_t *stream);
+int stream_close(stream_t *stream);
 
 //! Read samples from stream.
 //! @param stream intput stream object.
 //! @param samples array of samples.
 //! @param sample_count number of samples.
-int sdm_stream_read(sdm_stream_t *stream, int16_t* samples, unsigned sample_count);
+int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count);
 
 //! Write samples to stream.
 //! @param stream output stream object.
 //! @param samples array of samples.
 //! @param sample_count number of samples.
-int sdm_stream_write(sdm_stream_t *stream, int16_t *samples, unsigned sample_count);
+int stream_write(stream_t *stream, int16_t *samples, unsigned sample_count);
 
-unsigned sdm_stream_count(sdm_stream_t *stream);
+unsigned stream_count(stream_t *stream);
 
 //! Retrieve the last error.
 //! @param stream output stream object.
 //! @return last error
-int sdm_stream_get_errno(sdm_stream_t *stream);
+int stream_get_errno(stream_t *stream);
 
 //! Retrieve the last error.
 //! @param stream output stream object.
 //! @return last error in string form.
-const char* sdm_stream_strerror(sdm_stream_t *stream);
+const char* stream_strerror(stream_t *stream);
 
 //! Retrieve the name of stream
 //! @param stream output stream object.
 //! @return name of strem
-const char* sdm_stream_get_name(sdm_stream_t *stream);
+const char* stream_get_name(stream_t *stream);
 
 //! Retrieve the arguments of stream
 //! @param stream output stream object.
 //! @return arguments of strem
-const char* sdm_stream_get_args(sdm_stream_t *stream);
+const char* stream_get_args(stream_t *stream);
 
 //! Print stream parameters to standard output.
 //! @param stream output stream object.
-void sdm_stream_dump(sdm_stream_t *stream);
+void stream_dump(stream_t *stream);
+
+/****************** streams_t ***********************/
+//! Create and add output stream object to streams
+//! @param streams streams list to add
+//! @param direction STREAM_OUTPUT or STREAM_INPUT
+//! @param description driver's description
+//! @return output stream object.
+stream_t* streams_add_new(streams_t *streams, int direction, char *description);
+
+//! Add stream to streams.
+//! @param streams output streams object.
+//! @param stream which will be added.
+int streams_add(streams_t *streams, stream_t *stream);
+
+//! Remove stream from streams.
+//! @param streams output streams object.
+//! @param index which will be removed
+int streams_remove(streams_t *streams, unsigned int index);
+
+//! Clean streams. Close and free memory
+//! @param streams output streams object.
+void streams_clean(streams_t *streams);
 
 #endif

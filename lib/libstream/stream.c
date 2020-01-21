@@ -9,10 +9,9 @@
 #include <wordexp.h>
 
 #include <stream.h>
-#include <error.h>
 // Declare driver initialization functions.
 #define STREAM(a) \
-    int sdm_stream_ ## a ## _new(sdm_stream_t*);
+    int stream_impl_ ## a ## _new(stream_t*);
 #include "stream.def"
 
 static const char* s_drivers[] = {
@@ -21,14 +20,14 @@ static const char* s_drivers[] = {
     NULL
 };
 
-const char** sdm_stream_get_drivers(void)
+const char** stream_get_drivers(void)
 {
     return s_drivers;
 }
 
-sdm_stream_t *sdm_stream_new(int direction, const char* driver, const char* args)
+stream_t *stream_new(int direction, const char* driver, const char* args)
 {
-    sdm_stream_t *stream = (sdm_stream_t*)calloc(1, sizeof(sdm_stream_t));
+    stream_t *stream = (stream_t*)calloc(1, sizeof(stream_t));
     int rv = 0;
     wordexp_t wbuf;
 
@@ -42,22 +41,22 @@ sdm_stream_t *sdm_stream_new(int direction, const char* driver, const char* args
 
     stream->sample_size = sizeof(int16_t);
     stream->direction = direction;
-    sdm_stream_set_fs(stream, 62500);
+    stream_set_fs(stream, 62500);
 
 // Select appropriate driver.
 #define STREAM(a)                                                      \
-    if (strcmp(#a, driver) == 0) {rv = sdm_stream_ ## a ## _new(stream);} else
+    if (strcmp(#a, driver) == 0) {rv = stream_impl_ ## a ## _new(stream);} else
 #include "stream.def"
-    {rv = SDM_ERROR_STREAM;}
-  
-    if (rv != SDM_ERROR_NONE) {
+    {rv = STREAM_ERROR;}
+
+    if (rv != STREAM_ERROR_NONE) {
         free(stream);
         return NULL;
     }
     return stream;
 }
 
-void sdm_stream_free(sdm_stream_t *stream)
+void stream_free(stream_t *stream)
 {
     if (stream->free)
         stream->free(stream);
@@ -65,81 +64,182 @@ void sdm_stream_free(sdm_stream_t *stream)
     stream = NULL;
 }
 
-void sdm_stream_set_fs(sdm_stream_t *stream, unsigned fs)
+void stream_set_fs(stream_t *stream, unsigned fs)
 {
     stream->fs = fs;
 }
 
-unsigned sdm_stream_get_fs(sdm_stream_t *stream)
+unsigned stream_get_fs(stream_t *stream)
 {
     return stream->fs;
 }
 
-unsigned sdm_stream_get_sample_size(sdm_stream_t *stream)
+unsigned stream_get_sample_size(stream_t *stream)
 {
     return stream->sample_size;
 }
 
-int sdm_stream_open(sdm_stream_t *stream)
+int stream_open(stream_t *stream)
 {
     return stream->open(stream);
 }
 
-int sdm_stream_close(sdm_stream_t *stream)
+int stream_close(stream_t *stream)
 {
     return stream->close(stream);
 }
 
-int sdm_stream_read(sdm_stream_t *stream, int16_t* samples, unsigned sample_count)
+int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count)
 {
     if (stream) {
         return stream->read(stream, samples, sample_count);
     } else {
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     }
 }
 
-int sdm_stream_write(sdm_stream_t *stream, int16_t *samples, unsigned sample_count)
+int stream_write(stream_t *stream, int16_t *samples, unsigned sample_count)
 {
     if (stream) {
         return stream->write(stream, samples, sample_count);
     } else {
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     }
 }
 
-unsigned sdm_stream_count(sdm_stream_t *stream)
+unsigned stream_count(stream_t *stream)
 {
     return stream->count(stream);
 }
 
-int sdm_stream_get_errno(sdm_stream_t *stream)
+int stream_get_errno(stream_t *stream)
 {
     return stream->get_errno(stream);
 }
 
-const char* sdm_stream_strerror(sdm_stream_t *stream)
+const char* stream_strerror(stream_t *stream)
 {
     sprintf(stream->bfr_error, "%s \"%s\": %s", stream->get_error_op(stream)
             , stream->args, stream->strerror(stream));
     return stream->bfr_error;
 }
 
-const char* sdm_stream_get_name(sdm_stream_t *stream)
+const char* stream_get_name(stream_t *stream)
 {
     if (!stream)
         return "No stream";
     return stream->name;
 }
 
-const char* sdm_stream_get_args(sdm_stream_t *stream)
+const char* stream_get_args(stream_t *stream)
 {
     if (!stream)
         return "No stream";
     return stream->args;
 }
 
-void sdm_stream_dump(sdm_stream_t *stream)
+/****************** streams_t ***********************/
+stream_t* stream_new_by_description(int direction, char *description)
+{
+    char *arg = strdup(description);
+    char *default_drv = "ascii";
+    char *drv, *drv_param;
+    stream_t *stream;
+
+    if (strchr(arg, ':')) {
+        drv = strtok(arg, ":");
+        if (drv == NULL) {
+            /* logger(ERR_LOG, "Output format error: %s\n", arg); */
+            goto stream_new_by_description_error;
+        }
+        drv_param = strtok(NULL, "");
+        if (drv_param == NULL) {
+            /* logger(ERR_LOG, "Output description undefined\n"); */
+            goto stream_new_by_description_error;
+        }
+    } else {
+        char *ext = strrchr(arg, '.');
+
+        if (!ext)
+            drv = default_drv;
+        else if (!strcmp(ext, ".dat") || !strcmp(ext, ".txt"))
+            drv = "ascii";
+        else if (!strcmp(ext, ".raw") || !strcmp(ext, ".bin")
+              || !strcmp(ext, ".dmp") || !strcmp(ext, ".fifo"))
+            drv = "raw";
+        else
+            drv = default_drv;
+        drv_param = arg;
+    }
+    
+    stream = stream_new(direction, drv, drv_param);
+    if (stream == NULL) {
+        /* logger(ERR_LOG, "Stream creation error\n"); */
+        goto stream_new_by_description_error;
+    }
+
+    free(arg);
+    return stream;
+stream_new_by_description_error:
+    free(arg);
+    return NULL;
+}
+
+stream_t* streams_add_new(streams_t *streams, int direction, char *description)
+{
+    stream_t *stream;
+
+    if (streams->count >= STREAMS_MAX) {
+        /* logger(ERR_LOG, "Too many streams open: %d\n", streams->count); */
+        return NULL;
+    }
+
+    stream = stream_new_by_description(direction, description);
+
+    if (!stream)
+        return NULL;
+
+    if (streams_add(streams, stream) < 0)
+        return NULL;
+
+    return stream;
+}
+
+int streams_add(streams_t *streams, stream_t *stream)
+{
+    if (streams->count >= STREAMS_MAX)
+        return STREAM_ERROR;
+    streams->count++;
+    streams->streams[streams->count] = stream;
+    return STREAM_ERROR_NONE;
+}
+
+void streams_clean(streams_t *streams)
+{
+    unsigned int i;
+    for (i = 0; i < streams->count; i++)
+        streams_remove(streams, i);
+}
+
+int streams_remove(streams_t *streams, unsigned int index)
+{
+    if (index > streams->count)
+        return STREAM_ERROR;
+
+    if (streams->streams[index]) {
+        stream_close(streams->streams[index]);
+        stream_free (streams->streams[index]);
+        if (index != streams->count) {
+            memmove(&streams->streams[index], &streams->streams[index + 1], streams->count - index);
+            streams->error_index = 0;
+        }
+        streams->count--;
+    }
+
+    return STREAM_ERROR_NONE;
+}
+
+void stream_dump(stream_t *stream)
 {
     fprintf(stderr, "Stream Driver: %s", stream->name);
     fprintf(stderr, "Stream Driver Arguments: %s", stream->args);

@@ -17,7 +17,6 @@
 #include <sys/wait.h>           /* waitpid() */
 
 #include <stream.h>
-#include <error.h>
 
 struct private_data_t
 {
@@ -32,12 +31,12 @@ struct private_data_t
     struct sockaddr_in saun;
 };
 
-static int stream_open_connect(sdm_stream_t *stream)
+static int stream_impl_open_connect(stream_t *stream)
 {
     struct private_data_t *pdata;
 
     if (!stream)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     pdata = stream->pdata;
 
     if ((pdata->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -48,61 +47,61 @@ static int stream_open_connect(sdm_stream_t *stream)
         close(pdata->fd);
         RETURN_ERROR("connecting socket", errno);
     }
-    return SDM_ERROR_NONE;
+    return STREAM_ERROR_NONE;
 }
 
-static int stream_open_listen(sdm_stream_t *stream)
+static int stream_impl_open_listen(stream_t *stream)
 {
     struct private_data_t *pdata;
     int wait_conn_fd = -1;
     int opt;
 
     if (!stream)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     pdata = stream->pdata;
 
     if ((wait_conn_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         pdata->error = errno;
         pdata->error_op = "socket creation error";
-        goto stream_listen_error;
+        goto stream_impl_listen_error;
     }
 
     opt = 1;
     if (setsockopt(wait_conn_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt)) < 0) {
         pdata->error = errno;
         pdata->error_op = "setting socket parameters";
-        goto stream_listen_error;
+        goto stream_impl_listen_error;
     }
 
     if (bind(wait_conn_fd,(struct sockaddr *)&pdata->saun, sizeof(pdata->saun)) < 0) {
         pdata->error = errno;
         pdata->error_op = "binding socket";
-        goto stream_listen_error;
+        goto stream_impl_listen_error;
     }
 
     if (listen(wait_conn_fd, 1) == -1) {
         pdata->error = errno;
         pdata->error_op = "listening socket";
-        goto stream_listen_error;
+        goto stream_impl_listen_error;
     }
 
     pdata->fd = accept(wait_conn_fd, NULL, NULL);
     if (pdata->fd < 0) {
         pdata->error = errno;
         pdata->error_op = "accepting socket connection";
-        goto stream_listen_error;
+        goto stream_impl_listen_error;
     }
-  return SDM_ERROR_NONE;
+  return STREAM_ERROR_NONE;
 
-stream_listen_error:
+stream_impl_listen_error:
   if (wait_conn_fd >= 0) {
       close(wait_conn_fd);
   }
-  return SDM_ERROR_STREAM;
+  return STREAM_ERROR;
 
 }
 
-static int stream_open(sdm_stream_t *stream)
+static int stream_impl_open(stream_t *stream)
 {
     struct private_data_t *pdata;
     int rc, port;
@@ -110,7 +109,7 @@ static int stream_open(sdm_stream_t *stream)
     char *socket_type, *ip_s, *port_s;
 
     if (!stream)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     pdata = stream->pdata;
 
     /* args: tcp:[connect|listen]:<ip>:<port> */
@@ -124,7 +123,7 @@ static int stream_open(sdm_stream_t *stream)
     if (!socket_type || !ip_s || !port_s) {
         pdata->error = EINVAL;
         pdata->error_op = "arguments parsing";
-        goto stream_open_finish;
+        goto stream_impl_open_finish;
     }
     port = atoi(port_s);
 
@@ -133,9 +132,9 @@ static int stream_open(sdm_stream_t *stream)
     pdata->saun.sin_port = htons(port);
 
     if (strcmp(socket_type, "connect") == 0) {
-        rc = stream_open_connect(stream);
+        rc = stream_impl_open_connect(stream);
     } else if (strcmp(socket_type, "listen") == 0) {
-        rc = stream_open_listen(stream);
+        rc = stream_impl_open_listen(stream);
     } else {
         pdata->error = EINVAL;
         pdata->error_op = "connection type";
@@ -144,26 +143,26 @@ static int stream_open(sdm_stream_t *stream)
         pdata->error = errno;
         pdata->error_op = "opening stream";
     }
-  stream_open_finish:
+  stream_impl_open_finish:
     free(args);
     return rc;
 }
 
-static int stream_close(sdm_stream_t *stream)
+static int stream_impl_close(stream_t *stream)
 {
     struct private_data_t *pdata;
 
     if (!stream)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     pdata = stream->pdata;
 
     if (pdata->fd >= 0)
         close(pdata->fd);
 
-    return SDM_ERROR_NONE;
+    return STREAM_ERROR_NONE;
 }
 
-static void stream_free(sdm_stream_t *stream)
+static void stream_impl_free(stream_t *stream)
 {
     if (stream && stream->pdata) {
         free(stream->pdata);
@@ -171,14 +170,14 @@ static void stream_free(sdm_stream_t *stream)
     }
 }
 
-static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sample_count)
+static int stream_impl_read(const stream_t *stream, int16_t* samples, unsigned sample_count)
 {
     struct private_data_t *pdata;
     int rv, offset = 0;
     int requested_length = 2 * sample_count;
 
     if (!stream)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     pdata = stream->pdata;
 
     if (stream->direction == STREAM_OUTPUT)
@@ -198,19 +197,19 @@ static int stream_read(const sdm_stream_t *stream, int16_t* samples, unsigned sa
     if (rv == 0)
         return offset / 2;
     if (offset != requested_length)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
 
     return sample_count;
 }
 
-static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_count)
+static int stream_impl_write(stream_t *stream, void* samples, unsigned sample_count)
 {
     struct private_data_t *pdata;
     int rc, offset = 0;
     int requested_length = 2 * sample_count;
 
     if (!stream)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     pdata = stream->pdata;
 
     if (stream->direction == STREAM_INPUT)
@@ -228,12 +227,12 @@ static int stream_write(sdm_stream_t *stream, void* samples, unsigned sample_cou
     } while (offset < requested_length);
 
     if (offset != requested_length)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
 
     return sample_count;
 }
 
-static int stream_get_errno(sdm_stream_t *stream)
+static int stream_impl_get_errno(stream_t *stream)
 {
     struct private_data_t *pdata;
 
@@ -244,7 +243,7 @@ static int stream_get_errno(sdm_stream_t *stream)
     return pdata->error;
 }
 
-static const char* stream_strerror(sdm_stream_t *stream)
+static const char* stream_impl_strerror(stream_t *stream)
 {
     struct private_data_t *pdata;
 
@@ -255,7 +254,7 @@ static const char* stream_strerror(sdm_stream_t *stream)
     return strerror(pdata->error);
 }
 
-static const char* stream_get_error_op(sdm_stream_t *stream)
+static const char* stream_impl_get_error_op(stream_t *stream)
 {
     struct private_data_t *pdata;
 
@@ -266,30 +265,30 @@ static const char* stream_get_error_op(sdm_stream_t *stream)
     return pdata->error_op;
 }
 
-static int stream_count(sdm_stream_t* stream)
+static int stream_impl_count(stream_t* stream)
 {
     struct private_data_t *pdata;
 
     if (!stream)
-        return SDM_ERROR_STREAM;
+        return STREAM_ERROR;
     pdata = stream->pdata;
 
     RETURN_ERROR("stream count", EAFNOSUPPORT);
 }
 
-int sdm_stream_tcp_new(sdm_stream_t *stream)
+int stream_impl_tcp_new(stream_t *stream)
 {
     stream->pdata = calloc(1, sizeof(struct private_data_t));
-    stream->open = stream_open;
-    stream->close = stream_close;
-    stream->free = stream_free;
-    stream->read = stream_read;
-    stream->write = stream_write;
-    stream->get_errno = stream_get_errno;
-    stream->strerror = stream_strerror;
-    stream->get_error_op = stream_get_error_op;
-    stream->count = stream_count;
+    stream->open         = stream_impl_open;
+    stream->close        = stream_impl_close;
+    stream->free         = stream_impl_free;
+    stream->read         = stream_impl_read;
+    stream->write        = stream_impl_write;
+    stream->get_errno    = stream_impl_get_errno;
+    stream->strerror     = stream_impl_strerror;
+    stream->get_error_op = stream_impl_get_error_op;
+    stream->count        = stream_impl_count;
     strcpy(stream->name, "TCP");
 
-    return SDM_ERROR_NONE;
+    return STREAM_ERROR_NONE;
 }

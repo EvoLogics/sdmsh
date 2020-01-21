@@ -77,27 +77,16 @@ sdm_session_t* sdm_connect(char *host, int port)
         return NULL;
 
     ss->sockfd = sockfd;
-    ss->rx_data = NULL;
-    ss->rx_data_len = 0;
     ss->state = SDM_STATE_INIT;
-    ss->stream_cnt = 0;
-    ss->stream_idx = 0;
-    ss->data_len = 0;
-    ss->cmd = NULL;
 
     return ss;
 }
 
 void sdm_close(sdm_session_t *ss)
 {
-    int i;
     close(ss->sockfd);
-    for (i = 0; i < ss->stream_cnt; i++) {
-        if (ss->stream[i]) {
-            sdm_stream_close(ss->stream[i]);
-            sdm_stream_free(ss->stream[i]);
-        }
-    }
+    streams_clean(&ss->streams);
+
     if (ss->rx_data)
         free(ss->rx_data);
     if (ss->cmd)
@@ -168,8 +157,13 @@ int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
     int n;
     char *data;
     int data_len = 0;
-    char *cmd_raw  = calloc(1, SDM_PKT_T_SIZE);
-    sdm_pkt_t *cmd = calloc(1, sizeof(sdm_pkt_t));
+    char *cmd_raw;
+    sdm_pkt_t *cmd;
+
+    if (ss == NULL)
+        return -1;
+    cmd_raw  = calloc(1, SDM_PKT_T_SIZE);
+    cmd = calloc(1, sizeof(sdm_pkt_t));
 
     cmd->magic = SDM_PKG_MAGIC;
     cmd->cmd = cmd_code;
@@ -452,25 +446,21 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
 {
     int error = 0;
+    unsigned int i;
 
-    for (ss->stream_idx = 0; ss->stream_idx < ss->stream_cnt; ss->stream_idx++) {
-        int rc = sdm_stream_write(ss->stream[ss->stream_idx], (int16_t*)buf, len / 2);
+    for (i = 0; i < ss->streams.count; i++) {
+        int rc = stream_write(ss->streams.streams[i], (int16_t*)buf, len / 2);
         if (rc <= 0) {
             error = rc;
-            if (rc == SDM_ERROR_EOS) {
+            ss->streams.error_index = i;
+            if (rc == STREAM_ERROR_EOS) {
                 logger(INFO_LOG, "\nSink was closed: %s:%s\n",
-                        sdm_stream_get_name(ss->stream[ss->stream_idx]),
-                        sdm_stream_get_args(ss->stream[ss->stream_idx]));
+                        stream_get_name(ss->streams.streams[i]),
+                        stream_get_args(ss->streams.streams[i]));
             } else {
-                logger(ERR_LOG, "\nError %s.\n", sdm_stream_strerror(ss->stream[ss->stream_idx]));
+                logger(ERR_LOG, "\nError %s.\n", stream_strerror(ss->streams.streams[i]));
             }
-            sdm_stream_close(ss->stream[ss->stream_idx]);
-            sdm_stream_free(ss->stream[ss->stream_idx]);
-            if (ss->stream_idx != ss->stream_cnt) {
-                memmove(&ss->stream[ss->stream_idx], &ss->stream[ss->stream_idx + 1], ss->stream_cnt - ss->stream_idx);
-                ss->stream_idx--;
-            }
-            ss->stream_cnt--;
+            streams_remove(&ss->streams, i);
         }
     }
 
@@ -479,22 +469,11 @@ int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
 
 int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len)
 {
-    if (ss->stream_cnt == 1) {
-        return sdm_stream_read(ss->stream[0], samples, len);
+    if (ss->streams.count == 1) {
+        return stream_read(ss->streams.streams[0], samples, len);
     } else {
         return -1;
     }
-}
-
-int sdm_free_streams(sdm_session_t *ss)
-{
-    int i;
-    for (i = 0; i < ss->stream_cnt; i++) {
-        sdm_stream_close(ss->stream[i]);
-        sdm_stream_free(ss->stream[i]);
-    }
-    ss->stream_cnt = 0;
-    return 0;
 }
 
 int sdm_extract_reply(char *buf, size_t len, sdm_pkt_t **cmd)
@@ -600,7 +579,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         int rc = sdm_save_samples(ss, ss->rx_data, handled);
         if (rc < 0) {
             logger(INFO_LOG, "\n%d samples was dropped.\n", handled);
-            if (rc == SDM_ERROR_EOS)
+            if (rc == STREAM_ERROR_EOS)
                 return SDM_ERR_SAVE_EOF;
             return SDM_ERR_SAVE_FAIL;
         }
@@ -614,7 +593,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         int rc = sdm_save_samples(ss, ss->rx_data, data_len);
         if (rc < 0) {
             logger(INFO_LOG, "\n%d samples was dropped.\n", handled);
-            if (rc == SDM_ERROR_EOS)
+            if (rc == STREAM_ERROR_EOS)
                 return SDM_ERR_SAVE_EOF;
             return SDM_ERR_SAVE_FAIL;
         }
@@ -632,9 +611,9 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
     switch (ss->cmd->cmd) {
         case SDM_REPLY_STOP:
-            if (ss->stream_cnt) {
+            if (ss->streams.count) {
                 logger(INFO_LOG, "\nReceiving %d samples is done.\n", ss->data_len / 2);
-                sdm_free_streams(ss);
+                streams_clean(&ss->streams);
                 sdm_set_idle_state(ss);
             }
             ss->state = SDM_STATE_IDLE;
@@ -712,7 +691,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     return -1;
 }
 
-int sdm_rx(sdm_session_t *ss, int cmd, ...)
+int sdm_expect(sdm_session_t *ss, int cmd, ...)
 {
     int len = 0;
     char buf[BUFSIZE];

@@ -58,61 +58,6 @@ struct driver_t drivers[] = {
   , {NULL, 0, NULL, NULL }
 };
 
-int sdmsh_stream_new(sdm_session_t *ss, int direction, char *parameter)
-{
-    char *arg = strdup(parameter);
-    char *default_drv = "ascii";
-    char *drv, *drv_param;
-    sdm_stream_t *stream;
-    /* argv[2]: driver:parameter */
-    /* raw:rx.raw */
-
-    if (ss->stream_cnt >= SDM_STREAMS_MAX) {
-        logger(ERR_LOG, "Too many streams open: %d\n", ss->stream_cnt);
-        return -1;
-    }
-    if (strchr(arg, ':')) {
-        drv = strtok(arg, ":");
-        if (drv == NULL) {
-            logger(ERR_LOG, "Output format error: %s\n", arg);
-            goto stream_new_error;
-        }
-        drv_param = strtok(NULL, "");
-        if (drv_param == NULL) {
-            logger(ERR_LOG, "Output parameter undefined\n");
-            goto stream_new_error;
-        }
-    } else {
-        char *ext = strrchr(arg, '.');
-
-        if (!ext)
-            drv = default_drv;
-        else if (!strcmp(ext, ".dat") || !strcmp(ext, ".txt"))
-            drv = "ascii";
-        else if (!strcmp(ext, ".raw") || !strcmp(ext, ".bin")
-              || !strcmp(ext, ".dmp") || !strcmp(ext, ".fifo"))
-            drv = "raw";
-        else
-            drv = default_drv;
-        drv_param = arg;
-    }
-    /* if (ss->stream)  */
-    /*     sdm_stream_free(ss->stream); */
-    
-    stream = sdm_stream_new(direction, drv, drv_param);
-    if (stream == NULL) {
-        logger(ERR_LOG, "Stream creation error\n");
-        goto stream_new_error;
-    }
-    ss->stream[ss->stream_cnt] = stream;
-    ss->stream_cnt++;
-    free(arg);
-    return 0;
-  stream_new_error:
-    free(arg);
-    return -1;
-}
-
 int sdmsh_cmd_help(struct shell_config *sc, char *argv[], int argc)
 {
     argc = argc;
@@ -176,23 +121,24 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
     int rc;
     int samples_count = len;
+    stream_t* stream;
 
     ARGS_RANGE(argc == 2 || argc == 3);
-    sdm_free_streams(ss);
-    
     if (argc == 3) {
         ARG_LONG("ref: samples-count", argv[1], samples_count, arg >= 1 && arg <= 1024);
         argv++;
     }
 
-    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1]))
+    streams_clean(&ss->streams);
+    stream = streams_add_new(&ss->streams, STREAM_INPUT, argv[1]);
+    if (!stream)
         return -1;
 
-    if (sdm_stream_open(ss->stream[0])) {
-        if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+    if (stream_open(stream)) {
+        if (stream_get_errno(stream) == EINTR)
             logger(WARN_LOG, "ref: opening %s was interrupted\n", argv[1]);
         else
-            logger(ERR_LOG, "ref: open error %s\n", sdm_stream_strerror(ss->stream[0]));
+            logger(ERR_LOG, "ref: open error %s\n", stream_strerror(stream));
         return -1;
     }
 
@@ -201,7 +147,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     rc = sdm_load_samples(ss, data + len - samples_count, samples_count);
 
     if (rc < 0) {
-        logger(ERR_LOG, "ref: read error %s\n", sdm_stream_strerror(ss->stream[0]));
+        logger(ERR_LOG, "ref: read error %s\n", stream_strerror(stream));
         rc = -1;
     } else {
         if (rc != len) {
@@ -229,6 +175,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
     int rc;
     unsigned nsamples = 0, passed = 0;
+    stream_t* stream;
 
     ARGS_RANGE(argc == 3 || argc == 2);
     if (argc == 3) {
@@ -236,14 +183,15 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         argv++;
     }
 
-    sdm_free_streams(ss);
-    if (sdmsh_stream_new(ss, STREAM_INPUT, argv[1]))
+    streams_clean(&ss->streams);
+    stream = streams_add_new(&ss->streams, STREAM_INPUT, argv[1]);
+    if (!stream)
         return -1;
 
     if (nsamples == 0) {
-        rc = sdm_stream_count(ss->stream[0]);
+        rc = stream_count(stream);
         if (rc < 0) {
-            logger(ERR_LOG, "tx: stream count error %s\n", sdm_stream_strerror(ss->stream[0]));
+            logger(ERR_LOG, "tx: stream count error %s\n", stream_strerror(stream));
             return -1;
         } else if (rc == 0) {
             logger(ERR_LOG, "tx: Zero samples. "
@@ -254,11 +202,11 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         nsamples = rc;
     }
     
-    if (sdm_stream_open(ss->stream[0])) {
-        if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+    if (stream_open(stream)) {
+        if (stream_get_errno(stream) == EINTR)
             logger(WARN_LOG, "tx: opening %s was interrupted\n", argv[1]);
         else
-            logger(ERR_LOG, "tx: open error %s\n", sdm_stream_strerror(ss->stream[0]));
+            logger(ERR_LOG, "tx: open error %s\n", stream_strerror(stream));
         return -1;
     }
     data = malloc(len * sizeof(int16_t));
@@ -319,22 +267,23 @@ int sdmsh_cmd_rx_helper(struct shell_config *sc, char *argv[], int argc, int cod
                 , old, nsamples);
     }
 
-    sdm_free_streams(ss);
+    streams_clean(&ss->streams);
     for (i = 0; i < strm_cnt; i++) {
-        if (sdmsh_stream_new(ss, STREAM_OUTPUT, args_sink[i])) {
+        stream_t* stream = streams_add_new(&ss->streams, STREAM_OUTPUT, args_sink[i]);
+        if (!stream)
             break;
-        }
-        if (sdm_stream_open(ss->stream[i])) {
-            if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+
+        if (stream_open(stream)) {
+            if (stream_get_errno(stream) == EINTR)
                 logger(WARN_LOG, "rx: opening %s was interrupted\n", args_sink[i]);
             else
-                logger(ERR_LOG, "rx: %s error %s\n", sdm_stream_strerror(ss->stream[i]));
+                logger(ERR_LOG, "rx: %s error %s\n", stream_strerror(stream));
             break;
         }
     }
 
     if (i != strm_cnt) {
-        sdm_free_streams(ss);
+        streams_clean(&ss->streams);
         return -1;
     }
 
@@ -359,20 +308,22 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
     uint8_t channel = 0;
     uint16_t samples = 0;
     sdm_session_t *ss = sc->cookie;
+    stream_t* stream;
 
     ARGS_RANGE(argc == 4);
     ARG_LONG("usbl_rx: channel", argv[1], channel, arg >= 0 && arg <= 4);
     ARG_LONG("usbl_rx: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
 
-    sdm_free_streams(ss);
-    if (sdmsh_stream_new(ss, STREAM_OUTPUT, argv[3])) {
+    streams_clean(&ss->streams);
+    stream = streams_add_new(&ss->streams, STREAM_OUTPUT, argv[3]);
+    if (!stream)
         return -1;
-    }
-    if (sdm_stream_open(ss->stream[0])) {
-        if (sdm_stream_get_errno(ss->stream[0]) == EINTR)
+
+    if (stream_open(stream)) {
+        if (stream_get_errno(stream) == EINTR)
             logger(WARN_LOG, "rx: opening %s was interrupted\n", argv[1]);
         else
-            logger(ERR_LOG, "usbl_rx: error %s\n", sdm_stream_strerror(ss->stream[0]));
+            logger(ERR_LOG, "usbl_rx: error %s\n", stream_strerror(stream));
         return -1;
     }
     sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);
