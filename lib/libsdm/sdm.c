@@ -467,15 +467,6 @@ int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
     return error;
 }
 
-int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len)
-{
-    if (ss->streams.count == 1) {
-        return stream_read(ss->streams.streams[0], samples, len);
-    } else {
-        return -1;
-    }
-}
-
 int sdm_extract_reply(char *buf, size_t len, sdm_pkt_t **cmd)
 {
     unsigned int i;

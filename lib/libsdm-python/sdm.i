@@ -1,29 +1,34 @@
 %module sdm
 
 %typemap(in,numinputs=0,noblock=1) size_t *len {
+//int16_t* stream_load_samples(char *filename, size_t *len);
+%typemap(in, numinputs=0, noblock=1) size_t *len {
   size_t templen;
   $1 = &templen;
 }
 
-%typemap(out) uint16_t *sdm_load_samples {
+%typemap(out) uint16_t *stream_load_samples {
     int i;
     $result = PyList_New(templen);
     for (i = 0; i < templen; i++)
         PyList_SetItem($result, i, PyInt_FromLong((double)$1[i]));
 }
 
-%typemap(freearg)  uint16_t *sdm_load_samples {
+%typemap(freearg) uint16_t *stream_load_samples {
   if ($1)
       free($1);
 }
 
 %{
 #include <sdm.h>
+#include <stream.h>
 #include <stdio.h> /* fopen() */
 #include <utils.h> /* logger() */
 %}
 
 %include <sdm.h>
+%include <stream.h>
+
 
 %typemap(in) (size_t len, uint16_t *data) {
     int i;

@@ -25,7 +25,7 @@ const char** stream_get_drivers(void)
     return s_drivers;
 }
 
-stream_t *stream_new(int direction, const char* driver, const char* args)
+stream_t *stream_new_v(int direction, const char* driver, const char* args)
 {
     stream_t *stream = (stream_t*)calloc(1, sizeof(stream_t));
     int rv = 0;
@@ -107,7 +107,7 @@ int stream_write(stream_t *stream, int16_t *samples, unsigned sample_count)
     }
 }
 
-unsigned stream_count(stream_t *stream)
+ssize_t stream_count(stream_t *stream)
 {
     return stream->count(stream);
 }
@@ -139,7 +139,7 @@ const char* stream_get_args(stream_t *stream)
 }
 
 /****************** streams_t ***********************/
-stream_t* stream_new_by_description(int direction, char *description)
+stream_t* stream_new(int direction, char *description)
 {
     char *arg = strdup(description);
     char *default_drv = "ascii";
@@ -150,12 +150,12 @@ stream_t* stream_new_by_description(int direction, char *description)
         drv = strtok(arg, ":");
         if (drv == NULL) {
             /* logger(ERR_LOG, "Output format error: %s\n", arg); */
-            goto stream_new_by_description_error;
+            goto stream_new_error;
         }
         drv_param = strtok(NULL, "");
         if (drv_param == NULL) {
             /* logger(ERR_LOG, "Output description undefined\n"); */
-            goto stream_new_by_description_error;
+            goto stream_new_error;
         }
     } else {
         char *ext = strrchr(arg, '.');
@@ -172,15 +172,15 @@ stream_t* stream_new_by_description(int direction, char *description)
         drv_param = arg;
     }
     
-    stream = stream_new(direction, drv, drv_param);
+    stream = stream_new_v(direction, drv, drv_param);
     if (stream == NULL) {
         /* logger(ERR_LOG, "Stream creation error\n"); */
-        goto stream_new_by_description_error;
+        goto stream_new_error;
     }
 
     free(arg);
     return stream;
-stream_new_by_description_error:
+stream_new_error:
     free(arg);
     return NULL;
 }
@@ -194,7 +194,7 @@ stream_t* streams_add_new(streams_t *streams, int direction, char *description)
         return NULL;
     }
 
-    stream = stream_new_by_description(direction, description);
+    stream = stream_new(direction, description);
 
     if (!stream)
         return NULL;
@@ -245,4 +245,43 @@ void stream_dump(stream_t *stream)
     fprintf(stderr, "Stream Driver Arguments: %s", stream->args);
     fprintf(stderr, "Stream Bytes Per Sample: %u", stream->sample_size);
     fprintf(stderr, "Stream Sampling Frequency (Hz): %u", stream->fs);
+}
+
+uint16_t* stream_load_samples(char *filename, size_t *len)
+{
+    int rc;
+    int16_t *samples = NULL;
+    stream_t* stream;
+    stream = stream_new(STREAM_INPUT, filename);
+
+    if (!stream)
+        return NULL;
+
+    if (stream_open(stream) < 0) {
+        stream_free(stream);
+        return NULL;
+    }
+
+    rc = stream_count(stream);
+    if (rc < 0)
+        goto stream_load_samples_error;
+
+    samples = malloc(rc * sizeof(int16_t));
+    if (!samples)
+        goto stream_load_samples_error;
+
+    rc = stream_read(stream, samples, rc);
+
+    if (rc < 0) {
+        free(samples);
+        goto stream_load_samples_error;
+    }
+
+    *len = rc;
+
+stream_load_samples_error:
+    stream_close(stream);
+    stream_free(stream);
+
+    return samples;
 }

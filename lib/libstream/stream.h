@@ -76,16 +76,16 @@ const char** stream_get_drivers(void);
 
 //! Create output stream object.
 //! @param direction STREAM_OUTPUT or STREAM_INPUT
-//! @param driver driver's name.
-//! @param args driver's arguments.
+//! @param description driver's description string
 //! @return output stream object.
-stream_t *stream_new(int direction, const char* driver, const char* args);
+stream_t* stream_new(int direction, char *description);
 
 //! Create output stream object.
 //! @param direction STREAM_OUTPUT or STREAM_INPUT
-//! @param description driver's description
+//! @param driver driver's name.
+//! @param args driver's arguments.
 //! @return output stream object.
-stream_t* stream_new_by_description(int direction, char *description);
+stream_t *stream_new_v(int direction, const char* driver, const char* args);
 
 //! Free output stream.
 //! @param stream output stream.
@@ -115,7 +115,7 @@ int stream_open(stream_t *stream);
 int stream_close(stream_t *stream);
 
 //! Read samples from stream.
-//! @param stream intput stream object.
+//! @param stream input stream object.
 //! @param samples array of samples.
 //! @param sample_count number of samples.
 int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count);
@@ -126,7 +126,7 @@ int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count);
 //! @param sample_count number of samples.
 int stream_write(stream_t *stream, int16_t *samples, unsigned sample_count);
 
-unsigned stream_count(stream_t *stream);
+ssize_t stream_count(stream_t *stream);
 
 //! Retrieve the last error.
 //! @param stream output stream object.
@@ -173,5 +173,12 @@ int streams_remove(streams_t *streams, unsigned int index);
 //! Clean streams. Close and free memory
 //! @param streams output streams object.
 void streams_clean(streams_t *streams);
+
+/*************************************************/
+//! Read samples from stream.
+//! @param stream intput stream object.
+//! @param samples array of samples.
+//! @param sample_count number of samples.
+uint16_t* stream_load_samples(char *filename, size_t *len);
 
 #endif

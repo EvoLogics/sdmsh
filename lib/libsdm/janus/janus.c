@@ -39,7 +39,7 @@ void sdm_handle_janus_detect(sdm_session_t *ss)
 
     asprintf(&janus_cmd, JANUS_RX_CMD_FMT, janus_nshift, janus_doppler);
 
-    stream = stream_new(STREAM_OUTPUT, "popen", janus_cmd);
+    stream = stream_new_v(STREAM_OUTPUT, "popen", janus_cmd);
     if (stream == NULL) {
         logger(ERR_LOG, "janus: Stream creation error\n");
         sdm_cmd(ss, SDM_CMD_STOP);

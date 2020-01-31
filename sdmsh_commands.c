@@ -144,7 +144,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 
     data = calloc(len, sizeof(int16_t));
 
-    rc = sdm_load_samples(ss, data + len - samples_count, samples_count);
+    rc = stream_read(stream, data + len - samples_count, samples_count);
 
     if (rc < 0) {
         logger(ERR_LOG, "ref: read error %s\n", stream_strerror(stream));
@@ -214,7 +214,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     cmd = SDM_CMD_TX;
     do {
         len = len < nsamples - passed ? len : nsamples - passed;
-        cnt = sdm_load_samples(ss, data, len);
+        cnt = stream_read(stream, data, len);
         if (cnt == 0) {
             cmd = SDM_CMD_STOP;
             break;

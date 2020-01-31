@@ -135,7 +135,6 @@ int   sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd);
 
 int       sdm_save_samples(sdm_session_t *ss, char *buf, size_t len);
 /* int       sdm_save_samples(sdm_session_t *ss, char *filename, char *buf, size_t len); */
-int sdm_load_samples(sdm_session_t *ss, int16_t *samples, size_t len);
 
 char* sdm_cmd_to_str(uint8_t cmd);
 char* sdm_reply_to_str(uint8_t cmd);
