@@ -446,10 +446,11 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
 {
     int error = 0;
-    unsigned int i;
+    int i;
 
-    for (i = 0; i < ss->streams.count; i++) {
-        int rc = stream_write(ss->streams.streams[i], (int16_t*)buf, len / 2);
+    for (i = ss->streams.count - 1; i >= 0; i--) {
+        int rc = stream_write(ss->streams.streams[i], (uint16_t*)buf, len / 2);
+
         if (rc <= 0) {
             error = rc;
             ss->streams.error_index = i;
@@ -462,6 +463,8 @@ int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
             }
             streams_remove(&ss->streams, i);
         }
+        stream_dump(ss->streams.streams[i]);
+
     }
 
     return error;

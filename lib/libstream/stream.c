@@ -209,18 +209,18 @@ int streams_add(streams_t *streams, stream_t *stream)
 {
     if (streams->count >= STREAMS_MAX)
         return STREAM_ERROR;
-    streams->count++;
-    streams->streams[streams->count] = stream;
+    streams->streams[streams->count++] = stream;
     return STREAM_ERROR_NONE;
 }
 
 void streams_clean(streams_t *streams)
 {
-    unsigned int i;
-    for (i = 0; i < streams->count; i++)
+    int i;
+    for (i = streams->count - 1; i >= 0 ; i--)
         streams_remove(streams, i);
 }
 
+// FIXME: need heavy testing!!!!!!!!!!!!!
 int streams_remove(streams_t *streams, unsigned int index)
 {
     if (index > streams->count)
@@ -231,7 +231,7 @@ int streams_remove(streams_t *streams, unsigned int index)
         stream_free (streams->streams[index]);
         if (index != streams->count) {
             memmove(&streams->streams[index], &streams->streams[index + 1], streams->count - index);
-            streams->error_index = 0;
+            streams->error_index = 0; // ??????????????????????????
         }
         streams->count--;
     }
@@ -241,17 +241,22 @@ int streams_remove(streams_t *streams, unsigned int index)
 
 void stream_dump(stream_t *stream)
 {
-    fprintf(stderr, "Stream Driver: %s", stream->name);
-    fprintf(stderr, "Stream Driver Arguments: %s", stream->args);
-    fprintf(stderr, "Stream Bytes Per Sample: %u", stream->sample_size);
-    fprintf(stderr, "Stream Sampling Frequency (Hz): %u", stream->fs);
+    if (!stream) {
+        fprintf(stderr, "Stream Driver: NULL\n");
+        return;
+    }
+    fprintf(stderr, "Stream Driver: %s\n", stream->name);
+    fprintf(stderr, "Stream Driver Arguments: %s\n", stream->args);
+    fprintf(stderr, "Stream Bytes Per Sample: %u\n", stream->sample_size);
+    fprintf(stderr, "Stream Sampling Frequency (Hz): %u\n", stream->fs);
 }
 
 uint16_t* stream_load_samples(char *filename, size_t *len)
 {
     int rc;
-    int16_t *samples = NULL;
+    uint16_t *samples = NULL;
     stream_t* stream;
+
     stream = stream_new(STREAM_INPUT, filename);
 
     if (!stream)

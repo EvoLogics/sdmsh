@@ -129,8 +129,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         argv++;
     }
 
-    streams_clean(&ss->streams);
-    stream = streams_add_new(&ss->streams, STREAM_INPUT, argv[1]);
+    stream = stream_new(STREAM_INPUT, argv[1]);
     if (!stream)
         return -1;
 
@@ -162,6 +161,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         rc = sdm_cmd(ss, SDM_CMD_REF, data, len);
     }
 
+    stream_close(stream);
     free(data);
     sdm_set_idle_state(ss);
 
