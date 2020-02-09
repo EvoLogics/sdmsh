@@ -30,7 +30,7 @@ struct stream_t
     //! Pointer to driver's free function.
     void (*free)(stream_t*);
     //! Pointer to driver's read function.
-    int (*read)(const stream_t*, int16_t*, unsigned);
+    int (*read)(const stream_t*, uint16_t*, unsigned);
     //! Pointer to driver's write function.
     int (*write)(stream_t*, void*, unsigned);
     //! Number of samples in stream, if known.
@@ -118,13 +118,13 @@ int stream_close(stream_t *stream);
 //! @param stream input stream object.
 //! @param samples array of samples.
 //! @param sample_count number of samples.
-int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count);
+int stream_read(stream_t *stream, uint16_t* samples, unsigned sample_count);
 
 //! Write samples to stream.
 //! @param stream output stream object.
 //! @param samples array of samples.
 //! @param sample_count number of samples.
-int stream_write(stream_t *stream, int16_t *samples, unsigned sample_count);
+int stream_write(stream_t *stream, uint16_t *samples, unsigned sample_count);
 
 ssize_t stream_count(stream_t *stream);
 

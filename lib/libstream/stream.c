@@ -39,7 +39,7 @@ stream_t *stream_new_v(int direction, const char* driver, const char* args)
         strcpy(stream->args, args);
     wordfree(&wbuf);
 
-    stream->sample_size = sizeof(int16_t);
+    stream->sample_size = sizeof(uint16_t);
     stream->direction = direction;
     stream_set_fs(stream, 62500);
 
@@ -89,7 +89,7 @@ int stream_close(stream_t *stream)
     return stream->close(stream);
 }
 
-int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count)
+int stream_read(stream_t *stream, uint16_t* samples, unsigned sample_count)
 {
     if (stream) {
         return stream->read(stream, samples, sample_count);
@@ -98,7 +98,7 @@ int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count)
     }
 }
 
-int stream_write(stream_t *stream, int16_t *samples, unsigned sample_count)
+int stream_write(stream_t *stream, uint16_t *samples, unsigned sample_count)
 {
     if (stream) {
         return stream->write(stream, samples, sample_count);
@@ -271,7 +271,7 @@ uint16_t* stream_load_samples(char *filename, size_t *len)
     if (rc < 0)
         goto stream_load_samples_error;
 
-    samples = malloc(rc * sizeof(int16_t));
+    samples = malloc(rc * sizeof(uint16_t));
     if (!samples)
         goto stream_load_samples_error;
 
