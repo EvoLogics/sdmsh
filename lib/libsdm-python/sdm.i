@@ -30,7 +30,7 @@
 %include <stream.h>
 
 
-%typemap(in) (size_t len, uint16_t *data) {
+%typemap(in) (size_t nsamples, uint16_t *data) {
     int i;
 
     if (!PyList_Check($input)) {
@@ -50,31 +50,50 @@
     }
 }
 
-%typemap(freearg) (size_t len, uint16_t *data) {
+%typemap(freearg) (size_t nsamples, uint16_t *data) {
     if ($2)
         free($2);
 }
 
 %inline %{
 
-int sdm_cmd_ref(sdm_session_t *ss, size_t len, uint16_t *data) {
-    if (len != 1024) {
+int sdm_cmd_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
+    if (nsamples != 1024) {
         logger (WARN_LOG, "Error reference signal must be 1024 samples\n");
         return -1;
     }
-    return sdm_cmd(ss, SDM_CMD_REF, data, len);
+    return sdm_cmd(ss, SDM_CMD_REF, data, nsamples);
 }
 
-int sdm_cmd_tx(sdm_session_t *ss, size_t len, uint16_t *data) {
-    size_t rest = len % (1024);
-    if (rest) {
-        rest = 1024 - rest;
-        logger(WARN_LOG, "Warning: signal samples number %d do not divisible by 1024 samples. Zero padding added\n", len);
-        data = realloc(data, (len + rest)*2);
-        memset(data + len*2, 0, rest*2);
-        len += rest;
-    }
-    return sdm_cmd(ss, SDM_CMD_TX, data, len);
+int sdm_cmd_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
+    int rc;
+    uint16_t cmd;
+    size_t cnt, passed = 0, len = 1024;
+
+    cmd = SDM_CMD_TX;
+    do {
+        len = len < nsamples - passed ? len : nsamples - passed;
+
+        cnt = len;
+        data += cnt;
+        if (cnt == 0) {
+            cmd = SDM_CMD_STOP;
+            break;
+        }
+
+        if (cnt == len && nsamples >= 1024) {
+            rc = sdm_cmd(ss, cmd, nsamples, data, len);
+            passed += len;
+        } else if (cnt > 0) {
+            uint16_t buf[1024] = {0};
+            memcpy(buf, data, cnt);
+            rc = sdm_cmd(ss, cmd, nsamples, buf, 1024 * ((cnt + 1023) / 1024));
+            passed += 1024 * ((cnt + 1023) / 1024);
+        } else {
+            rc = -1;
+        }
+        cmd = SDM_CMD_TX_CONTINUE;
+    } while (rc == 0 && passed < nsamples);
 }
 
 int sdm_cmd_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
