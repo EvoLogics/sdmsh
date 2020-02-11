@@ -170,8 +170,8 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 
 int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 {
-    size_t len = 1024 * 2, cnt, cmd;
-    uint16_t *data;
+    size_t len = 1024 * 2, cnt;
+    uint16_t *data, cmd;
     sdm_session_t *ss = sc->cookie;
     int rc;
     unsigned nsamples = 0, passed = 0;
