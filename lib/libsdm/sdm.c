@@ -463,8 +463,6 @@ int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
             }
             streams_remove(&ss->streams, i);
         }
-        stream_dump(ss->streams.streams[i]);
-
     }
 
     return error;
@@ -703,9 +701,10 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
 
         maxfd = ss->sockfd;
 
-        /* if (ss->state != SDM_STATE_WAIT_REPLY) { */
-            /* return 0; */
-        /* } */
+        if (ss->state == SDM_STATE_INIT) {
+            tv.tv_sec  = 0;
+            tv.tv_usec = 10000;
+        }
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
@@ -714,12 +713,15 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
 
         /* timeout */
         if (!rc) {
-            if (ss->state == SDM_STATE_INIT)
+            if (ss->state == SDM_STATE_INIT) {
                 ss->state = SDM_STATE_IDLE;
+                return 0;
+            }
             continue;
         }
 
         if (FD_ISSET(ss->sockfd, &rfds)) {
+            int state = ss->state;
             len = read(ss->sockfd, buf, sizeof(buf));
 
             if (len == 0)
@@ -728,7 +730,19 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
             if (len < 0)
                 err(1, "read(): ");
 
-             rc = sdm_handle_rx_data(ss, buf, len);
+            rc = sdm_handle_rx_data(ss, buf, len);
+
+            if (rc < 0) {
+                if (rc == SDM_ERR_SAVE_FAIL || rc == SDM_ERR_SAVE_EOF)
+                    sdm_cmd(ss, SDM_CMD_STOP);
+            }
+
+            if (state == SDM_STATE_INIT) {
+                logger(WARN_LOG, "\rSkip %d received bytes in SDM_STATE_INIT state\n", rc);
+                ss->state = SDM_STATE_INIT;
+                continue;
+            }
+
             if (ss->rx_data_len == 0 || rc == 0) {
                 if (ss->cmd->cmd == cmd) {
                     if (cmd == SDM_REPLY_REPORT) {

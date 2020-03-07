@@ -57,6 +57,12 @@
 
 %inline %{
 
+int sdm_cmd_config(sdm_session_t *ss, uint16_t threshold,
+                            uint8_t gain, uint8_t srclvl, uint8_t preamp_gain)
+{
+    sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
+}
+
 int sdm_cmd_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
     if (nsamples != 1024) {
         logger (WARN_LOG, "Error reference signal must be 1024 samples\n");
@@ -94,6 +100,29 @@ int sdm_cmd_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
         }
         cmd = SDM_CMD_TX_CONTINUE;
     } while (rc == 0 && passed < nsamples);
+}
+
+int sdm_add_sink(sdm_session_t *ss, char *sinkname)
+{
+    stream_t* stream = streams_add_new(&ss->streams, STREAM_OUTPUT, sinkname);
+
+    /* FIXME: throw exeption */
+    if (!stream)
+        return -1;
+
+    if (stream_open(stream)) {
+        if (stream_get_errno(stream) == EINTR)
+            logger(WARN_LOG, "rx: opening %s was interrupted\n", sinkname);
+        else
+            logger(ERR_LOG, "rx: %s error %s\n", stream_strerror(stream));
+        return -1;
+    }
+    return 0;
+}
+
+int sdm_cmd_rx(sdm_session_t *ss, size_t nsamples)
+{
+    sdm_cmd(ss, SDM_CMD_RX, nsamples);
 }
 
 int sdm_cmd_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
