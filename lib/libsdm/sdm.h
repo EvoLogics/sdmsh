@@ -91,7 +91,16 @@ typedef struct sdm_pkt_t {
         char rx_len[3];
     };
     uint32_t data_len; /* in 16bit words */
-    uint16_t data[0];
+    union {
+        uint16_t data[0];
+        struct {
+            uint32_t current_time;
+            uint32_t tx_time;
+            uint32_t rx_time;
+            uint32_t syncin_time;
+        };
+    };
+
 } sdm_pkt_t;
 
 enum {

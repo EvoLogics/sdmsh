@@ -140,14 +140,16 @@ void sdm_unpack_reply(sdm_pkt_t **cmd, char *buf)
     memcpy(&c->dummy,    &buf[SDM_PKT_T_OFFSET_DUMMY],    sizeof(c->dummy));
     memcpy(&c->data_len, &buf[SDM_PKT_T_OFFSET_DATA_LEN], sizeof(c->data_len));
 
-    if (c->data_len != 0) {
-        switch (c->cmd) {
-            case SDM_REPLY_RX: case SDM_REPLY_USBL_RX:
-                c = realloc(c, sizeof(sdm_pkt_t) + c->data_len * 2);
-                memcpy(c->data, &buf[SDM_PKT_T_OFFSET_DATA], c->data_len * 2);
-                *cmd = c;
-                break;
-        }
+    if (c->data_len == 0)
+        return;
+
+    switch (c->cmd) {
+        case SDM_REPLY_RX: case SDM_REPLY_USBL_RX:
+        case SDM_REPLY_SYSTIME:
+            c = realloc(c, sizeof(sdm_pkt_t) + c->data_len * 2);
+            memcpy(c->data, &buf[SDM_PKT_T_OFFSET_DATA], c->data_len * 2);
+            *cmd = c;
+            break;
     }
 }
 
@@ -392,23 +394,15 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
         case SDM_REPLY_BUSY:
             logger(INFO_LOG, "%d\n", cmd->param);
             break;
-        case SDM_REPLY_SYSTIME: {
-            unsigned int current_time, tx_time, rx_time, syncin_time;
-            unsigned int *buf = (unsigned int*)ss->rx_data;
-
-            current_time = buf[0];
-            tx_time = buf[1];
-            rx_time = buf[2];
+        case SDM_REPLY_SYSTIME:
             if (cmd->data_len == 8) {
-                syncin_time = buf[3];
-                printf("current_time = %u, tx_time = %u, rx_time = %u, syncin_time = %u\n"
-                       , current_time, tx_time, rx_time, syncin_time);
+                logger (INFO_LOG, "current_time = %u, tx_time = %u, rx_time = %u, syncin_time = %u\n"
+                       , cmd->current_time, cmd->tx_time, cmd->rx_time, cmd->syncin_time);
             } else {
-                printf("current_time = %u, tx_time = %u, rx_time = %u\n"
-                       , current_time, tx_time, rx_time);
+                logger (INFO_LOG, "current_time = %u, tx_time = %u, rx_time = %u\n"
+                       , cmd->current_time, cmd->tx_time, cmd->rx_time);
             }
             break;
-        }
         case SDM_REPLY_SYNCIN:
             logger(ASYNC_LOG, "\n");
             break;
