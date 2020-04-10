@@ -702,11 +702,8 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
-        if (rc == -1 && errno == EINTR)
-            continue;
-
         if (rc == -1)
-            err(1, "select()");
+            return -1;
 
         /* timeout */
         if (!rc) {
