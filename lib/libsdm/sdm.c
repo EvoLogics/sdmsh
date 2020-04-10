@@ -702,6 +702,9 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
+        if (rc == -1 && errno == EINTR)
+            continue;
+
         if (rc == -1)
             err(1, "select()");
 
@@ -716,7 +719,8 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
 
         if (FD_ISSET(ss->sockfd, &rfds)) {
             int state = ss->state;
-            len = read(ss->sockfd, buf, sizeof(buf));
+            int len_orig;
+            len_orig = len = read(ss->sockfd, buf, sizeof(buf));
 
             if (len == 0)
                 break;
@@ -724,7 +728,57 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
             if (len < 0)
                 err(1, "read(): ");
 
-            rc = sdm_handle_rx_data(ss, buf, len);
+            do {
+                rc = sdm_handle_rx_data(ss, buf, len);
+
+                if (len && !sdm_is_async_reply(ss->cmd->cmd))
+                    if (ss->rx_data_len == 0 || rc == 0) {
+                        if (ss->cmd->cmd == cmd) {
+                            if (cmd == SDM_REPLY_REPORT) {
+                                int rr;
+                                va_list ap;
+                                va_start(ap, cmd);
+                                rr    = va_arg(ap, int);
+                                if (ss->cmd->param == rr) {
+                                    switch (rr) {
+                                        case SDM_REPLY_REPORT_NO_SDM_MODE: return 0;
+                                        case SDM_REPLY_REPORT_TX_STOP:     return 0;
+                                        case SDM_REPLY_REPORT_RX_STOP:     return 0;
+                                        case SDM_REPLY_REPORT_REF:         return va_arg(ap, unsigned int) == ss->cmd->data_len;
+                                        case SDM_REPLY_REPORT_CONFIG:      return va_arg(ap, unsigned int) == ss->cmd->data_len;
+                                        case SDM_REPLY_REPORT_USBL_CONFIG: return va_arg(ap, unsigned int) == ss->cmd->data_len;
+                                        case SDM_REPLY_REPORT_USBL_RX_STOP:return 0;
+                                        case SDM_REPLY_REPORT_DROP:        return 0;
+                                        case SDM_REPLY_REPORT_SYSTIME:     return 0;
+                                        case SDM_REPLY_REPORT_UNKNOWN:     return 0;
+                                        default:                            return 1;
+                                    }
+                                }
+                                va_end(ap);
+                            }
+                            if (cmd == SDM_REPLY_STOP) {
+                                return 0;
+                            }
+                            if (cmd == SDM_REPLY_RX) {
+                                return 0;
+                            }
+                            if (cmd == SDM_REPLY_RX_JANUS) {
+                                return 0;
+                            }
+                            if (cmd == SDM_REPLY_USBL_RX) {
+                                return 0;
+                            }
+                            if (cmd == SDM_REPLY_SYNCIN) {
+                                return 0;
+                            }
+                            if (cmd == SDM_REPLY_BUSY) {
+                                return 0;
+                            }
+                            return 1;
+                        }
+                    }
+                len = 0;
+            } while (rc > 0);
 
             if (rc < 0) {
                 if (rc == SDM_ERR_SAVE_FAIL || rc == SDM_ERR_SAVE_EOF)
@@ -732,56 +786,11 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
             }
 
             if (state == SDM_STATE_INIT) {
-                logger(WARN_LOG, "\rSkip %d received bytes in SDM_STATE_INIT state\n", rc);
+                logger(WARN_LOG, "\rSkip %d received bytes in SDM_STATE_INIT state\n", len_orig);
                 ss->state = SDM_STATE_INIT;
                 continue;
             }
 
-            if (ss->rx_data_len == 0 || rc == 0) {
-                if (ss->cmd->cmd == cmd) {
-                    if (cmd == SDM_REPLY_REPORT) {
-                        int rr;
-                        va_list ap;
-                        va_start(ap, cmd);
-                        rr    = va_arg(ap, int);
-                        if (ss->cmd->param == rr) {
-                            switch (rr) {
-                                case SDM_REPLY_REPORT_NO_SDM_MODE: return 0;
-                                case SDM_REPLY_REPORT_TX_STOP:     return 0;
-                                case SDM_REPLY_REPORT_RX_STOP:     return 0;
-                                case SDM_REPLY_REPORT_REF:         return va_arg(ap, unsigned int) == ss->cmd->data_len;
-                                case SDM_REPLY_REPORT_CONFIG:      return va_arg(ap, unsigned int) == ss->cmd->data_len;
-                                case SDM_REPLY_REPORT_USBL_CONFIG: return va_arg(ap, unsigned int) == ss->cmd->data_len;
-                                case SDM_REPLY_REPORT_USBL_RX_STOP:return 0;
-                                case SDM_REPLY_REPORT_DROP:        return 0;
-                                case SDM_REPLY_REPORT_SYSTIME:     return 0;
-                                case SDM_REPLY_REPORT_UNKNOWN:     return 0;
-                                default:                            return 1;
-                            }
-                        }
-                        va_end(ap);
-                    }
-                    if (cmd == SDM_REPLY_STOP) {
-                        return 0;
-                    }
-                    if (cmd == SDM_REPLY_RX) {
-                        return 0;
-                    }
-                    if (cmd == SDM_REPLY_RX_JANUS) {
-                        return 0;
-                    }
-                    if (cmd == SDM_REPLY_USBL_RX) {
-                        return 0;
-                    }
-                    if (cmd == SDM_REPLY_SYNCIN) {
-                        return 0;
-                    }
-                    if (cmd == SDM_REPLY_BUSY) {
-                        return 0;
-                    }
-                    return 1;
-                }
-            }
         }
     }
     return 0;

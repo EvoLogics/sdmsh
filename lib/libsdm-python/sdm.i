@@ -1,6 +1,28 @@
 %module sdm
 
-%typemap(in,numinputs=0,noblock=1) size_t *len {
+%rename("%(strip:[sdm_])s") "";
+
+%include stdint.i
+
+%include exception.i
+
+%exception sdm_cmd {
+    /*
+    puts("action: $action");
+    puts("name: $name");
+    puts("symname: $symname");
+    puts("overname: $overname");
+    puts("wrapname: $wrapname");
+    puts("decl: $decl");
+    puts("fulldecl: $fulldecl");
+    */
+    if (arg1 == NULL)
+        SWIG_exception(SWIG_ValueError, "No connection");
+    $action
+}
+
+%include typemaps.i
+
 //int16_t* stream_load_samples(char *filename, size_t *len);
 %typemap(in, numinputs=0, noblock=1) size_t *len {
   size_t templen;
@@ -60,7 +82,15 @@
 int sdm_cmd_config(sdm_session_t *ss, uint16_t threshold,
                             uint8_t gain, uint8_t srclvl, uint8_t preamp_gain)
 {
+    // FIXME: check params
     sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
+}
+
+int sdm_cmd_usbl_config(sdm_session_t *ss, uint16_t delay, long samples,
+                            uint8_t gain, uint8_t sample_rate)
+{
+    // FIXME: check params
+    sdm_cmd(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
 }
 
 int sdm_cmd_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
@@ -125,6 +155,12 @@ int sdm_cmd_rx(sdm_session_t *ss, size_t nsamples)
     sdm_cmd(ss, SDM_CMD_RX, nsamples);
 }
 
+int sdm_cmd_usbl_rx(sdm_session_t *ss, uint8_t channel, uint16_t samples)
+{
+    sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);
+}
+
+#if 0
 int sdm_cmd_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
     FILE *fp;
 
@@ -155,6 +191,7 @@ int sdm_cmd_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
 
     sdm_cmd(ss, SDM_CMD_RX, len);
 }
+#endif
 
 %}
 
