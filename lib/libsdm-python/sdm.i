@@ -6,7 +6,7 @@
 
 %include exception.i
 
-%exception sdm_cmd {
+%exception sdm_send {
     /*
     puts("action: $action");
     puts("name: $name");
@@ -79,29 +79,29 @@
 
 %inline %{
 
-int sdm_cmd_config(sdm_session_t *ss, uint16_t threshold,
+int sdm_send_config(sdm_session_t *ss, uint16_t threshold,
                             uint8_t gain, uint8_t srclvl, uint8_t preamp_gain)
 {
     // FIXME: check params
-    sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
+    sdm_send(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
 }
 
-int sdm_cmd_usbl_config(sdm_session_t *ss, uint16_t delay, long samples,
+int sdm_send_usbl_config(sdm_session_t *ss, uint16_t delay, long samples,
                             uint8_t gain, uint8_t sample_rate)
 {
     // FIXME: check params
-    sdm_cmd(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
+    sdm_send(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
 }
 
-int sdm_cmd_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
+int sdm_send_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
     if (nsamples != 1024) {
         logger (WARN_LOG, "Error reference signal must be 1024 samples\n");
         return -1;
     }
-    return sdm_cmd(ss, SDM_CMD_REF, data, nsamples);
+    return sdm_send(ss, SDM_CMD_REF, data, nsamples);
 }
 
-int sdm_cmd_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
+int sdm_send_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
     int rc;
     uint16_t cmd;
     size_t cnt, passed = 0, len = 1024;
@@ -118,12 +118,12 @@ int sdm_cmd_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
         }
 
         if (cnt == len && nsamples >= 1024) {
-            rc = sdm_cmd(ss, cmd, nsamples, data, len);
+            rc = sdm_send(ss, cmd, nsamples, data, len);
             passed += len;
         } else if (cnt > 0) {
             uint16_t buf[1024] = {0};
             memcpy(buf, data, cnt);
-            rc = sdm_cmd(ss, cmd, nsamples, buf, 1024 * ((cnt + 1023) / 1024));
+            rc = sdm_send(ss, cmd, nsamples, buf, 1024 * ((cnt + 1023) / 1024));
             passed += 1024 * ((cnt + 1023) / 1024);
         } else {
             rc = -1;
@@ -150,18 +150,18 @@ int sdm_add_sink(sdm_session_t *ss, char *sinkname)
     return 0;
 }
 
-int sdm_cmd_rx(sdm_session_t *ss, size_t nsamples)
+int sdm_send_rx(sdm_session_t *ss, size_t nsamples)
 {
-    sdm_cmd(ss, SDM_CMD_RX, nsamples);
+    sdm_send(ss, SDM_CMD_RX, nsamples);
 }
 
-int sdm_cmd_usbl_rx(sdm_session_t *ss, uint8_t channel, uint16_t samples)
+int sdm_send_usbl_rx(sdm_session_t *ss, uint8_t channel, uint16_t samples)
 {
-    sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);
+    sdm_send(ss, SDM_CMD_USBL_RX, channel, samples);
 }
 
 #if 0
-int sdm_cmd_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
+int sdm_send_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
     FILE *fp;
 
     /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
@@ -189,7 +189,7 @@ int sdm_cmd_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
     }
     ss->filename = strdup(filename);
 
-    sdm_cmd(ss, SDM_CMD_RX, len);
+    sdm_send(ss, SDM_CMD_RX, len);
 }
 #endif
 

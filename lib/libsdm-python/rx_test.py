@@ -6,46 +6,46 @@ import sdm
 
 session = sdm.connect("192.168.0." + sys.argv[1], 4200)
 
-sdm.cmd(session, sdm.SDM_CMD_STOP);
+sdm.send(session, sdm.SDM_CMD_STOP);
 session.state = sdm.SDM_STATE_INIT
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 
-sdm.cmd_config(session, 350, 0, 3, 1)
+sdm.send_config(session, 350, 0, 3, 1)
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_CONFIG);
 
-sdm.cmd_usbl_config(session, 0, 51200, 3, 5);
+sdm.send_usbl_config(session, 0, 51200, 3, 5);
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_USBL_CONFIG);
 
 data = sdm.stream_load_samples("../../examples/0717-up.dat");
 
-sdm.cmd_ref(session, data);
+sdm.send_ref(session, data);
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_REF);
 
 sdm.add_sink(session, "rcv");
-sdm.cmd_rx(session, 1024)
+sdm.send_rx(session, 1024)
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 
 sdm.add_sink(session, "raw:u0.raw");
-sdm.cmd_usbl_rx(session, 0, 51200)
+sdm.send_usbl_rx(session, 0, 51200)
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 
 sdm.add_sink(session, "raw:u1.raw");
-sdm.cmd_usbl_rx(session, 1, 51200)
+sdm.send_usbl_rx(session, 1, 51200)
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 
 sdm.add_sink(session, "raw:u2.raw");
-sdm.cmd_usbl_rx(session, 2, 51200)
+sdm.send_usbl_rx(session, 2, 51200)
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 
 sdm.add_sink(session, "raw:u3.raw");
-sdm.cmd_usbl_rx(session, 3, 51200)
 
+sdm.send_usbl_rx(session, 3, 51200)
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 sdm.add_sink(session, "raw:u4.raw");
-sdm.cmd_usbl_rx(session, 4, 51200)
+sdm.send_usbl_rx(session, 4, 51200)
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 
-sdm.cmd(session, sdm.SDM_CMD_SYSTIME);
+sdm.send(session, sdm.SDM_CMD_SYSTIME);
 sdm.expect(session, sdm.SDM_REPLY_SYSTIME);
 
 print("current_time", session.cmd.current_time);
@@ -58,9 +58,9 @@ time.sleep(2)
 data  = sdm.stream_load_samples("../../examples/0717-up.dat");
 data += sdm.stream_load_samples("../../examples/0717-up.dat");
 
-sdm.cmd_tx(session, data);
+sdm.send_tx(session, data);
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_TX_STOP);
 
-sdm.cmd(session, sdm.SDM_CMD_SYSTIME);
+sdm.send(session, sdm.SDM_CMD_SYSTIME);
 sdm.expect(session, sdm.SDM_REPLY_SYSTIME);
 

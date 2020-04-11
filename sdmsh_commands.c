@@ -78,7 +78,7 @@ int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
     if (argc == 5) {
         ARG_LONG("config: preamp gain", argv[4], preamp_gain, arg >= 0 && arg <= 13);
     }
-    sdm_cmd(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
+    sdm_send(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
     sdm_set_idle_state(ss);
 
     return 0;
@@ -96,7 +96,7 @@ int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc)
     ARG_LONG("usbl_config: gain", argv[3], gain, arg >= 0 && arg <= 13);
     ARG_LONG("usbl_config: sample_rate", argv[4], sample_rate, arg >= 0 && arg <= 6);
 
-    sdm_cmd(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
+    sdm_send(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
     sdm_set_idle_state(ss);
 
     return 0;
@@ -108,7 +108,7 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
 
     argv = argv;
     ARGS_RANGE(argc == 1);
-    sdm_cmd(ss, SDM_CMD_STOP);
+    sdm_send(ss, SDM_CMD_STOP);
     sdm_set_idle_state(ss);
 
     return 0;
@@ -158,7 +158,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         }
 
         /* DUMP2LOG(ERR_LOG, (char *)data, len*2); */
-        rc = sdm_cmd(ss, SDM_CMD_REF, data, len);
+        rc = sdm_send(ss, SDM_CMD_REF, data, len);
     }
 
     stream_close(stream);
@@ -221,11 +221,11 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         }
 
         if (cnt == len && nsamples >= 1024) {
-            rc = sdm_cmd(ss, cmd, nsamples, data, len);
+            rc = sdm_send(ss, cmd, nsamples, data, len);
             passed += len;
         } else if (cnt > 0) {
             memset(&data[cnt], 0, (len - cnt) * 2);
-            rc = sdm_cmd(ss, cmd, nsamples, data, 1024 * ((cnt + 1023) / 1024));
+            rc = sdm_send(ss, cmd, nsamples, data, 1024 * ((cnt + 1023) / 1024));
             passed += 1024 * ((cnt + 1023) / 1024);
         } else {
             rc = -1;
@@ -287,7 +287,7 @@ int sdmsh_cmd_rx_helper(struct shell_config *sc, char *argv[], int argc, int cod
         return -1;
     }
 
-    sdm_cmd(ss, code, nsamples);
+    sdm_send(ss, code, nsamples);
     /* rl_message("Waiting for receiving %ld samples to file %s\n", nsamples, ss->filename); */
     
     return 0;
@@ -326,7 +326,7 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
             logger(ERR_LOG, "usbl_rx: error %s\n", stream_strerror(stream));
         return -1;
     }
-    sdm_cmd(ss, SDM_CMD_USBL_RX, channel, samples);
+    sdm_send(ss, SDM_CMD_USBL_RX, channel, samples);
     
     return 0;
 }
@@ -336,7 +336,7 @@ int sdmsh_cmd_systime(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
 
     ARGS_RANGE(argc == 1);
-    sdm_cmd(ss, SDM_CMD_SYSTIME);
+    sdm_send(ss, SDM_CMD_SYSTIME);
     sdm_set_idle_state(ss);
 
     return 0;

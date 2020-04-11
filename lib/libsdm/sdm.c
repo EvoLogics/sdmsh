@@ -779,7 +779,7 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
 
             if (rc < 0) {
                 if (rc == SDM_ERR_SAVE_FAIL || rc == SDM_ERR_SAVE_EOF)
-                    sdm_cmd(ss, SDM_CMD_STOP);
+                    sdm_send(ss, SDM_CMD_STOP);
             }
 
             if (state == SDM_STATE_INIT) {

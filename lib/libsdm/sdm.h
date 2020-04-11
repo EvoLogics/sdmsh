@@ -132,7 +132,7 @@ typedef struct {
 sdm_session_t* sdm_connect(char *host, int port);
 void  sdm_close(sdm_session_t *ss);
 
-int   sdm_cmd(sdm_session_t *sd, int cmd_code, ...);
+int   sdm_send(sdm_session_t *sd, int cmd_code, ...);
 int   sdm_extract_reply(char *buf, size_t len, sdm_pkt_t **cmd);
 
 int   sdm_expect(sdm_session_t *ss, int cmd, ...);

@@ -103,7 +103,7 @@ static void sdmsh_signal_event_hook(int signo)
         case SIGINT:
             if (sdm_session->state == SDM_STATE_RX) {
                 rl_clear_visible_line();
-                sdm_cmd(sdm_session, SDM_CMD_STOP);
+                sdm_send(sdm_session, SDM_CMD_STOP);
             }
             break;
 
@@ -263,10 +263,10 @@ int main(int argc, char *argv[])
         err(1, "sdm_connect(\"%s:%d\"): ", host, port);
 
     if (flags & FLAG_SEND_STOP) {
-        sdm_cmd(sdm_session, SDM_CMD_STOP);
+        sdm_send(sdm_session, SDM_CMD_STOP);
 
         /*
-         * force to set SDM_STATE_INIT becouse sdm_cmd set it
+         * force to set SDM_STATE_INIT becouse sdm_send set it
          * to SDM_STATE_WAIT_REPLY
          */
         sdm_session->state = SDM_STATE_INIT;
@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
 
             if (rc < 0) {
                 if (rc == SDM_ERR_SAVE_FAIL || rc == SDM_ERR_SAVE_EOF)
-                    sdm_cmd(sdm_session, SDM_CMD_STOP);
+                    sdm_send(sdm_session, SDM_CMD_STOP);
 
                 if (!is_interactive_mode(&shell_config) && !(flags & FLAG_IGNORE_ERRORS))
                     break;
