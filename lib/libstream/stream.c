@@ -84,6 +84,13 @@ int stream_open(stream_t *stream)
     return stream->open(stream);
 }
 
+int stream_openfp(stream_t *stream, FILE *fp)
+{
+    if (stream->openfp)
+        return stream->openfp(stream, fp);
+    return STREAM_ERROR;
+}
+
 int stream_close(stream_t *stream)
 {
     return stream->close(stream);

@@ -21,10 +21,14 @@ data = sdm.stream_load_samples("../../examples/0717-up.dat");
 sdm.send_ref(session, data);
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_REF);
 
-sdm.add_sink(session, "rcv");
+rcv = []
+sdm.add_sink_membuf(session);
+
+sdm.add_sink(session, "rcv.txt");
 sdm.send_rx(session, 1024)
 sdm.expect(session, sdm.SDM_REPLY_STOP);
 
+rcv = sdm.get_membuf(session);
 sdm.add_sink(session, "raw:u0.raw");
 sdm.send_usbl_rx(session, 0, 51200)
 sdm.expect(session, sdm.SDM_REPLY_STOP);

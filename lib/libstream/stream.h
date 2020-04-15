@@ -6,6 +6,7 @@
 #define STREAM_H_INCLUDED_
 
 #include <stdint.h>
+#include <stdio.h>  /* FILE* */
 
 #include <stream_error.h>
 
@@ -25,6 +26,8 @@ struct stream_t
     
     //! Pointer to driver's open function.
     int (*open)(stream_t*);
+    //! Pointer to driver's openfp function.
+    int (*openfp)(stream_t*, FILE *);
     //! Pointer to driver's close function.
     int (*close)(stream_t*);
     //! Pointer to driver's free function.
@@ -110,6 +113,11 @@ unsigned stream_get_sample_size(stream_t *stream);
 //! @param stream output stream object.
 int stream_open(stream_t *stream);
 
+//! Open stream by FILE*
+//! @param stream output stream object
+//! @fp    already opened FILE*
+int stream_openfp(stream_t *stream, FILE *fp);
+
 //! Close stream.
 //! @param stream output stream object.
 int stream_close(stream_t *stream);
@@ -126,6 +134,8 @@ int stream_read(stream_t *stream, uint16_t* samples, unsigned sample_count);
 //! @param sample_count number of samples.
 int stream_write(stream_t *stream, uint16_t *samples, unsigned sample_count);
 
+//! Get stream samples count
+//! @param stream output stream object.
 ssize_t stream_count(stream_t *stream);
 
 //! Retrieve the last error.

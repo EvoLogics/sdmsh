@@ -124,7 +124,10 @@ typedef struct {
     int state;
 
     int data_len;
-    struct streams_t streams;
+    struct  streams_t streams;
+
+    char   *sink_membuf;
+    size_t  sink_membuf_size;
 
     sdm_pkt_t *cmd; /* last received command */
 } sdm_session_t;

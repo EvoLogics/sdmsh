@@ -153,7 +153,7 @@ void sdm_unpack_reply(sdm_pkt_t **cmd, char *buf)
     }
 }
 
-int sdm_cmd(sdm_session_t *ss, int cmd_code, ...)
+int sdm_send(sdm_session_t *ss, int cmd_code, ...)
 {
     va_list ap;
     int n;

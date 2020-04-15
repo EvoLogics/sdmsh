@@ -22,7 +22,7 @@ struct private_data_t
     // Last error operation.
     const char* error_op;
 
-    int fd;
+    FILE* fp;
 };
 
 static int stream_impl_open(stream_t *stream)
@@ -34,13 +34,28 @@ static int stream_impl_open(stream_t *stream)
     pdata = stream->pdata;
 
     if (stream->direction == STREAM_OUTPUT) {
-        pdata->fd = open(stream->args, O_CREAT|O_WRONLY, 0664);
+        pdata->fp = fopen(stream->args, "w");
     } else {
-        pdata->fd = open(stream->args, O_RDONLY);
+        pdata->fp = fopen(stream->args, "r");
     }
 
-    if (pdata->fd < 0)
+    if (!pdata->fp)
         RETURN_ERROR("opening file", errno);
+
+    return STREAM_ERROR_NONE;
+}
+
+static int stream_impl_openfp(stream_t *stream, FILE *fp)
+{
+    struct private_data_t *pdata;
+
+    if (!stream)
+        return STREAM_ERROR;
+    if (!fp)
+        return STREAM_ERROR;
+
+    pdata = stream->pdata;
+    pdata->fp = fp;
 
     return STREAM_ERROR_NONE;
 }
@@ -53,11 +68,11 @@ static int stream_impl_close(stream_t *stream)
         return STREAM_ERROR;
     pdata = stream->pdata;
 
-    if (pdata->fd == -1)
+    if (!pdata->fp)
         return 0;
 
-    close(pdata->fd);
-    pdata->fd = -1;
+    fclose(pdata->fp);
+    pdata->fp = NULL;
 
     return STREAM_ERROR_NONE;
 }
@@ -82,12 +97,12 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
     if (stream->direction == STREAM_OUTPUT)
         RETURN_ERROR("reading file", ENOTSUP);
 
-    rc = read(pdata->fd, samples, sample_count * stream->sample_size);
+    rc = fread(samples, sample_count, stream->sample_size, pdata->fp);
 
-    if (rc < 0)
+    if ((unsigned)rc != sample_count)
         RETURN_ERROR("reading file", errno);
 
-    return rc / stream->sample_size;
+    return rc;
 }
 
 static int stream_impl_write(stream_t *stream, void* samples, unsigned sample_count)
@@ -102,15 +117,12 @@ static int stream_impl_write(stream_t *stream, void* samples, unsigned sample_co
     if (stream->direction == STREAM_INPUT)
         RETURN_ERROR("writing file", ENOTSUP);
 
-    rc = write(pdata->fd, samples, stream->sample_size * sample_count);
+    rc = fwrite(samples, stream->sample_size, sample_count, pdata->fp);
 
-    if (rc < 0)
+    if ((unsigned)rc != sample_count)
         RETURN_ERROR("writing file", errno);
 
-    if ((unsigned)rc != stream->sample_size * sample_count)
-        return STREAM_ERROR;
-
-    return rc / stream->sample_size;
+    return rc;
 }
 
 static int stream_impl_get_errno(stream_t *stream)
@@ -168,6 +180,7 @@ int stream_impl_raw_new(stream_t *stream)
 {
     stream->pdata = calloc(1, sizeof(struct private_data_t));
     stream->open         = stream_impl_open;
+    stream->openfp       = stream_impl_openfp;
     stream->close        = stream_impl_close;
     stream->free         = stream_impl_free;
     stream->read         = stream_impl_read;

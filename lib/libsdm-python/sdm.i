@@ -1,11 +1,11 @@
 %module sdm
 
-%rename("%(strip:[sdm_])s") "";
-
 %include stdint.i
 
 %include exception.i
+%include typemaps.i
 
+%rename("%(strip:[sdm_])s") "";
 %exception sdm_send {
     /*
     puts("action: $action");
@@ -21,7 +21,6 @@
     $action
 }
 
-%include typemaps.i
 
 //int16_t* stream_load_samples(char *filename, size_t *len);
 %typemap(in, numinputs=0, noblock=1) size_t *len {
@@ -29,27 +28,17 @@
   $1 = &templen;
 }
 
-%typemap(out) uint16_t *stream_load_samples {
+%typemap(out) uint16_t* {
     int i;
     $result = PyList_New(templen);
     for (i = 0; i < templen; i++)
         PyList_SetItem($result, i, PyInt_FromLong((double)$1[i]));
 }
 
-%typemap(freearg) uint16_t *stream_load_samples {
+%typemap(freearg) uint16_t* {
   if ($1)
       free($1);
 }
-
-%{
-#include <sdm.h>
-#include <stream.h>
-#include <stdio.h> /* fopen() */
-#include <utils.h> /* logger() */
-%}
-
-%include <sdm.h>
-%include <stream.h>
 
 
 %typemap(in) (size_t nsamples, uint16_t *data) {
@@ -76,6 +65,16 @@
     if ($2)
         free($2);
 }
+
+%{
+#include <sdm.h>
+#include <stream.h>
+#include <stdio.h> /* fopen() */
+#include <utils.h> /* logger() */
+%}
+
+%include <sdm.h>
+%include <stream.h>
 
 %inline %{
 
@@ -142,12 +141,50 @@ int sdm_add_sink(sdm_session_t *ss, char *sinkname)
 
     if (stream_open(stream)) {
         if (stream_get_errno(stream) == EINTR)
-            logger(WARN_LOG, "rx: opening %s was interrupted\n", sinkname);
+            logger(WARN_LOG, "%s: opening %s was interrupted\n", __func__, sinkname);
         else
-            logger(ERR_LOG, "rx: %s error %s\n", stream_strerror(stream));
+            logger(ERR_LOG, "%s: %s error %s\n", __func__, stream_strerror(stream));
         return -1;
     }
     return 0;
+}
+
+int sdm_add_sink_membuf(sdm_session_t *ss)
+{
+    FILE *fp;
+    stream_t* stream = streams_add_new(&ss->streams, STREAM_OUTPUT, "raw:membuf");
+
+    /* FIXME: throw exeption */
+    if (!stream)
+        return -1;
+
+    /* sink_membuf not yet freed. Can be only one sdm_add_sink_membuf() for reciving */
+    if (ss->sink_membuf)
+        return -1;
+
+    fp = open_memstream(&ss->sink_membuf, &ss->sink_membuf_size);
+
+    if (stream_openfp(stream, fp)) {
+        logger(ERR_LOG, "%s: %s error %s\n", __func__, stream_strerror(stream));
+        return -1;
+    }
+    return 0;
+}
+
+uint16_t* sdm_get_membuf(sdm_session_t *ss, size_t *len)
+{
+    uint16_t *sink_membuf;
+
+    if (!ss->sink_membuf)
+        return NULL;
+
+    sink_membuf  = (uint16_t *)ss->sink_membuf;
+    *len         = ss->sink_membuf_size / 2;
+
+    ss->sink_membuf   = NULL;
+    ss->sink_membuf_size = 0;
+
+    return sink_membuf;
 }
 
 int sdm_send_rx(sdm_session_t *ss, size_t nsamples)
