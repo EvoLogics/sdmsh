@@ -1,11 +1,15 @@
 PROJ = sdm
-LIBSDM_DIR     = ../libsdm
-LIBSTREAM_DIR  = ../libstream
+LIBSDM_DIR     = ../..
+LIBSTREAM_DIR  = ../../../libstream
 LIBS  = -L$(LIBSDM_DIR) -I$(LIBSDM_DIR) -L$(LIBSTREAM_DIR) -I$(LIBSTREAM_DIR)
 PYTHON_INC = /usr/include/python2.7
+TESTS_BASE = tests
+TEST = usbl
 
-TEST_NODE_rx = 162
-TEST_NODE_tx = 171
+CC = gcc
+
+TEST_NODE_active = 219
+TEST_NODE_passive = 221
 
 .PHONY: build
 build: lib $(LIBSDM_DIR)/libsdm.so $(LIBSTREAM_DIR)/libstream.so _$(PROJ).so
@@ -28,9 +32,9 @@ $(LIBSDM_DIR)/libsdm.so:
 $(LIBSTREAM_DIR)/libstream.so:
 	make -C $(LIBSTREAM_DIR)
 
-rx tx: build
-	LD_LIBRARY_PATH=$(LIBSDM_DIR):$(LIBSTREAM_DIR) ./$@_test.py $(TEST_NODE_$@)
-	#LD_LIBRARY_PATH=$(LIBSDM_DIR):$(LIBSTREAM_DIR) valgrind --tool=memcheck --suppressions=valgrind-python.supp ./$@_test.py $(TEST_NODE_$@)
+active passive: build
+	LD_LIBRARY_PATH=$(LIBSDM_DIR):$(LIBSTREAM_DIR) PYTHONPATH=. tests/$(TEST)/$(TEST)-$@.py $(TEST_NODE_$@)
+	#LD_LIBRARY_PATH=$(LIBSDM_DIR):$(LIBSTREAM_DIR) PYTHONPATH=. valgrind --tool=memcheck --suppressions=valgrind-python.supp tests/$(TEST)/$(TEST)-$@.py $(TEST_NODE_$@)
 
 clean:
 	rm -f $(PROJ).py $(PROJ)_wrap.* $(OBJ) *~ *.pyc .*.sw? *.so

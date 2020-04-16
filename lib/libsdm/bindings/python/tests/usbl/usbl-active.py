@@ -3,6 +3,7 @@
 import sys
 import sdm
 
+signal_file = "../../../../examples/0717-up.dat"
 session = sdm.connect("192.168.0." + sys.argv[1], 4200)
 
 sdm.send(session, sdm.SDM_CMD_STOP);
@@ -13,13 +14,13 @@ sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_CONFIG, 1);
 sdm.send_usbl_config(session, 0, 51200, 3, 5);
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_USBL_CONFIG);
 
-data  = sdm.stream_load_samples("../../examples/0717-up.dat");
-data += sdm.stream_load_samples("../../examples/0717-up.dat");
+data  = sdm.stream_load_samples(signal_file);
+data += sdm.stream_load_samples(signal_file);
 
 sdm.send_tx(session, data);
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_TX_STOP);
 #############################################################
-data = sdm.stream_load_samples("../../examples/0717-up.dat");
+data = sdm.stream_load_samples(signal_file);
 
 sdm.send_ref(session, data);
 sdm.expect(session, sdm.SDM_REPLY_REPORT, sdm.SDM_REPLY_REPORT_REF);
