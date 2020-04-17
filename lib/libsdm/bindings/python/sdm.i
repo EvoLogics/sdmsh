@@ -30,40 +30,44 @@
 
 %typemap(out) uint16_t* {
     int i;
+
+    if (!$1)
+      SWIG_exception(SWIG_ValueError, "No signal data");
+
     $result = PyList_New(templen);
     for (i = 0; i < templen; i++)
         PyList_SetItem($result, i, PyInt_FromLong((double)$1[i]));
 }
 
 %typemap(freearg) uint16_t* {
-  if ($1)
-      free($1);
+  if (!$1)
+      SWIG_exception(SWIG_ValueError, "No signal data");
+  free($1);
 }
 
 
 %typemap(in) (size_t nsamples, uint16_t *data) {
     int i;
 
-    if (!PyList_Check($input)) {
-        PyErr_SetString(PyExc_ValueError, "Expecting a list");
-        return NULL;
-    }
+    if (!PyList_Check($input))
+        SWIG_exception(SWIG_ValueError, "Expecting a list");
+
     $1 = PyList_Size($input);
     $2 = (uint16_t *) malloc(($1)*sizeof(uint16_t));
     for (i = 0; i < $1; i++) {
         PyObject *s = PyList_GetItem($input,i);
         if (!PyInt_Check(s)) {
             free($2);
-            PyErr_SetString(PyExc_ValueError, "List items must be integers");
-            return NULL;
+            SWIG_exception(SWIG_ValueError, "List items must be integers");
         }
         $2[i] = PyInt_AsLong(s);
     }
 }
 
 %typemap(freearg) (size_t nsamples, uint16_t *data) {
-    if ($2)
-        free($2);
+    if (!$2)
+        SWIG_exception(SWIG_ValueError, "No data");
+    free($2);
 }
 
 %{

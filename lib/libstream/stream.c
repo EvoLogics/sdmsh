@@ -286,6 +286,7 @@ uint16_t* stream_load_samples(char *filename, size_t *len)
 
     if (rc < 0) {
         free(samples);
+        samples = NULL;
         goto stream_load_samples_error;
     }
 
