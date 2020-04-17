@@ -6,6 +6,7 @@
 %include typemaps.i
 
 %rename("%(strip:[sdm_])s") "";
+%rename("%(strip:[SDM_])s", %$isenumitem) "";
 %exception sdm_send {
     /*
     puts("action: $action");
