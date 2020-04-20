@@ -26,8 +26,13 @@ data = sdm.stream_load_samples(signal_file);
 sdm.send_ref(session, data);
 sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_REF);
 
-sdm.add_sink(session, "rcv2");
+sdm.add_sink(session, "rcv-passive.raw");
 sdm.send_rx(session, 1024)
+
+for ch in range(4):
+    sdm.add_sink(session, "raw:usbl-ch" + str(ch) + "-passive.raw");
+    sdm.send_usbl_rx(session, ch, 51200)
+    sdm.expect(session, sdm.REPLY_STOP);
 
 sdm.expect(session, sdm.REPLY_STOP);
 

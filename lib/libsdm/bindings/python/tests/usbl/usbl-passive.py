@@ -25,30 +25,20 @@ sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_REF);
 rcv = []
 sdm.add_sink_membuf(session);
 
-sdm.add_sink(session, "rcv.txt");
+sdm.add_sink(session, "rcv-active.raw");
 sdm.send_rx(session, 1024)
 sdm.expect(session, sdm.REPLY_STOP);
 
 rcv = sdm.get_membuf(session);
-sdm.add_sink(session, "raw:u0.raw");
-sdm.send_usbl_rx(session, 0, 51200)
 
-sdm.expect(session, sdm.REPLY_STOP);
-sdm.add_sink(session, "raw:u1.raw");
-sdm.send_usbl_rx(session, 1, 51200)
+#with open('rcv-membuf.txt', 'w') as fp:
+#    for i in rcv:
+#        fp.write('%d\n' % i)
 
-sdm.expect(session, sdm.REPLY_STOP);
-sdm.add_sink(session, "raw:u2.raw");
-sdm.send_usbl_rx(session, 2, 51200)
-
-sdm.expect(session, sdm.REPLY_STOP);
-sdm.add_sink(session, "raw:u3.raw");
-
-sdm.send_usbl_rx(session, 3, 51200)
-sdm.expect(session, sdm.REPLY_STOP);
-sdm.add_sink(session, "raw:u4.raw");
-sdm.send_usbl_rx(session, 4, 51200)
-sdm.expect(session, sdm.REPLY_STOP);
+for ch in range(4):
+    sdm.add_sink(session, "raw:usbl-ch" + str(ch) + "-active.raw");
+    sdm.send_usbl_rx(session, ch, 51200)
+    sdm.expect(session, sdm.REPLY_STOP);
 
 sdm.send(session, sdm.CMD_SYSTIME);
 sdm.expect(session, sdm.REPLY_SYSTIME);
