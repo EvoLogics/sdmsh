@@ -86,20 +86,47 @@
 int sdm_send_config(sdm_session_t *ss, uint16_t threshold,
                             uint8_t gain, uint8_t srclvl, uint8_t preamp_gain)
 {
-    // FIXME: check params
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    SDM_CHECK_ARG_LONG("threshold",    threshold,   arg >= 0 && arg <= 4095);
+    SDM_CHECK_ARG_LONG("gain",         gain,        arg >= 0 && arg <= 1);
+    SDM_CHECK_ARG_LONG("source level", srclvl,      arg >= 0 && arg <= 3);
+    SDM_CHECK_ARG_LONG("preamp gain",  preamp_gain, arg >= 0 && arg <= 13);
     sdm_send(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
 }
 
 int sdm_send_usbl_config(sdm_session_t *ss, uint16_t delay, long samples,
                             uint8_t gain, uint8_t sample_rate)
 {
-    // FIXME: check params
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    SDM_CHECK_ARG_LONG("delay",             delay,       arg >= 0 && arg <= 65535);
+    SDM_CHECK_ARG_LONG("number of samples", samples,     arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
+    SDM_CHECK_ARG_LONG("gain",              gain,        arg >= 0 && arg <= 13);
+    SDM_CHECK_ARG_LONG("sample_rate",       sample_rate, arg >= 0 && arg <= 6);
+
     sdm_send(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
 }
 
 int sdm_send_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    if (!data) {
+        logger(ERR_LOG, "No data\n");
+        return -1;
+    }
+
     if (nsamples != 1024) {
-        logger (WARN_LOG, "Error reference signal must be 1024 samples\n");
+        logger(WARN_LOG, "Error reference signal must be 1024 samples\n");
         return -1;
     }
     return sdm_send(ss, SDM_CMD_REF, data, nsamples);
@@ -109,6 +136,18 @@ int sdm_send_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
     int rc;
     uint16_t cmd;
     size_t cnt, passed = 0, len = 1024;
+
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    if (!data) {
+        logger(ERR_LOG, "No data\n");
+        return -1;
+    }
+
+    SDM_CHECK_ARG_LONG("rx: number of samples", nsamples, arg >= 0 && arg <= 16776192);
 
     cmd = SDM_CMD_TX;
     do {
@@ -136,13 +175,143 @@ int sdm_send_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
     } while (rc == 0 && passed < nsamples);
 }
 
+int sdm_send_stop(sdm_session_t *ss)
+{
+    return sdm_send(ss, SDM_CMD_STOP);
+}
+
+int sdm_send_rx(sdm_session_t *ss, size_t nsamples)
+{
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    if (ss->streams.count == 0) {
+        logger(ERR_LOG, "No sink\n");
+        return -1;
+    }
+
+    SDM_CHECK_ARG_LONG("rx: number of samples", nsamples, arg >= 0 && arg <= 16776192);
+
+    if (nsamples % 1024) {
+        long old = nsamples;
+        nsamples += 1024 - nsamples % 1024;
+        logger(WARN_LOG, "Warning: signal number of samples %ld do not divisible by 1024 samples. Expand to %ld\n"
+                , old, nsamples);
+    }
+    return sdm_send(ss, SDM_CMD_RX, nsamples);
+}
+
+int sdm_send_usbl_rx(sdm_session_t *ss, uint8_t channel, uint16_t nsamples)
+{
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    if (ss->streams.count == 0) {
+        logger(ERR_LOG, "No sink\n");
+        return -1;
+    }
+
+    SDM_CHECK_ARG_LONG("channel number",    channel, arg >= 0 && arg <= 4);
+    SDM_CHECK_ARG_LONG("number of samples", nsamples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
+
+    if (nsamples % 1024) {
+        long old = nsamples;
+        nsamples += 1024 - nsamples % 1024;
+        logger(WARN_LOG, "Warning: signal number of samples %ld do not divisible by 1024 samples. Expand to %ld\n"
+                , old, nsamples);
+    }
+
+    return sdm_send(ss, SDM_CMD_USBL_RX, channel, nsamples);
+}
+
+int sdm_send_rx_janus(sdm_session_t *ss, uint16_t nsamples)
+{
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    if (sdm_janus_rx_check_executable() != 0) {
+        logger(ERR_LOG, "No janus_rx executable\n");
+        return -1;
+    }
+
+    if (ss->streams.count == 0) {
+        logger(ERR_LOG, "No sink\n");
+        return -1;
+    }
+
+    SDM_CHECK_ARG_LONG("number of samples", nsamples, arg >= 0 && arg <= 16776192);
+
+    if (nsamples % 1024) {
+        long old = nsamples;
+        nsamples += 1024 - nsamples % 1024;
+        logger(WARN_LOG, "Warning: signal number of samples %ld do not divisible by 1024 samples. Expand to %ld\n"
+                , old, nsamples);
+    }
+
+    return sdm_send(ss, SDM_CMD_RX_JANUS);
+}
+
+int sdm_send_systime(sdm_session_t *ss)
+{
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    return sdm_send(ss, SDM_CMD_SYSTIME);
+}
+
+int sdm_waitsyncin(sdm_session_t *ss)
+{
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    sdm_set_idle_state(ss);
+    ss->state = SDM_STATE_WAIT_SYNCIN;
+    return sdm_expect(ss, SDM_REPLY_SYNCIN);
+}
+
+int sdm_flush_connect(sdm_session_t *ss)
+{
+    int rc;
+
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
+        return -1;
+    }
+
+    rc = sdm_send(ss, SDM_CMD_STOP);
+
+    if (rc < 0)
+        return rc;
+
+    ss->state = SDM_STATE_INIT;
+    return sdm_expect(ss, SDM_REPLY_STOP);
+}
+
 int sdm_add_sink(sdm_session_t *ss, char *sinkname)
 {
-    stream_t* stream = streams_add_new(&ss->streams, STREAM_OUTPUT, sinkname);
+    stream_t* stream;
 
-    /* FIXME: throw exeption */
-    if (!stream)
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
         return -1;
+    }
+
+    stream = streams_add_new(&ss->streams, STREAM_OUTPUT, sinkname);
+
+    if (!stream) {
+        logger(ERR_LOG, "Cannot add sink\n");
+        return -1;
+    }
 
     if (stream_open(stream)) {
         if (stream_get_errno(stream) == EINTR)
@@ -157,19 +326,30 @@ int sdm_add_sink(sdm_session_t *ss, char *sinkname)
 int sdm_add_sink_membuf(sdm_session_t *ss)
 {
     FILE *fp;
-    stream_t* stream = streams_add_new(&ss->streams, STREAM_OUTPUT, "raw:membuf");
+    stream_t* stream;
 
-    /* FIXME: throw exeption */
-    if (!stream)
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
         return -1;
+    }
 
     /* sink_membuf not yet freed. Can be only one sdm_add_sink_membuf() for reciving */
-    if (ss->sink_membuf)
+    if (ss->sink_membuf) {
+        logger(ERR_LOG, "Cannot set membuf sink more then one time\n");
         return -1;
+    }
+
+    stream = streams_add_new(&ss->streams, STREAM_OUTPUT, "raw:membuf");
+
+    if (!stream) {
+        logger(ERR_LOG, "Cannot add sink\n");
+        return -1;
+    }
 
     fp = open_memstream(&ss->sink_membuf, &ss->sink_membuf_size);
 
     if (stream_openfp(stream, fp)) {
+        streams_remove(&ss->streams, ss->streams.count);
         logger(ERR_LOG, "%s: %s error %s\n", __func__, stream_strerror(stream));
         return -1;
     }
@@ -180,8 +360,15 @@ uint16_t* sdm_get_membuf(sdm_session_t *ss, size_t *len)
 {
     uint16_t *sink_membuf;
 
-    if (!ss->sink_membuf)
+    if (!ss) {
+        logger(ERR_LOG, "No SDM session\n");
         return NULL;
+    }
+
+    if (!ss->sink_membuf) {
+        logger(ERR_LOG, "No membuf sink\n");
+        return NULL;
+    }
 
     sink_membuf  = (uint16_t *)ss->sink_membuf;
     *len         = ss->sink_membuf_size / 2;
@@ -192,48 +379,6 @@ uint16_t* sdm_get_membuf(sdm_session_t *ss, size_t *len)
     return sink_membuf;
 }
 
-int sdm_send_rx(sdm_session_t *ss, size_t nsamples)
-{
-    sdm_send(ss, SDM_CMD_RX, nsamples);
-}
-
-int sdm_send_usbl_rx(sdm_session_t *ss, uint8_t channel, uint16_t samples)
-{
-    sdm_send(ss, SDM_CMD_USBL_RX, channel, samples);
-}
-
-#if 0
-int sdm_send_rx_to_file(sdm_session_t *ss, char *filename, size_t len) {
-    FILE *fp;
-
-    /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
-    if (len < 0 && len > 16776192) {
-        logger (ERR_LOG, "%s(): must be in range from 0 to 16776192\n", __func__);
-        return -1;
-    }
-
-    /* truncate file if exist */
-    if ((fp = fopen(filename, "w")) == NULL) {
-        logger(ERR_LOG, "Error cannot open %s file: %s\n", filename, strerror(errno));
-        return -1;
-    }
-    fclose(fp);
-
-    if (len % 1024) {
-        long old = len;
-        len += 1024 - len % 1024;
-        logger(WARN_LOG, "Warning: signal samples number %ld do not divisible by 1024 samples."
-                " Expand to %ld\n" , old, len);
-    }
-
-    if (ss->filename) {
-        free(ss->filename);
-    }
-    ss->filename = strdup(filename);
-
-    sdm_send(ss, SDM_CMD_RX, len);
-}
-#endif
 
 %}
 

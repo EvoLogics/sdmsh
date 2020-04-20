@@ -154,4 +154,26 @@ char* sdm_reply_report_to_str(uint8_t cmd);
 
 int sdm_is_async_reply(uint8_t cmd);
 
+#define SDM_CHECK_ARG_LONG(name, var, range_expr) do {            \
+    long arg = var;                                               \
+    if (!(range_expr)) {                                          \
+        logger(ERR_LOG, name": must be in range '%s'\n"           \
+                , #range_expr);                                   \
+        return -1;                                                \
+    }                                                             \
+} while (0)
+
+#define SDM_CHECK_STR_ARG_LONG(name, str_val, out, range_expr) do {             \
+    long arg;                                                     \
+    errno = 0;                                                    \
+    arg = strtol(str_val, NULL, 0);                               \
+    if ((errno == ERANGE && (arg == LONG_MAX || arg == LONG_MIN)) \
+        || (errno != 0 && arg == 0)) {                            \
+        logger(ERR_LOG, name": must be a digit\n");               \
+        return -1;                                                \
+    }                                                             \
+    SDM_CHECK_ARG_LONG(name, arg, range_expr)                     \
+    out = arg;                                                    \
+} while (0)
+
 #endif

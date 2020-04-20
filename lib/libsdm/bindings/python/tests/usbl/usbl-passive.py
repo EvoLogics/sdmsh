@@ -7,9 +7,7 @@ import sdm
 signal_file = "../../../../examples/0717-up.dat"
 session = sdm.connect("192.168.0." + sys.argv[1], 4200)
 
-sdm.send(session, sdm.CMD_STOP);
-session.state = sdm.STATE_INIT
-sdm.expect(session, sdm.REPLY_STOP);
+sdm.flush_connect(session)
 
 sdm.send_config(session, 350, 0, 3, 1)
 sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_CONFIG);
@@ -48,7 +46,7 @@ print("tx_time",      session.cmd.tx_time);
 print("rx_time",      session.cmd.rx_time);
 print("syncin_time",  session.cmd.syncin_time);
 
-time.sleep(2)
+time.sleep(1)
 ####################### send back ########################
 data  = sdm.stream_load_samples(signal_file);
 data += sdm.stream_load_samples(signal_file);

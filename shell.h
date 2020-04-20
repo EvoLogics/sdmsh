@@ -25,23 +25,6 @@
     }                                                          \
 } while(0)
 
-#define ARG_LONG(name, str_val, out, range_expr) do {             \
-    long arg;                                                     \
-    errno = 0;                                                    \
-    arg = strtol(str_val, NULL, 0);                               \
-    if ((errno == ERANGE && (arg == LONG_MAX || arg == LONG_MIN)) \
-        || (errno != 0 && arg == 0)) {                            \
-        fprintf(stderr, name": must be a digit\n");               \
-        return -1;                                                \
-    }                                                             \
-    if (!(range_expr)) {                                          \
-        fprintf(stderr, name": must be in range '%s'\n"           \
-                , #range_expr);                                   \
-        return -1;                                                \
-    }                                                             \
-    out = arg;                                                    \
-} while(0)
-
 #define SF_SCRIPT_MODE      (1 << 0)
 
 #define SCF_NONE            0

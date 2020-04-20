@@ -6,9 +6,7 @@ import sdm
 signal_file = "../../../../examples/0717-up.dat"
 session = sdm.connect("192.168.0." + sys.argv[1], 4200)
 
-sdm.send(session, sdm.CMD_STOP);
-session.state = sdm.STATE_INIT
-sdm.expect(session, sdm.REPLY_STOP);
+sdm.flush_connect(session)
 
 sdm.send_config(session, 350, 0, 3, 1);
 sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_CONFIG, 1);
@@ -28,13 +26,12 @@ sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_REF);
 
 sdm.add_sink(session, "rcv-passive.raw");
 sdm.send_rx(session, 1024)
+sdm.expect(session, sdm.REPLY_STOP);
 
 for ch in range(4):
     sdm.add_sink(session, "raw:usbl-ch" + str(ch) + "-passive.raw");
     sdm.send_usbl_rx(session, ch, 51200)
     sdm.expect(session, sdm.REPLY_STOP);
-
-sdm.expect(session, sdm.REPLY_STOP);
 
 sdm.send(session, sdm.CMD_SYSTIME);
 sdm.expect(session, sdm.REPLY_SYSTIME);

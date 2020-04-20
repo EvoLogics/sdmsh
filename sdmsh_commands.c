@@ -72,11 +72,11 @@ int sdmsh_cmd_config(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
 
     ARGS_RANGE(argc == 4 || argc == 5);
-    ARG_LONG("config: threshold", argv[1], threshold, arg >= 0 && arg <= 4095);
-    ARG_LONG("config: gain", argv[2], gain, arg >= 0 && arg <= 1);
-    ARG_LONG("config: source level", argv[3], srclvl, arg >= 0 && arg <= 3);
+    SDM_CHECK_STR_ARG_LONG("config: threshold", argv[1], threshold, arg >= 0 && arg <= 4095);
+    SDM_CHECK_STR_ARG_LONG("config: gain", argv[2], gain, arg >= 0 && arg <= 1);
+    SDM_CHECK_STR_ARG_LONG("config: source level", argv[3], srclvl, arg >= 0 && arg <= 3);
     if (argc == 5) {
-        ARG_LONG("config: preamp gain", argv[4], preamp_gain, arg >= 0 && arg <= 13);
+        SDM_CHECK_STR_ARG_LONG("config: preamp gain", argv[4], preamp_gain, arg >= 0 && arg <= 13);
     }
     sdm_send(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
     sdm_set_idle_state(ss);
@@ -91,10 +91,10 @@ int sdmsh_cmd_usbl_config(struct shell_config *sc, char *argv[], int argc)
     sdm_session_t *ss = sc->cookie;
 
     ARGS_RANGE(argc == 5);
-    ARG_LONG("usbl_config: delay", argv[1], delay, arg >= 0 && arg <= 65535);
-    ARG_LONG("usbl_config: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
-    ARG_LONG("usbl_config: gain", argv[3], gain, arg >= 0 && arg <= 13);
-    ARG_LONG("usbl_config: sample_rate", argv[4], sample_rate, arg >= 0 && arg <= 6);
+    SDM_CHECK_STR_ARG_LONG("usbl_config: delay", argv[1], delay, arg >= 0 && arg <= 65535);
+    SDM_CHECK_STR_ARG_LONG("usbl_config: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
+    SDM_CHECK_STR_ARG_LONG("usbl_config: gain", argv[3], gain, arg >= 0 && arg <= 13);
+    SDM_CHECK_STR_ARG_LONG("usbl_config: sample_rate", argv[4], sample_rate, arg >= 0 && arg <= 6);
 
     sdm_send(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
     sdm_set_idle_state(ss);
@@ -125,7 +125,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 
     ARGS_RANGE(argc == 2 || argc == 3);
     if (argc == 3) {
-        ARG_LONG("ref: samples-count", argv[1], samples_count, arg >= 1 && arg <= 1024);
+        SDM_CHECK_STR_ARG_LONG("ref: samples-count", argv[1], samples_count, arg >= 1 && arg <= 1024);
         argv++;
     }
 
@@ -179,7 +179,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 
     ARGS_RANGE(argc == 3 || argc == 2);
     if (argc == 3) {
-        ARG_LONG("tx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+        SDM_CHECK_STR_ARG_LONG("tx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
         argv++;
     }
 
@@ -248,7 +248,7 @@ int sdmsh_cmd_rx_helper(struct shell_config *sc, char *argv[], int argc, int cod
     /* 16776192 == 0xfffffc maximum 24 bit digit rounded to 1024 */
     if (code == SDM_CMD_RX) {
         ARGS_RANGE(argc >= 3);
-        ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
+        SDM_CHECK_STR_ARG_LONG("rx: number of samples", argv[1], nsamples, arg >= 0 && arg <= 16776192);
         strm_cnt  = argc - 2;
         args_sink = argv + 2;
     } else {
@@ -311,8 +311,8 @@ int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
     stream_t* stream;
 
     ARGS_RANGE(argc == 4);
-    ARG_LONG("usbl_rx: channel", argv[1], channel, arg >= 0 && arg <= 4);
-    ARG_LONG("usbl_rx: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
+    SDM_CHECK_STR_ARG_LONG("usbl_rx: channel", argv[1], channel, arg >= 0 && arg <= 4);
+    SDM_CHECK_STR_ARG_LONG("usbl_rx: number of samples", argv[2], samples, arg >= 1024 && arg <= 51200 && (arg % 1024) == 0);
 
     streams_clean(&ss->streams);
     stream = streams_add_new(&ss->streams, STREAM_OUTPUT, argv[3]);
@@ -360,7 +360,7 @@ int sdmsh_cmd_usleep(struct shell_config *sc, char *argv[], int argc)
     sc = sc;
 
     ARGS_RANGE(argc == 2);
-    ARG_LONG("usleep: usec", argv[1], usec, arg >= 0);
+    SDM_CHECK_STR_ARG_LONG("usleep: usec", argv[1], usec, arg >= 0);
     usleep(usec);
 
     return 0;
@@ -373,7 +373,7 @@ int sdmsh_cmd_history(struct shell_config *sc, char *argv[], int argc)
 
     ARGS_RANGE(argc == 1 || argc == 2);
     if (argc == 2)
-        ARG_LONG("history: number-lines", argv[1], hist_num, arg >= 0);
+        SDM_CHECK_STR_ARG_LONG("history: number-lines", argv[1], hist_num, arg >= 0);
 
     shell_show_history(hist_num);
 
