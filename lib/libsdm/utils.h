@@ -56,9 +56,6 @@
 
 #endif
 
-
-#ifdef LOGGER_ENABLED
-
 #include <ctype.h>
 #include <errno.h>
 #include <string.h> /* for strerror */
@@ -96,18 +93,6 @@
         }                                       \
     }while(0)
 
-#if 0
-# define DUMP2LOG(level, buf, len)                                  \
-    do{                                                             \
-        typeof(len) __i;                                            \
-        if (level & log_level) {                                    \
-            logger(level, "[%d]{", len);                            \
-            for (__i = 0; __i < len; __i++)                         \
-                logger_("%02x ",*((unsigned char *)(buf) + __i));   \
-            logger_("}\n");                                         \
-        }                                                           \
-    }while(0)
-#else
 
 # define DUMP2LOG(level, buf, len)              \
     do{                                         \
@@ -116,7 +101,6 @@
             log_hexdump(buf, len);              \
         }                                       \
     } while (0)
-#endif
 
 
 # define DUMP(level, buf, len)                                      \
@@ -225,23 +209,11 @@
 
 extern unsigned long log_level;
 
-#else
-# define logger(level, fmt, ...)             do{ }while(0)
-# define rawlog(level,fmt, ...)                 do{ }while(0)
-# define DUMP2LOG(level, buf, len)           do{ }while(0)
-# define DUMP(level, buf, len)               do{ }while(0)
-# define DUMP_FD2LOG(level, fdset, maxfd)    do{ }while(0)
-# define DUMP_SHORT(level, color, buf, len)  do{ }while(0)
-# define LINE2LOG                            do{ }while(0)
-# define PANICLOG                            do{ }while(0)
-# define L2L(x)                              do{ }while(0)
-# define DUMPIP2LOG(level, buf, len)         do{ }while(0)
-# warning "LOGGER disable..."
-#endif
-
-int logger_init(const char log_name_[],int limit_flag, ...);
-int logger_init_fd(int fd, int limit_flag_,...);
-int logger_(const char *msg, ...);
+int  logger_init(const char *filename,int limit);
+int  logger_init_fd(int fd, int limit);
+void logger_deinit();
+int  logger_(const char *msg, ...);
+char *logger_last_line();
 
 void hex_dump(FILE *f, char buf[], unsigned int len);
 void hex_dump_short(FILE *f, char buf[], unsigned int len);

@@ -388,7 +388,6 @@ int main(int argc, char *argv[])
                 sdm_session->state = SDM_STATE_INIT;
                 continue;
             }
-
         }
     }
 

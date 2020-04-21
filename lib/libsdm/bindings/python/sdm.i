@@ -7,23 +7,33 @@
 
 %rename("%(strip:[sdm_])s") "";
 %rename("%(strip:[SDM_])s", %$isenumitem) "";
-%exception sdm_send {
-    /*
-    puts("action: $action");
-    puts("name: $name");
-    puts("symname: $symname");
-    puts("overname: $overname");
-    puts("wrapname: $wrapname");
-    puts("decl: $decl");
-    puts("fulldecl: $fulldecl");
-    */
+%define EXCEPTION_RET_INT {
     if (arg1 == NULL)
         SWIG_exception(SWIG_ValueError, "No connection");
-    $action
-}
 
+    $action
 
 //int16_t* stream_load_samples(char *filename, size_t *len);
+    if (result < 0) {
+        SWIG_exception(SWIG_SystemError, logger_last_line());
+    }
+}
+%enddef
+
+%exception sdm_send_tx         EXCEPTION_RET_INT
+%exception sdm_send_rx         EXCEPTION_RET_INT
+%exception sdm_expect          EXCEPTION_RET_INT
+%exception sdm_send_config     EXCEPTION_RET_INT
+%exception sdm_send_usbl_rx    EXCEPTION_RET_INT
+%exception sdm_send_ref        EXCEPTION_RET_INT
+%exception sdm_send_stop       EXCEPTION_RET_INT
+%exception sdm_send_rx_janus   EXCEPTION_RET_INT
+%exception sdm_send_systime    EXCEPTION_RET_INT
+%exception sdm_waitsyncin      EXCEPTION_RET_INT
+%exception sdm_flush_connect   EXCEPTION_RET_INT
+%exception sdm_add_sink        EXCEPTION_RET_INT
+%exception sdm_add_sink_membuf EXCEPTION_RET_INT
+
 %typemap(in, numinputs=0, noblock=1) size_t *len {
   size_t templen;
   $1 = &templen;
@@ -76,10 +86,12 @@
 #include <stream.h>
 #include <stdio.h> /* fopen() */
 #include <utils.h> /* logger() */
+#include <janus/janus.h>
 %}
 
 %include <sdm.h>
 %include <stream.h>
+%include <utils.h>
 
 %inline %{
 
@@ -95,7 +107,7 @@ int sdm_send_config(sdm_session_t *ss, uint16_t threshold,
     SDM_CHECK_ARG_LONG("gain",         gain,        arg >= 0 && arg <= 1);
     SDM_CHECK_ARG_LONG("source level", srclvl,      arg >= 0 && arg <= 3);
     SDM_CHECK_ARG_LONG("preamp gain",  preamp_gain, arg >= 0 && arg <= 13);
-    sdm_send(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
+    return sdm_send(ss, SDM_CMD_CONFIG, threshold, gain, srclvl, preamp_gain);
 }
 
 int sdm_send_usbl_config(sdm_session_t *ss, uint16_t delay, long samples,
@@ -111,7 +123,7 @@ int sdm_send_usbl_config(sdm_session_t *ss, uint16_t delay, long samples,
     SDM_CHECK_ARG_LONG("gain",              gain,        arg >= 0 && arg <= 13);
     SDM_CHECK_ARG_LONG("sample_rate",       sample_rate, arg >= 0 && arg <= 6);
 
-    sdm_send(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
+    return sdm_send(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
 }
 
 int sdm_send_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
@@ -169,10 +181,13 @@ int sdm_send_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
             rc = sdm_send(ss, cmd, nsamples, buf, 1024 * ((cnt + 1023) / 1024));
             passed += 1024 * ((cnt + 1023) / 1024);
         } else {
+            logger(ERR_LOG, "sdm_send(): %s\n", strerror(errno));
             rc = -1;
         }
         cmd = SDM_CMD_TX_CONTINUE;
     } while (rc == 0 && passed < nsamples);
+
+    return rc;
 }
 
 int sdm_send_stop(sdm_session_t *ss)

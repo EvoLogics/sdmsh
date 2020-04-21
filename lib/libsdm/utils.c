@@ -10,139 +10,102 @@
 
 #include <utils.h>
 
-#ifdef LOGGER_ENABLED
+#define LOGGER_MAX_LINE 1024
 
-static char last_line[] = "\nfile overflow-----\n";
+static long log_limit;
 
-static void die();
-static long limit;
+static long current_size = 0;
+static int  limit_overflow;
+static char *overflow_warning = "\nfile overflow-----\n";
+static char last_log_line[LOGGER_MAX_LINE];
 
-static long current_size;
-static int limit_overflow;
-static int limit_flag;
+static int log_fd = -1;
 
-static int fd;
-static int use_fd = 0;
-
-int logger_init(const char log_name_[],int limit_flag, ...)
+int logger_init(const char *filename, int limit)
 {
-    int rs;
+    if (log_fd != -1)
+        close(log_fd);
 
-    if (use_fd)
-    {
-        close(fd);
-        use_fd = 0;
-    }
-
-    if (log_name_ == NULL)
-    {
-        return 0;
-    }
-
-    fd = open(log_name_,O_CREAT | O_RDWR,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-
-    if (fd < 0 || current_size < 0) 
+    if (!filename)
         return -1;
 
-    atexit(die);
+    log_fd = open(filename,O_CREAT | O_RDWR,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 
-    if (limit_flag)
-    {
-        int limit_;
-        va_list ap;
+    if (log_fd < 0 || current_size < 0)
+        return -1;
 
-        va_start(ap,limit_flag);
-        limit_ = va_arg(ap, long);
-        va_end(ap);
-        rs = logger_init_fd(fd, 1, limit_);
-    }
-    else
-    {
-        rs = logger_init_fd(fd,0);
-    }
-
-    return rs;
+    return logger_init_fd(log_fd, limit);
 }
 
-int logger_init_fd(int fd_, int limit_flag_,...)
+int logger_init_fd(int fd, int limit)
 {
-    va_list ap;
-    int limit_;
+    if (limit > 0)
+        return 0;
 
-    use_fd = 1;
-    fd = fd_;
-    limit_flag = limit_flag_;
-    if (limit_flag)
-    {
-        va_start(ap,limit_flag_);
-        limit_ = va_arg(ap, long);
-        va_end(ap);
+    if (log_limit < 0)
+        return -1;
 
-        if (limit < 0) 
-            return -1;
-        limit = limit_;
-        if (limit > (long)strlen(last_line))
-            limit -= strlen(last_line);
-        current_size = 0;
-        limit_overflow = 0;
-    }
+    log_fd = fd;
+
+    log_limit = limit;
+    if (log_limit > (long)strlen(overflow_warning))
+        log_limit -= strlen(overflow_warning);
+
+    current_size = 0;
+    limit_overflow = 0;
 
     return 0;
+}
+
+void logger_deinit()
+{
+    if (log_fd != -1)
+        close(log_fd);
+    log_fd = -1;
+    last_log_line[0] = 0;
+    log_limit = 0;
 }
 
 int logger_(const char *msg, ...)
 {
     va_list ap;
+    int buf_len;
+    char buf[LOGGER_MAX_LINE + 1];
+    int fd = STDOUT_FILENO;
 
-    if (use_fd)
-    {
-# define MAX_LINE 4096
-        int buf_len;
-        char buf[MAX_LINE + 1];
+    va_start(ap, msg);
+    buf_len = vsnprintf(buf, LOGGER_MAX_LINE, msg, ap);
+    va_end(ap);
 
-        va_start(ap, msg);
-        vsnprintf(buf,MAX_LINE,msg,ap);
-        va_end(ap);
-
-        buf_len = strlen(buf);
-
-        if (limit_flag && limit && current_size + buf_len >= limit)
+    if (log_fd != -1) {
+        if (log_limit && current_size + buf_len >= log_limit)
         {
+            /* supress logging when owerflow */
             if (limit_overflow)
-                return 0; // подавление вывода при выводе в ограниченный по размеру файл
+                return 0;
+
             limit_overflow = 1;
-            strcpy(buf,last_line);
+            strcpy(buf, overflow_warning);
             buf_len = strlen(buf);
-            current_size = limit;
+            current_size = log_limit;
         }
         else
             current_size += buf_len;
-        write(fd,buf,buf_len);
+        fd = log_fd;
     }
-    else
-    {
-        va_start(ap, msg);
-        vprintf(msg,ap);
-        va_end(ap);
-        fflush(stdout);
-    }
+
+    write(fd, buf, buf_len);
+
+    strncpy(last_log_line, buf, sizeof(last_log_line));
+    last_log_line[LOGGER_MAX_LINE - 1] = 0;
 
     return 0;
 }
 
-void die(void)
+char *logger_last_line()
 {
-    if (use_fd)
-        close(fd);
+    return last_log_line;
 }
-
-#else /* LOGGER_ENABLED */
-int logger_(const char *msg, ...)
-{
-    msg = msg;
-    return 0;
-}
-#endif
 
 void hex_dump(FILE *f, char buf[], unsigned int len)
 {                                                        

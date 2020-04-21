@@ -702,8 +702,10 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
-        if (rc == -1)
+        if (rc == -1) {
+            logger(ERR_LOG, "expect: %s\n", strerror(errno));
             return -1;
+        }
 
         /* timeout */
         if (!rc) {
@@ -722,8 +724,10 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
             if (len == 0)
                 break;
 
-            if (len < 0)
-                err(1, "read(): ");
+            if (len < 0) {
+                logger(ERR_LOG, "expect(): %s\n", strerror(errno));
+                return -1;
+            }
 
             do {
                 rc = sdm_handle_rx_data(ss, buf, len);
@@ -783,7 +787,7 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
             }
 
             if (state == SDM_STATE_INIT) {
-                logger(WARN_LOG, "\rSkip %d received bytes in SDM_STATE_INIT state\n", len_orig);
+                logger(WARN_LOG, "Skip %d received bytes in SDM_STATE_INIT state\n", len_orig);
                 ss->state = SDM_STATE_INIT;
                 continue;
             }
