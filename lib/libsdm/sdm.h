@@ -8,6 +8,8 @@
 #include <utils.h>
 #include <stream.h>
 
+#define SDM_ERR_SYSTEM       -1
+#define SDM_ERR_TIMEOUT      -2
 #define SDM_ERR_NO_SDM_MODE -42
 #define SDM_ERR_BUSY        -43
 #define SDM_ERR_SAVE_FAIL   -44
@@ -20,6 +22,8 @@
 #else
 #define SDM_PKG_MAGIC 0x80007fff00000000UL
 #endif
+
+#define SDM_DEFAULT_TIMEOUT 5000 /* ms */
 
 enum {
     SDM_CMD_STOP        = 0,
@@ -130,6 +134,8 @@ typedef struct {
     size_t  sink_membuf_size;
 
     sdm_pkt_t *cmd; /* last received command */
+
+    long timeout; /* used in expect() */
 } sdm_session_t;
 
 sdm_session_t* sdm_connect(char *host, int port);

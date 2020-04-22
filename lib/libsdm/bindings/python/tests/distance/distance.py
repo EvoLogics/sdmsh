@@ -17,6 +17,9 @@ sdm.var.log_level = sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG
 def session_setup(name, addr):
     session = sdm.create_session(name, addr)
 
+    # 2 s wait in expect
+    session.timeout = 2000
+
     sdm.send_config(session, 200, 0, 3, 1)
     sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_CONFIG);
 
@@ -40,7 +43,13 @@ def send_signal(session):
     return session.send
 
 def recv_data(session):
-    sdm.expect(session, sdm.REPLY_STOP);
+    try:
+        sdm.expect(session, sdm.REPLY_STOP);
+    except sdm.TimeoutError, err:
+        print("Fail to receive signal on %s side" % session.name)
+        sdm.send_stop(session)
+        exit(1)
+
     session.receive.data = sdm.get_membuf(session);
 
     session.receive.usbl_data = sdm.receive_usbl_data(session)

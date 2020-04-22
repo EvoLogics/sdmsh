@@ -13,14 +13,16 @@
 
     $action
 
-    if (result < 0)
+    if (result == SDM_ERR_TIMEOUT) {
+        SWIG_SetErrorMsg(SDM_TimeoutError, "Timeout");
+        SWIG_fail;
+    } else if (result < 0)
         SWIG_exception(SWIG_SystemError, logger_last_line());
 }
 %enddef
 
 %exception sdm_send_tx         EXCEPTION_RET_INT
 %exception sdm_send_rx         EXCEPTION_RET_INT
-%exception sdm_expect          EXCEPTION_RET_INT
 %exception sdm_send_config     EXCEPTION_RET_INT
 %exception sdm_send_usbl_rx    EXCEPTION_RET_INT
 %exception sdm_send_ref        EXCEPTION_RET_INT
@@ -31,6 +33,8 @@
 %exception sdm_flush_connect   EXCEPTION_RET_INT
 %exception sdm_add_sink        EXCEPTION_RET_INT
 %exception sdm_add_sink_membuf EXCEPTION_RET_INT
+%exception sdm_expect          EXCEPTION_RET_INT
+
 
 %exception sdm_connect {
     if (arg1 == NULL)
@@ -53,9 +57,12 @@
     if (!$1)
       SWIG_exception(SWIG_ValueError, "No signal data");
 
+#if defined(SWIGPYTHON)
     $result = PyList_New(templen);
     for (i = 0; i < templen; i++)
         PyList_SetItem($result, i, PyInt_FromLong((double)$1[i]));
+#elif define(SWIGTCL)
+#endif
 }
 
 %typemap(freearg) uint16_t* {
@@ -68,6 +75,7 @@
 %typemap(in) (size_t nsamples, uint16_t *data) {
     int i;
 
+#if defined(SWIGPYTHON)
     if (!PyList_Check($input))
         SWIG_exception(SWIG_ValueError, "Expecting a list");
 
@@ -81,6 +89,8 @@
         }
         $2[i] = PyInt_AsLong(s);
     }
+#elif define(SWIGTCL)
+#endif
 }
 
 %typemap(freearg) (size_t nsamples, uint16_t *data) {
@@ -97,16 +107,33 @@
 #endif
 
 %{
+#define SWIG_FILE_WITH_INIT
 #include <sdm.h>
 #include <stream.h>
 #include <stdio.h> /* fopen() */
 #include <utils.h> /* logger() */
 #include <janus/janus.h>
+
+#if defined(SWIGPYTHON)
+static PyObject* SDM_TimeoutError;
+#endif
 %}
 
 %include <sdm.h>
 %include <stream.h>
 %include <utils.h>
+
+#if defined(SWIGPYTHON)
+%init %{
+    SDM_TimeoutError = PyErr_NewException("sdm.TimeoutError", NULL, NULL);
+    Py_INCREF(SDM_TimeoutError);
+    PyModule_AddObject(m, "TimeoutError", SDM_TimeoutError);
+%}
+
+%pythoncode %{
+    TimeoutError = _sdm.TimeoutError
+%}
+#endif
 
 %inline %{
 

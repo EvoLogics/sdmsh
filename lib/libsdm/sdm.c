@@ -76,8 +76,9 @@ sdm_session_t* sdm_connect(char *host, int port)
     if (ss == NULL)
         return NULL;
 
-    ss->sockfd = sockfd;
-    ss->state = SDM_STATE_INIT;
+    ss->sockfd  = sockfd;
+    ss->state   = SDM_STATE_INIT;
+    ss->timeout = SDM_DEFAULT_TIMEOUT;
 
     return ss;
 }
@@ -685,22 +686,26 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
     for (;;) {
         int rc;
         static fd_set rfds;
-        static struct timeval tv;
         static int maxfd;
+        static struct timeval tv;
+        static struct timeval *ptv = &tv;
 
         FD_ZERO(&rfds);
         FD_SET(ss->sockfd, &rfds);
-        tv.tv_sec  = 1;
-        tv.tv_usec = 0;
 
         maxfd = ss->sockfd;
 
         if (ss->state == SDM_STATE_INIT) {
-            tv.tv_sec  = 0;
-            tv.tv_usec = 10000;
+            ptv->tv_sec  = 0;
+            ptv->tv_usec = 10000;
+        } else if (ss->timeout != -1) {
+            ptv->tv_sec  = 0;
+            ptv->tv_usec = ss->timeout * 1000;
+        } else {
+            ptv = NULL;
         }
 
-        rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+        rc = select(maxfd + 1, &rfds, NULL, NULL, ptv);
 
         if (rc == -1) {
             logger(ERR_LOG, "expect: %s\n", strerror(errno));
@@ -713,6 +718,10 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
                 ss->state = SDM_STATE_IDLE;
                 return 0;
             }
+
+            if (ss->timeout != -1)
+                return SDM_ERR_TIMEOUT;
+
             continue;
         }
 
