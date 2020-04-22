@@ -20,6 +20,7 @@ data += sdm.stream_load_samples(signal_file);
 
 sdm.send_tx(session, data);
 sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_TX_STOP);
+
 #############################################################
 data = sdm.stream_load_samples(signal_file);
 

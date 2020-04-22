@@ -13,10 +13,8 @@
 
     $action
 
-//int16_t* stream_load_samples(char *filename, size_t *len);
-    if (result < 0) {
+    if (result < 0)
         SWIG_exception(SWIG_SystemError, logger_last_line());
-    }
 }
 %enddef
 
@@ -33,6 +31,16 @@
 %exception sdm_flush_connect   EXCEPTION_RET_INT
 %exception sdm_add_sink        EXCEPTION_RET_INT
 %exception sdm_add_sink_membuf EXCEPTION_RET_INT
+
+%exception sdm_connect {
+    if (arg1 == NULL)
+        SWIG_exception(SWIG_ValueError, "No address supplied");
+
+    $action
+
+    if (result == NULL)
+        SWIG_exception(SWIG_SystemError, "No connection");
+}
 
 %typemap(in, numinputs=0, noblock=1) size_t *len {
   size_t templen;
@@ -80,6 +88,13 @@
         SWIG_exception(SWIG_ValueError, "No data");
     free($2);
 }
+
+#if defined(SWIGPYTHON)
+%pythonbegin %{
+# This module provides wrappers to the S2C SDM library
+%}
+%pythoncode "./sdmapi.py"
+#endif
 
 %{
 #include <sdm.h>
