@@ -207,6 +207,6 @@ if {$end < $start} {
     set start 0
 }
 
-set delta "$type delta: [expr $end - $start]\n"
-msg info $delta
+set delta [expr $end - $start]
+msg info "$type delta: $delta\n"
 

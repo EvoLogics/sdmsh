@@ -4,6 +4,8 @@
     LC_TYPE=C exec expect -f "$0" -- "$@"
 
 array set ::opt {
+    #sound_speed 1450. # water
+    sound_speed 340. # air
     verbose 0
     ref_sample_number 1024
     usbl-range-active  {./usbl-range.exp -s $::opt(ref_sample_number) 188 active}
@@ -208,6 +210,6 @@ if {![info exist active] || ![info exist passive]} {
 msg warn "active: [expr $active / 1000000.], passive: [expr $passive / 1000000.].\n"
 set us [expr ($active - $passive) / 2. ]
 
-set m  [format %0.2f [expr $us / 1000000. * 1450.]]
+set m  [format %0.2f [expr $us / 1000000. * $::opt(sound_speed)]]
 
 msg note "$us us. distance $m m\n"
