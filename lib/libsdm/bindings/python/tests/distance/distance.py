@@ -10,7 +10,7 @@ ref_sample_number = 1024 * 16
 signal_file = "../../../../../../examples/0717-up.dat"
 
 # TODO: make wrapper sdm.cvar.log_level to sdm.log_level or sdm.log_level()
-sdm.cvar.log_level = sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG
+sdm.var.log_level = sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG
 #sdm.cvar.log_level = sdm.cvar.log_level | sdm.INFO_LOG
 
 #########################################################################

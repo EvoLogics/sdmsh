@@ -6,6 +6,9 @@ PYTHON_INC = /usr/include/python2.7
 TESTS_BASE = tests
 TEST = usbl
 
+WRAP_SRC  = $(PROJ)_wrap.c
+SWIG_OPT  = -python -globals var
+#SWIG_OPT += -py3
 CC = gcc
 
 TEST_NODE_active = 219
@@ -14,13 +17,13 @@ TEST_NODE_passive = 221
 .PHONY: build
 build: lib $(LIBSDM_DIR)/libsdm.so $(LIBSTREAM_DIR)/libstream.so _$(PROJ).so
 
-$(PROJ)_wrap.c: $(PROJ).i
+$(WRAP_SRC): $(PROJ).i
 	#swig -python -E -I$(LIBSDM_DIR) $(PROJ).i
 	#swig -python -debug-tmsearch -I$(LIBSDM_DIR) $(PROJ).i
-	swig -v -python -I$(LIBSDM_DIR) -I$(LIBSTREAM_DIR) $(PROJ).i
+	swig -v -Wall $(SWIG_OPT) -I$(LIBSDM_DIR) -I$(LIBSTREAM_DIR) $(PROJ).i
 
-_$(PROJ).so: $(PROJ)_wrap.c
-	$(CC) -DLOGGER_ENABLED $(LIBS) -I$(PYTHON_INC) -shared -fPIC -l$(PROJ) -o $@ $(PROJ)_wrap.c
+_$(PROJ).so: $(WRAP_SRC)
+	$(CC) $(LIBS) -I$(PYTHON_INC) -shared -fPIC -l$(PROJ) -o $@ $(WRAP_SRC)
 
 .PHONY: lib
 lib:
