@@ -18,6 +18,8 @@
 #include <error.h>
 #include <janus/janus.h>
 
+static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap);
+
 #define ADD_TO_DATA_VAL16bit(data, data_size, data_offset, val) \
     ADD_TO_DATA_VAL(2, data, data_size, data_offset, val)
 
@@ -680,30 +682,54 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
 int sdm_expect(sdm_session_t *ss, int cmd, ...)
 {
+    va_list ap;
+    int rc;
+    sdm_session_t *ssl[] = {ss, NULL};
+
+    va_start(ap, cmd);
+    rc = sdm_expect_v(ssl, cmd, ap);
+    va_end(ap);
+
+    return rc;
+}
+
+static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap)
+{
     int len = 0;
     char buf[BUFSIZE];
 
     for (;;) {
-        int rc;
+        int rc, i;
         static fd_set rfds;
         static int maxfd;
-        static struct timeval tv;
+        sdm_session_t *ss;
+        static struct timeval tv = {0};
         static struct timeval *ptv = &tv;
 
         FD_ZERO(&rfds);
-        FD_SET(ss->sockfd, &rfds);
 
-        maxfd = ss->sockfd;
+        tv.tv_usec = 0;
+        //for (ss = ssl[0]; ss; ss++) {
+        for (i = 0; ssl[i]; i++) {
+            ss = ssl[i];
+            FD_SET(ss->sockfd, &rfds);
 
-        if (ss->state == SDM_STATE_INIT) {
-            ptv->tv_sec  = 0;
-            ptv->tv_usec = 10000;
-        } else if (ss->timeout != -1) {
-            ptv->tv_sec  = 0;
-            ptv->tv_usec = ss->timeout * 1000;
-        } else {
-            ptv = NULL;
+            maxfd = ss->sockfd;
+
+            if (ss->state == SDM_STATE_INIT) {
+                tv.tv_sec  = 0;
+                tv.tv_usec = 10000;
+                break;
+            } else if (ss->timeout != -1) {
+                if (ss->timeout * 1000 < tv.tv_usec) {
+                    tv.tv_sec  = 0;
+                    tv.tv_usec = ss->timeout * 1000;
+                }
+            }
         }
+
+        if (tv.tv_usec == 0)
+            ptv = NULL;
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, ptv);
 
@@ -712,96 +738,99 @@ int sdm_expect(sdm_session_t *ss, int cmd, ...)
             return -1;
         }
 
-        /* timeout */
-        if (!rc) {
-            if (ss->state == SDM_STATE_INIT) {
-                ss->state = SDM_STATE_IDLE;
-                return 0;
+        for (i = 0; ssl[i]; i++) {
+            ss = ssl[i];
+            /* timeout */
+            if (!rc) {
+                if (ss->state == SDM_STATE_INIT) {
+                    ss->state = SDM_STATE_IDLE;
+                    return 0;
+                }
+
+                if (ss->timeout != -1)
+                    return SDM_ERR_TIMEOUT;
+
+                goto expect_v_loop_continue;
             }
 
-            if (ss->timeout != -1)
-                return SDM_ERR_TIMEOUT;
+            if (FD_ISSET(ss->sockfd, &rfds)) {
+                int state = ss->state;
+                int len_orig;
+                len_orig = len = read(ss->sockfd, buf, sizeof(buf));
 
-            continue;
-        }
+                if (len == 0)
+                    goto expect_v_loop_break;
 
-        if (FD_ISSET(ss->sockfd, &rfds)) {
-            int state = ss->state;
-            int len_orig;
-            len_orig = len = read(ss->sockfd, buf, sizeof(buf));
+                if (len < 0) {
+                    logger(ERR_LOG, "expect(): %s\n", strerror(errno));
+                    return -1;
+                }
 
-            if (len == 0)
-                break;
+                do {
+                    rc = sdm_handle_rx_data(ss, buf, len);
 
-            if (len < 0) {
-                logger(ERR_LOG, "expect(): %s\n", strerror(errno));
-                return -1;
-            }
+                    if (len && !sdm_is_async_reply(ss->cmd->cmd))
+                        if (ss->rx_data_len == 0 || rc == 0) {
 
-            do {
-                rc = sdm_handle_rx_data(ss, buf, len);
-
-                if (len && !sdm_is_async_reply(ss->cmd->cmd))
-                    if (ss->rx_data_len == 0 || rc == 0) {
-                        if (ss->cmd->cmd == cmd) {
-                            if (cmd == SDM_REPLY_REPORT) {
-                                int rr;
-                                va_list ap;
-                                va_start(ap, cmd);
-                                rr    = va_arg(ap, int);
-                                if (ss->cmd->param == rr) {
-                                    switch (rr) {
-                                        case SDM_REPLY_REPORT_NO_SDM_MODE: return 0;
-                                        case SDM_REPLY_REPORT_TX_STOP:     return 0;
-                                        case SDM_REPLY_REPORT_RX_STOP:     return 0;
-                                        case SDM_REPLY_REPORT_REF:         return va_arg(ap, unsigned int) == ss->cmd->data_len;
-                                        case SDM_REPLY_REPORT_CONFIG:      return va_arg(ap, unsigned int) == ss->cmd->data_len;
-                                        case SDM_REPLY_REPORT_USBL_CONFIG: return va_arg(ap, unsigned int) == ss->cmd->data_len;
-                                        case SDM_REPLY_REPORT_USBL_RX_STOP:return 0;
-                                        case SDM_REPLY_REPORT_DROP:        return 0;
-                                        case SDM_REPLY_REPORT_SYSTIME:     return 0;
-                                        case SDM_REPLY_REPORT_UNKNOWN:     return 0;
-                                        default:                            return 1;
+                            if (ss->cmd->cmd == cmd) {
+                                if (cmd == SDM_REPLY_REPORT) {
+                                    int rr;
+                                    rr    = va_arg(ap, int);
+                                    if (ss->cmd->param == rr) {
+                                        switch (rr) {
+                                            case SDM_REPLY_REPORT_NO_SDM_MODE: return 0;
+                                            case SDM_REPLY_REPORT_TX_STOP:     return 0;
+                                            case SDM_REPLY_REPORT_RX_STOP:     return 0;
+                                            case SDM_REPLY_REPORT_REF:         return va_arg(ap, unsigned int) == ss->cmd->data_len;
+                                            case SDM_REPLY_REPORT_CONFIG:      return va_arg(ap, unsigned int) == ss->cmd->data_len;
+                                            case SDM_REPLY_REPORT_USBL_CONFIG: return va_arg(ap, unsigned int) == ss->cmd->data_len;
+                                            case SDM_REPLY_REPORT_USBL_RX_STOP:return 0;
+                                            case SDM_REPLY_REPORT_DROP:        return 0;
+                                            case SDM_REPLY_REPORT_SYSTIME:     return 0;
+                                            case SDM_REPLY_REPORT_UNKNOWN:     return 0;
+                                            default:                            return 1;
+                                        }
                                     }
                                 }
-                                va_end(ap);
+                                if (cmd == SDM_REPLY_STOP) {
+                                    return 0;
+                                }
+                                if (cmd == SDM_REPLY_RX) {
+                                    return 0;
+                                }
+                                if (cmd == SDM_REPLY_RX_JANUS) {
+                                    return 0;
+                                }
+                                if (cmd == SDM_REPLY_USBL_RX) {
+                                    return 0;
+                                }
+                                if (cmd == SDM_REPLY_SYNCIN) {
+                                    return 0;
+                                }
+                                if (cmd == SDM_REPLY_BUSY) {
+                                    return 0;
+                                }
+                                return 1;
                             }
-                            if (cmd == SDM_REPLY_STOP) {
-                                return 0;
-                            }
-                            if (cmd == SDM_REPLY_RX) {
-                                return 0;
-                            }
-                            if (cmd == SDM_REPLY_RX_JANUS) {
-                                return 0;
-                            }
-                            if (cmd == SDM_REPLY_USBL_RX) {
-                                return 0;
-                            }
-                            if (cmd == SDM_REPLY_SYNCIN) {
-                                return 0;
-                            }
-                            if (cmd == SDM_REPLY_BUSY) {
-                                return 0;
-                            }
-                            return 1;
                         }
-                    }
-                len = 0;
-            } while (rc > 0);
+                    len = 0;
+                } while (rc > 0);
 
-            if (rc < 0) {
-                if (rc == SDM_ERR_SAVE_FAIL || rc == SDM_ERR_SAVE_EOF)
-                    sdm_send(ss, SDM_CMD_STOP);
+                if (rc < 0) {
+                    if (rc == SDM_ERR_SAVE_FAIL || rc == SDM_ERR_SAVE_EOF)
+                        sdm_send(ss, SDM_CMD_STOP);
+                }
+
+                if (state == SDM_STATE_INIT) {
+                    logger(WARN_LOG, "Skip %d received bytes in SDM_STATE_INIT state\n", len_orig);
+                    ss->state = SDM_STATE_INIT;
+                    goto expect_v_loop_continue;
+                }
+
             }
-
-            if (state == SDM_STATE_INIT) {
-                logger(WARN_LOG, "Skip %d received bytes in SDM_STATE_INIT state\n", len_orig);
-                ss->state = SDM_STATE_INIT;
-                continue;
-            }
-
         }
+expect_v_loop_continue:;
     }
+expect_v_loop_break:;
     return 0;
 }
