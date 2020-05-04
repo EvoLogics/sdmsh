@@ -7,11 +7,11 @@ import sdm
 sound_speed = 340.  # air
 
 ref_sample_number = 1024 * 16
+usbl_samble_number = 51200
 signal_file = "../../../../../../examples/0717-up.dat"
 
-# TODO: make wrapper sdm.cvar.log_level to sdm.log_level or sdm.log_level()
 sdm.var.log_level = sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG
-#sdm.cvar.log_level = sdm.cvar.log_level | sdm.INFO_LOG
+#sdm.var.log_level |= sdm.INFO_LOG | sdm.DEBUG_LOG
 
 #########################################################################
 def session_setup(name, addr):
@@ -23,7 +23,7 @@ def session_setup(name, addr):
     sdm.send_config(session, 200, 0, 3, 1)
     sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_CONFIG);
 
-    sdm.send_usbl_config(session, 0, 51200, 3, 5);
+    sdm.send_usbl_config(session, 0, usbl_samble_number, 3, 5);
     sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_USBL_CONFIG);
 
     sdm.send_ref_file(session, signal_file)
@@ -52,7 +52,7 @@ def recv_data(session):
 
     session.receive.data = sdm.get_membuf(session);
 
-    session.receive.usbl_data = sdm.receive_usbl_data(session)
+    session.receive.usbl_data = sdm.receive_usbl_data(session, usbl_samble_number, '')
     session.receive.time      = sdm.receive_systime(session)
 
     return session.receive
