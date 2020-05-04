@@ -38,13 +38,21 @@ def receive_systime(session):
     return time
 
 
-def receive_usbl_data(session):
+def receive_usbl_data(session, nsamples, filename_pattern):
     usbl_channels = [[]] * 4
     for ch in range(4):
-        add_sink_membuf(session);
-        send_usbl_rx(session, ch, 51200)
+        if filename_pattern == '':
+            add_sink_membuf(session);
+        else:
+            add_sink(session, filename_pattern % ch);
+
+        send_usbl_rx(session, ch, nsamples)
         expect(session, REPLY_STOP);
-        usbl_channels[ch] = get_membuf(session);
+        if filename_pattern == '':
+            usbl_channels[ch] = get_membuf(session);
 
     return usbl_channels
 
+def logger(log_level, msg):
+    if var.log_level & log_level:
+        logger_(str(msg))

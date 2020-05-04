@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <unistd.h>     /* write() */
 #include <err.h>        /* err() */
@@ -10,7 +11,8 @@
 #include <errno.h>
 #include <stdlib.h>     /* stdlib() */
 #include <assert.h>
-#include <limits.h>    /* SHORT_MAX  */
+#include <limits.h>     /* SHORT_MAX  */
+#include <sys/time.h>   /* struct timeval  */
 
 #include <sdm.h>
 
@@ -680,41 +682,37 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
     return -1;
 }
 
-int sdm_expect(sdm_session_t *ss, int cmd, ...)
-{
-    va_list ap;
-    int rc;
-    sdm_session_t *ssl[] = {ss, NULL};
-
-    va_start(ap, cmd);
-    rc = sdm_expect_v(ssl, cmd, ap);
-    va_end(ap);
-
-    return rc;
-}
-
-static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap)
+static int sdm_expect_v(sdm_session_t *ssl[],  struct timeval *hard_timeout, int cmd, va_list ap)
 {
     int len = 0;
     char buf[BUFSIZE];
+    struct timeval tv, *ptv;
+    struct timeval time_limit_start = {0};
 
+    if (hard_timeout != NULL) {
+        if (gettimeofday(&time_limit_start, NULL)) {
+            logger(ERR_LOG, "expect: %s\n", strerror(errno));
+            return -1;
+        }
+    }
+
+    logger(INFO_LOG, "expect(%s)\n", sdm_reply_to_str(cmd));
     for (;;) {
         int rc, i;
         static fd_set rfds;
-        static int maxfd;
+        static int maxfd = 0;
         sdm_session_t *ss;
-        static struct timeval tv = {0};
-        static struct timeval *ptv = &tv;
 
         FD_ZERO(&rfds);
 
+        ptv = &tv;
         tv.tv_usec = 0;
-        //for (ss = ssl[0]; ss; ss++) {
         for (i = 0; ssl[i]; i++) {
             ss = ssl[i];
             FD_SET(ss->sockfd, &rfds);
 
-            maxfd = ss->sockfd;
+            if (maxfd < ss->sockfd)
+                maxfd = ss->sockfd;
 
             if (ss->state == SDM_STATE_INIT) {
                 tv.tv_sec  = 0;
@@ -728,7 +726,21 @@ static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap)
             }
         }
 
-        if (tv.tv_usec == 0)
+        if (hard_timeout != NULL) {
+            struct timeval now, delta;
+            if (gettimeofday(&now, NULL)) {
+                logger(ERR_LOG, "expect: %s\n", strerror(errno));
+                return -1;
+            }
+            timersub(&now, &time_limit_start, &delta);
+            
+            if (!timercmp(&delta, hard_timeout, <=))
+                return SDM_ERR_TIMEOUT;
+
+            if (!timercmp(&delta, hard_timeout, >))
+                memcpy(&tv, hard_timeout, sizeof(tv));
+
+        } else if (tv.tv_usec == 0)
             ptv = NULL;
 
         rc = select(maxfd + 1, &rfds, NULL, NULL, ptv);
@@ -736,6 +748,18 @@ static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap)
         if (rc == -1) {
             logger(ERR_LOG, "expect: %s\n", strerror(errno));
             return -1;
+        }
+
+        if (hard_timeout != NULL) {
+            struct timeval now, delta;
+            if (gettimeofday(&now, NULL)) {
+                logger(ERR_LOG, "expect: %s\n", strerror(errno));
+                return -1;
+            }
+            timersub(&now, &time_limit_start, &delta);
+            
+            if (!timercmp(&delta, hard_timeout, <=))
+                return SDM_ERR_TIMEOUT;
         }
 
         for (i = 0; ssl[i]; i++) {
@@ -747,7 +771,7 @@ static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap)
                     return 0;
                 }
 
-                if (ss->timeout != -1)
+                if (ss->timeout != -1 && hard_timeout == NULL)
                     return SDM_ERR_TIMEOUT;
 
                 goto expect_v_loop_continue;
@@ -769,7 +793,7 @@ static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap)
                 do {
                     rc = sdm_handle_rx_data(ss, buf, len);
 
-                    if (len && !sdm_is_async_reply(ss->cmd->cmd))
+                    if (len && (cmd == SDM_REPLY_SYNCIN || (ss->cmd && !sdm_is_async_reply(ss->cmd->cmd))))
                         if (ss->rx_data_len == 0 || rc == 0) {
 
                             if (ss->cmd->cmd == cmd) {
@@ -834,3 +858,33 @@ expect_v_loop_continue:;
 expect_v_loop_break:;
     return 0;
 }
+
+int sdm_expect(sdm_session_t *ss, int cmd, ...)
+{
+    va_list ap;
+    int rc;
+    sdm_session_t *ssl[] = {ss, NULL};
+
+    va_start(ap, cmd);
+    rc = sdm_expect_v(ssl, NULL, cmd, ap);
+    va_end(ap);
+
+    return rc;
+}
+
+int sdm_receive_data_time_limit(sdm_session_t *ssl[], long time_limit)
+{
+    va_list ap;
+    int rc, i;
+    struct timeval tv = { .tv_usec = time_limit * 1000 };
+    sdm_session_t *ss;
+
+    rc = sdm_expect_v(ssl, &tv, -1, ap);
+    for (i = 0; ssl[i]; i++) {
+        ss = ssl[i];
+        sdm_send(ss, SDM_CMD_STOP);
+    }
+
+    return rc;
+}
+

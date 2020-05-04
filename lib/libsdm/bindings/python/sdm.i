@@ -99,6 +99,40 @@
     free($2);
 }
 
+%typemap(in) (sdm_session_t *ssl[]) {
+    int i;
+    size_t size;
+
+    $1 = NULL;
+#if defined(SWIGPYTHON)
+    if (!PyList_Check($input))
+        SWIG_exception(SWIG_ValueError, "Expecting a list in $symname");
+
+    size = PyList_Size($input);
+    if (size == 0)
+        SWIG_exception(SWIG_ValueError, "Expecting a not empty list");
+
+    $1 = (sdm_session_t **) malloc((size + 1) * sizeof(sdm_session_t *));
+    for (i = 0; i < size; i++) {
+        void *argp = 0;
+        const int res = SWIG_ConvertPtr(PyList_GetItem($input,i), &argp, $*1_descriptor, 0);
+        if (!SWIG_IsOK(res)) {
+            free($1);
+            SWIG_exception_fail(SWIG_ArgError(res), "in method '" "$symname" "', argument " "$argnum"" of type '" "$1_type""'");
+        }
+        $1[i] = (sdm_session_t *)argp;
+    }
+    $1[size] = NULL;
+#elif define(SWIGTCL)
+#endif
+}
+
+%typemap(freearg) (sdm_session_t *ssl[]) {
+    if (!$1)
+        SWIG_exception(SWIG_ValueError, "Expecting a list in $symname");
+    free($1);
+}
+
 #if defined(SWIGPYTHON)
 %pythonbegin %{
 # This module provides wrappers to the S2C SDM library

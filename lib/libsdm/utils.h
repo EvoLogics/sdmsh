@@ -14,11 +14,12 @@
 #define ERR_LOG              0x0002
 #define WARN_LOG             0x0004
 #define INFO_LOG             0x0008
-#define DEBUG_LOG            0x0010
-#define TRACE_LOG            0x0020
-#define DATA_LOG             0x0040
-#define LOCATION_LOG         0x0080
-#define ASYNC_LOG            0x0100
+#define NOTE_LOG             0x0010
+#define DEBUG_LOG            0x0020
+#define TRACE_LOG            0x0040
+#define DATA_LOG             0x0080
+#define LOCATION_LOG         0x0100
+#define ASYNC_LOG            0x0200
 
 #ifndef NO_COLORS
 

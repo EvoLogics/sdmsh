@@ -4,7 +4,7 @@ import sys
 import time
 import sdm
 
-sdm.cvar.log_level = sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG | sdm.INFO_LOG
+sdm.cvar.log_level =  sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG | sdm.INFO_LOG | sdm.ASYNC_LOG
 
 signal_file = "../../../../examples/0717-up.dat"
 session = sdm.connect("192.168.0." + sys.argv[1], 4200)

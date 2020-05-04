@@ -144,15 +144,16 @@ void  sdm_close(sdm_session_t *ss);
 int   sdm_send(sdm_session_t *sd, int cmd_code, ...);
 int   sdm_extract_reply(char *buf, size_t len, sdm_pkt_t **cmd);
 
-int   sdm_expect(sdm_session_t *ss, int cmd, ...);
+int sdm_expect(sdm_session_t *ss, int cmd, ...);
+int sdm_receive_data_time_limit(sdm_session_t *ssl[], long time_limit);
+
 int   sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len);
 
 void  sdm_set_idle_state(sdm_session_t *ss);
 
 int   sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd);
 
-int       sdm_save_samples(sdm_session_t *ss, char *buf, size_t len);
-/* int       sdm_save_samples(sdm_session_t *ss, char *filename, char *buf, size_t len); */
+int   sdm_save_samples(sdm_session_t *ss, char *buf, size_t len);
 
 char* sdm_cmd_to_str(uint8_t cmd);
 char* sdm_reply_to_str(uint8_t cmd);
@@ -178,7 +179,7 @@ int sdm_is_async_reply(uint8_t cmd);
         logger(ERR_LOG, name": must be a digit\n");               \
         return -1;                                                \
     }                                                             \
-    SDM_CHECK_ARG_LONG(name, arg, range_expr)                     \
+    SDM_CHECK_ARG_LONG(name, arg, range_expr);                    \
     out = arg;                                                    \
 } while (0)
 
