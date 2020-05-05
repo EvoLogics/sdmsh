@@ -10,9 +10,9 @@ sdm.var.log_level |= sdm.NOTE_LOG
 
 sdm.var.log_level |= sdm.INFO_LOG | sdm.DEBUG_LOG | sdm.ASYNC_LOG
 
-signal_file = "../../../../../../examples/0717-up.dat"
 log_dir_base = "signals/" + time.strftime("%Y%m%d-%H%M/")
 interval    = 5
+signal_file = "../../../../../../examples/0717-1ms-up.dat"
 
 config = {'samples': 25600,
           'threshold': 350,
