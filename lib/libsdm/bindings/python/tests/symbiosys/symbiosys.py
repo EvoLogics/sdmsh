@@ -10,9 +10,8 @@ sdm.var.log_level |= sdm.NOTE_LOG
 
 sdm.var.log_level |= sdm.INFO_LOG | sdm.DEBUG_LOG | sdm.ASYNC_LOG
 
-log_dir_base = "signals/" + time.strftime("%Y%m%d-%H%M/")
-interval    = 5
 signal_file = "../../../../../../examples/0717-1ms-up.dat"
+sync_number_to_handle = 5
 
 config = {'samples': 25600,
           'threshold': 350,
@@ -34,6 +33,8 @@ def session_config(session):
     sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_USBL_CONFIG)
 
 def waitsync_setup(session):
+
+    # listen noise, threshold == 0
     sdm.send_config(session, 0, \
                              config['gain'],      \
                              config['src_lvl'],   \
@@ -57,9 +58,6 @@ if __name__ == "__main__":
 
     hosts = active_hosts + passive_hosts
 
-    if not os.path.exists(log_dir_base):
-        os.makedirs(log_dir_base)
-
     sessions    = []
     for host in hosts:
         ss = sdm.create_session(host, host)
@@ -75,63 +73,66 @@ if __name__ == "__main__":
     sdm.logger(sdm.NOTE_LOG, "====== workaround: reading 2 sec ======\n")
     # handle incoming data for a microsecond time
     sdm.receive_data_time_limit(sessions, 2000)
-    #sdm.logger(sdm.NOTE_LOG, "========\n")
 
     for ss in sessions:
         sdm.expect(ss, sdm.REPLY_STOP);
 
-    for ss in sessions:
-        waitsync_setup(ss)
+    for i in range(sync_number_to_handle):
+        for ss in sessions:
+            waitsync_setup(ss)
 
-    sdm.logger(sdm.NOTE_LOG, "====== waiting waitsynin ======\n")
-    sdm.waitsyncin(active)
-    sdm.logger(sdm.NOTE_LOG, "!!!!!! event   waitsynin !!!!!!!!!\n")
+        sdm.logger(sdm.NOTE_LOG, "====== waiting waitsynin ======\n")
+        sdm.waitsyncin(active)
+        sdm.logger(sdm.NOTE_LOG, "!!!!!! event   waitsynin !!!!!!!!!\n")
 
-    sdm.logger(sdm.NOTE_LOG, "====== setup rx for passive ======\n")
-    for ss in passives:
-        sdm.add_sink(ss, log_dir_base + "rcv-" + ss.name + ".raw");
-        sdm.send_rx(ss, config['samples'])
+        log_dir_base = "signals/" + time.strftime("%Y%m%d-%H%M%S/")
 
-    sdm.logger(sdm.NOTE_LOG, "====== send signal from active ======\n")
-    sdm.send_signal_file(active, signal_file, signal_file)
+        if not os.path.exists(log_dir_base):
+            os.makedirs(log_dir_base)
 
-    sdm.logger(sdm.NOTE_LOG, "====== setup rx for active ======\n")
-    sdm.add_sink(active, log_dir_base + "rcv-" + active.name + ".raw");
-    sdm.send_rx(active, config['samples'])
+        sdm.logger(sdm.NOTE_LOG, "====== setup rx for passive ======\n")
+        for ss in passives:
+            sdm.add_sink(ss, log_dir_base + "rcv-" + ss.name + ".raw");
+            sdm.send_rx(ss, config['samples'])
 
-    sdm.logger(sdm.NOTE_LOG, "====== receive on passive ======\n")
-    for ss in passives:
-        sdm.expect(ss, sdm.REPLY_STOP);
+        sdm.logger(sdm.NOTE_LOG, "====== send signal from active ======\n")
+        sdm.send_signal_file(active, signal_file, signal_file)
 
-    sdm.logger(sdm.NOTE_LOG, "====== receive on active ======\n")
-    sdm.expect(active, sdm.REPLY_STOP);
-    #sdm.receive_data_time_limit(sessions, 2000)
+        sdm.logger(sdm.NOTE_LOG, "====== setup rx for active ======\n")
+        sdm.add_sink(active, log_dir_base + "rcv-" + active.name + ".raw");
+        sdm.send_rx(active, config['samples'])
 
-    sdm.logger(sdm.NOTE_LOG, "====== get USBL data ==========\n")
-    for ss in sessions:
-        sdm.receive_usbl_data(ss, config['samples'], log_dir_base + "u%d-" + ss.name + ".raw");
+        sdm.logger(sdm.NOTE_LOG, "====== receive on passive ======\n")
+        for ss in passives:
+            sdm.wait_data_receive(ss);
 
-        ss.time = sdm.receive_systime(ss)
+        sdm.logger(sdm.NOTE_LOG, "====== receive on active ======\n")
+        sdm.wait_data_receive(active);
 
-    i = 0
-    for ss in sessions:
-        diration = 0
+        sdm.logger(sdm.NOTE_LOG, "====== get USBL data ==========\n")
+        for ss in sessions:
+            sdm.receive_usbl_data(ss, config['samples'], log_dir_base + "u%d-" + ss.name + ".raw");
+            ss.time = sdm.receive_systime(ss)
 
-        # is active side
-        if i == 0:
-            diration = (float(ss.time.rx) - float(ss.time.tx)) / 1000.
+        i = 0
+        for ss in sessions:
+            diration = 0
 
-        out = "%s;%d;%d;%d;%d;%d\n" % (ss.name,
-                                       ss.time.current,
-                                       ss.time.tx,
-                                       ss.time.rx,
-                                       ss.time.syncin,
-                                       diration)
+            # is active side
+            if i == 0:
+                diration = (float(ss.time.rx) - float(ss.time.tx)) / 1000.
 
-        sdm.logger(sdm.NOTE_LOG, out)
-        f = open(log_dir_base + "systime-" + ss.name + ".txt", "w")
-        f.write(out)
-        f.close()
-        i += 1
+            out = "%s;%d;%d;%d;%d;%d\n" % (ss.name,
+                                           ss.time.current,
+                                           ss.time.tx,
+                                           ss.time.rx,
+                                           ss.time.syncin,
+                                           diration)
+
+            sdm.logger(sdm.NOTE_LOG, out)
+            f = open(log_dir_base + "systime-" + ss.name + ".txt", "w")
+            f.write(out)
+            f.close()
+            i += 1
 
 

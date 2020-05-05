@@ -39,8 +39,10 @@ def receive_systime(session):
 
 
 def receive_usbl_data(session, nsamples, filename_pattern):
-    usbl_channels = [[]] * 4
-    for ch in range(4):
+    usbl_head_number = 5
+    usbl_channels = [[]] * usbl_head_number
+
+    for ch in range(usbl_head_number):
         if filename_pattern == '':
             add_sink_membuf(session);
         else:
@@ -56,3 +58,10 @@ def receive_usbl_data(session, nsamples, filename_pattern):
 def logger(log_level, msg):
     if var.log_level & log_level:
         logger_(str(msg))
+
+def wait_data_receive(session):
+    expect(session, REPLY_STOP)
+
+    # workaround: after REPLY_RX or REPLY_USBLRX can be several REPLY_STOP
+    # requestion systime will eat them out
+    receive_systime(session)
