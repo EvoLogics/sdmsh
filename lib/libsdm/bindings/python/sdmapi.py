@@ -1,3 +1,5 @@
+import sys
+
 class session_data:
     pass
 
@@ -55,13 +57,49 @@ def receive_usbl_data(session, nsamples, filename_pattern):
 
     return usbl_channels
 
-def logger(log_level, msg):
-    if var.log_level & log_level:
-        logger_(str(msg))
-
 def wait_data_receive(session):
     expect(session, REPLY_STOP)
 
     # workaround: after REPLY_RX or REPLY_USBLRX can be several REPLY_STOP
     # requestion systime will eat them out
     receive_systime(session)
+
+def logger(log_level, msg):
+    if var.log_level & log_level:
+        logger_(str(msg))
+
+####################################################
+import os
+import threading
+
+class capture_console_log(object):
+    def start(self):
+        sys.__stdout__.flush()
+
+        self.stdout_save = sys.__stdout__.fileno()
+        self.stdout_dup = os.dup(self.stdout_save)
+
+        pipe_read, self.pipe_write = os.pipe()
+        os.dup2(self.pipe_write, self.stdout_save)
+        os.close(self.pipe_write)
+
+        # This thread reads from the read end of the pipe.
+        def capture_thread(fd):
+            f = os.fdopen(fd)
+            while True:
+                buf = f.readline()
+                if not buf:
+                    break
+                print(str(buf), end='', flush=True)
+            f.close()
+
+        self.thread = threading.Thread(target = capture_thread, args=[pipe_read])
+        self.thread.start()
+
+    def stop(self):
+
+        sys.stdout.flush()
+        os.dup2(self.stdout_dup, self.stdout_save)
+        os.close(self.stdout_dup)
+
+        self.thread.join()

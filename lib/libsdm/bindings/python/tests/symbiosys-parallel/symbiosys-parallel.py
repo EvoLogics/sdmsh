@@ -5,8 +5,10 @@ import time
 import sdm
 
 sdm.var.log_level  = sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG
+#sdm.var.log_level |= sdm.NOTE_LOG | sdm.ASYNC_LOG
 sdm.var.log_level |= sdm.NOTE_LOG
-#sdm.var.log_level |= sdm.DEBUG_LOG | sdm.ASYNC_LOG
+#
+#sdm.var.log_level |= sdm.INFO_LOG | sdm.DEBUG_LOG | sdm.ASYNC_LOG
 
 signal_file = "../../../../../../examples/0717-1ms-up.dat"
 sync_number_to_handle = 5
@@ -44,6 +46,7 @@ def waitsync_setup(session):
 
     sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_USBL_CONFIG);
 
+
 #####################################################################
 # workaround to set gain control to zero
 # if it setup modem has to switch to receive state once
@@ -59,10 +62,47 @@ def workaround_set_gain_control_to_zero(sessions):
     for ss in sessions:
         sdm.expect(ss, sdm.REPLY_STOP);
 
+
+def run_scenario(side_type, session):
+    waitsync_setup(session)
+    sdm.logger(sdm.NOTE_LOG, "%s: ====== waiting waitsynin ======\n" % session.name)
+    sdm.waitsyncin(session)
+    sdm.logger(sdm.NOTE_LOG, "%s: !!!!!! event   waitsynin !!!!!!\n" % session.name)
+
+    if side_type == "active":
+        sdm.logger(sdm.NOTE_LOG, "%s: ====== send signal from active ======\n" % session.name)
+        sdm.send_signal_file(session, signal_file, signal_file)
+
+    sdm.logger(sdm.NOTE_LOG, "%s: ====== setup rx for %s =====\n" % (session.name, side_type))
+    sdm.add_sink(session, log_dir_base + "rcv-" + session.name + ".raw");
+    sdm.send_rx(session, config['samples'])
+
+    sdm.logger(sdm.NOTE_LOG, "%s: ====== receive on %s ======\n" % (session.name, side_type))
+    sdm.wait_data_receive(session);
+
+    sdm.receive_usbl_data(session, config['samples'], log_dir_base + "u%d-" + session.name + ".raw");
+    session.time = sdm.receive_systime(session)
+
+    diration = 0
+    if side_type == "active":
+        diration = (float(session.time.rx) - float(session.time.tx)) / 1000.
+
+    out = "%s;%d;%d;%d;%d;%d\n" % (session.name,
+                                   session.time.current,
+                                   session.time.tx,
+                                   session.time.rx,
+                                   session.time.syncin,
+                                   diration)
+
+    sdm.logger(sdm.NOTE_LOG, "%s: %s" % (session.name, out))
+    f = open(log_dir_base + "systime-" + session.name + ".txt", "w")
+    f.write(out)
+    f.close()
+
 #########################################################################
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("%s: IP-active IP-passive" % sys.argv[0])
+        print("%s: IP-active IP-passive [[IP-passive] ...]" % sys.argv[0])
         exit(1)
 
     active_hosts  = [sys.argv[1]]
@@ -81,61 +121,24 @@ if __name__ == "__main__":
     workaround_set_gain_control_to_zero(sessions)
 
     for i in range(sync_number_to_handle):
-        for ss in sessions:
-            waitsync_setup(ss)
-
-        sdm.logger(sdm.NOTE_LOG, "%s: ====== waiting waitsynin ======\n" % active.name)
-        sdm.waitsyncin(active)
-        sdm.logger(sdm.NOTE_LOG, "%s: !!!!!! event   waitsynin !!!!!!\n" % active.name)
-
         log_dir_base = "signals/" + time.strftime("%Y%m%d-%H%M%S/")
 
         if not os.path.exists(log_dir_base):
             os.makedirs(log_dir_base)
 
+        # run in parallel passive sides
         for ss in passives:
-            sdm.logger(sdm.NOTE_LOG, "%s: ====== setup rx for passive =====\n" % ss.name)
-            sdm.add_sink(ss, log_dir_base + "rcv-" + ss.name + ".raw");
-            sdm.send_rx(ss, config['samples'])
+            pid = os.fork()
+            if pid == 0:
+                run_scenario("passive", ss)
+                exit(0)
 
-        sdm.logger(sdm.NOTE_LOG, "%s: ====== send signal from active ======\n" % active.name)
-        sdm.send_signal_file(active, signal_file, signal_file)
+            ss.pid = pid
 
-        sdm.logger(sdm.NOTE_LOG, "%s: ====== setup rx for active =====\n" % active.name)
-        sdm.add_sink(active, log_dir_base + "rcv-" + active.name + ".raw");
-        sdm.send_rx(active, config['samples'])
+        run_scenario("active", active)
 
         for ss in passives:
-            sdm.logger(sdm.NOTE_LOG, "%s: ====== receive on passive ======\n" % ss.name)
-            sdm.wait_data_receive(ss);
-
-        sdm.logger(sdm.NOTE_LOG, "%s: ====== receive on active ======\n" % active.name)
-        sdm.wait_data_receive(active);
-
-        for ss in sessions:
-            sdm.logger(sdm.NOTE_LOG, "%s: ====== get USBL data ==========\n" % ss.name)
-            sdm.receive_usbl_data(ss, config['samples'], log_dir_base + "u%d-" + ss.name + ".raw");
-            ss.time = sdm.receive_systime(ss)
-
-        i = 0
-        for ss in sessions:
-            diration = 0
-
-            # is active side
-            if i == 0:
-                diration = (float(ss.time.rx) - float(ss.time.tx)) / 1000.
-
-            out = "%s;%d;%d;%d;%d;%d\n" % (ss.name,
-                                           ss.time.current,
-                                           ss.time.tx,
-                                           ss.time.rx,
-                                           ss.time.syncin,
-                                           diration)
-
-            sdm.logger(sdm.NOTE_LOG, "%s: %s" % (ss.name, out))
-            f = open(log_dir_base + "systime-" + ss.name + ".txt", "w")
-            f.write(out)
-            f.close()
-            i += 1
+            sdm.logger(sdm.NOTE_LOG, "%s: ====== waiting ending %s ======\n" % (active.name, ss.name))
+            os.waitpid(ss.pid, 0)
 
 

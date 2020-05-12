@@ -2,13 +2,13 @@ PROJ = sdm
 LIBSDM_DIR     = ../..
 LIBSTREAM_DIR  = ../../../libstream
 LIBS  = -L$(LIBSDM_DIR) -I$(LIBSDM_DIR) -L$(LIBSTREAM_DIR) -I$(LIBSTREAM_DIR)
-PYTHON_INC = /usr/include/python2.7
+PYTHON_INC = /usr/include/python3.7
 TESTS_BASE = tests
 TEST = usbl
 
 WRAP_SRC  = $(PROJ)_wrap.c
 SWIG_OPT  = -python -globals var
-#SWIG_OPT += -py3
+SWIG_OPT += -py3
 CC = gcc
 
 TEST_NODE_active = 219
