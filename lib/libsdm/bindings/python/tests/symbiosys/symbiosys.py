@@ -1,9 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import os
 import sys
 import time
 import sdm
-import time
 
 sdm.var.log_level  = sdm.FATAL_LOG | sdm.ERR_LOG | sdm.WARN_LOG
 sdm.var.log_level |= sdm.NOTE_LOG
@@ -46,6 +45,20 @@ def waitsync_setup(session):
 
     sdm.expect(session, sdm.REPLY_REPORT, sdm.REPLY_REPORT_USBL_CONFIG);
 
+#####################################################################
+# workaround to set gain control to zero
+# if it setup modem has to switch to receive state once
+def workaround_set_gain_control_to_zero(session):
+    for ss in sessions:
+        sdm.add_sink_membuf(ss);
+        sdm.send_rx(ss, 0)
+
+    sdm.logger(sdm.NOTE_LOG, "====== workaround: reading 2 sec ======\n")
+    # handle incoming data for a microsecond time
+    sdm.receive_data_time_limit(sessions, 2000)
+
+    for ss in sessions:
+        sdm.expect(ss, sdm.REPLY_STOP);
 
 #########################################################################
 if __name__ == "__main__":
@@ -66,16 +79,7 @@ if __name__ == "__main__":
     active   = sessions[0]
     passives = sessions[1:]
 
-    for ss in sessions:
-        sdm.add_sink_membuf(ss);
-        sdm.send_rx(ss, 0)
-
-    sdm.logger(sdm.NOTE_LOG, "====== workaround: reading 2 sec ======\n")
-    # handle incoming data for a microsecond time
-    sdm.receive_data_time_limit(sessions, 2000)
-
-    for ss in sessions:
-        sdm.expect(ss, sdm.REPLY_STOP);
+    workaround_set_gain_control_to_zero(sessions)
 
     for i in range(sync_number_to_handle):
         for ss in sessions:
