@@ -262,16 +262,6 @@ int main(int argc, char *argv[])
     if (sdm_session == NULL)
         err(1, "sdm_connect(\"%s:%d\"): ", host, port);
 
-    if (flags & FLAG_SEND_STOP) {
-        sdm_send(sdm_session, SDM_CMD_STOP);
-
-        /*
-         * force to set SDM_STATE_INIT becouse sdm_send set it
-         * to SDM_STATE_WAIT_REPLY
-         */
-        sdm_session->state = SDM_STATE_INIT;
-    }
-
     if (optind < argc)
             show_usage_and_die(2, progname);
 
@@ -328,8 +318,13 @@ int main(int argc, char *argv[])
 
         /* timeout */
         if (!rc) {
-            if (sdm_session->state == SDM_STATE_INIT)
-                sdm_session->state = SDM_STATE_IDLE;
+            if (sdm_session->state == SDM_STATE_INIT) {
+                if (flags & FLAG_SEND_STOP) {
+                    sdm_send(sdm_session, SDM_CMD_STOP);
+                } else {
+                    sdm_session->state = SDM_STATE_IDLE;
+                }
+            }
             continue;
         }
 
