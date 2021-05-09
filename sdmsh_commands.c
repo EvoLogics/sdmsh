@@ -222,8 +222,10 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
             logger(ERR_LOG, "tx: read error %s\n", stream_strerror(stream));
             break;
         }
-        if (cnt == 0) {
-            cmd = SDM_CMD_STOP;
+
+        /* handle ctrl-c */
+        if (cnt == 0 || sc->shell_quit) {
+            sdm_send(ss, SDM_CMD_STOP);
             break;
         }
 
