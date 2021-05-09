@@ -76,7 +76,7 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
     if (stream->direction == STREAM_OUTPUT)
         STREAM_RETURN_ERROR("reading file", ENOTSUP);
 
-    rc = fread(samples, sample_count, stream->sample_size, pdata->fp);
+    rc = fread(samples, stream->sample_size, sample_count, pdata->fp);
 
     if ((unsigned)rc != sample_count)
         STREAM_RETURN_FP("reading file", STREAM_ERROR_IO, pdata->fp);
