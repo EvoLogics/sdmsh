@@ -34,7 +34,6 @@ int autodetect_samples_file_type(stream_t *stream)
 {
     struct private_data_t *pdata = stream->pdata;
     FILE *fp;
-    long pos;
     char buf[40];
 
     fp = pdata->fp;
@@ -46,34 +45,37 @@ int autodetect_samples_file_type(stream_t *stream)
     if (fseek(fp, 0, SEEK_SET) < 0)
         STREAM_RETURN_ERROR("seek in file", errno);
 
-    /* read first line. if it's not digit (start not from [-0-9 ]), skip it */
-    if (fgets(buf, sizeof(buf), fp) == NULL)
-        STREAM_RETURN_ERROR("reading file", errno);
+    for (;;) {
+        /* read first line. if it's not digit (start not from [-0-9 ]), skip it */
+        if (fgets(buf, sizeof(buf), fp) == NULL) {
+            fseek(fp, 0, SEEK_SET);
+            if (errno != 0) {
+                pdata->file_type = 0;
+                STREAM_RETURN_ERROR("reading file", errno);
+            }
+            return 0;
+        }
 
-    /* remember position a stream, to return it to proper place later */
-    pos = ftell(fp);
-    if (strrpbrk(buf, "-+1234567890 \n") == NULL) {
-        fseek(fp, 0, SEEK_SET);
-        pdata->file_type = STREAM_ASCII_FILE_TYPE_INT;
-        return 0;
-    } else if (strrpbrk(buf, "-+1234567890.eE \n") == NULL) {
-        fseek(fp, 0, SEEK_SET);
-        pdata->file_type = STREAM_ASCII_FILE_TYPE_FLOAT;
-        return 0;
+        /* skip empty strings, comments started with # or // */
+        if(buf[0] == 0 || buf[0] == '#' || (buf[0] == '/' && buf[1] == '/'))
+            continue;
+
+        /* skip 0 becouse it's can be int or float */
+        if(strrpbrk(buf,"0 \n") == NULL) {
+            pdata->file_type = STREAM_ASCII_FILE_TYPE_INT;
+            continue;
+        }
+
+        if (strrpbrk(buf, "-+1234567890 \n") == NULL) {
+            pdata->file_type = STREAM_ASCII_FILE_TYPE_INT;
+            break;
+        } else if (strrpbrk(buf, "-+1234567890.eE \n") == NULL
+                || strrpbrk(buf, "-+1234567890. \n")   == NULL) {
+            pdata->file_type = STREAM_ASCII_FILE_TYPE_FLOAT;
+            break;
+        }
     }
-
-    /* check second line from file */
-    if (fgets(buf, sizeof(buf), fp) == NULL)
-        STREAM_RETURN_ERROR("reading file", errno);
-    fseek(fp, pos, SEEK_SET);
-
-    if (strrpbrk(buf, "-+1234567890 \n") == NULL) {
-        pdata->file_type = STREAM_ASCII_FILE_TYPE_INT;
-        return 0;
-    } else if (strrpbrk(buf, "-+1234567890.eE \n") == NULL) {
-        pdata->file_type = STREAM_ASCII_FILE_TYPE_FLOAT;
-        return 0;
-    }
+    fseek(fp, 0, SEEK_SET);
     return 0;
 }
 
@@ -82,6 +84,7 @@ static int stream_impl_open(stream_t *stream)
     struct private_data_t *pdata = stream->pdata;
     int rc = 0;
 
+    errno = 0;
     if (stream->direction == STREAM_OUTPUT) {
         pdata->fp = fopen(stream->args, "w");
         pdata->file_type = STREAM_ASCII_FILE_TYPE_INT;
@@ -89,6 +92,7 @@ static int stream_impl_open(stream_t *stream)
         pdata->fp = fopen(stream->args, "r");
         rc = autodetect_samples_file_type(stream);
     }
+
     if (pdata->fp == NULL || rc < 0)
         STREAM_RETURN_ERROR("opening file", errno);
 
@@ -96,6 +100,7 @@ static int stream_impl_open(stream_t *stream)
         fclose(pdata->fp);
         STREAM_RETURN_ERROR("Can't autodetect signal file type", errno);
     }
+
     return STREAM_ERROR_NONE;
 }
 
@@ -129,12 +134,17 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
     if (stream->direction == STREAM_OUTPUT)
         STREAM_RETURN_ERROR("writing file", ENOTSUP);
 
-    for (n = 0; n < sample_count; n++) {
+    for (n = 0; n < sample_count;) {
         double val;
 
         if ((fgets(buf, sizeof(buf), pdata->fp) == NULL)) {
             break;
         }
+
+        /* skip empty strings, comments started with # or // */
+        if(buf[0] == 0 || buf[0] == '#' || (buf[0] == '/' && buf[1] == '/'))
+            continue;
+
         errno = 0;
         buf[strlen(buf) - 1] = 0;
         val = strtod(buf, NULL);
@@ -156,6 +166,7 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
                 samples[data_offset++] = (uint16_t)val;
                 break;
         }
+        n++;
     }
     return n;
 }
