@@ -294,7 +294,7 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
 
     if (cmd_code == SDM_CMD_TX_CONTINUE) {
         if (data_len) {
-            logger(INFO_LOG, "tx cmd continue: %d samples\n", data_len);
+            logger(TRACE_LOG, "tx cmd continue: %d samples              \n", data_len);
             n = write(ss->sockfd, data, data_len * 2);
         }
     } else {

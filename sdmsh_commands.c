@@ -229,6 +229,8 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
             break;
         }
 
+        logger(INFO_LOG, "tx data %d / %d / %d samples  \r", nsamples, len, passed);
+
         if (cnt == len && nsamples >= 1024) {
             rc = sdm_send(ss, cmd, nsamples, data, len);
             passed += len;
