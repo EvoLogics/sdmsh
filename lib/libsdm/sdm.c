@@ -20,8 +20,6 @@
 #include <error.h>
 #include <janus/janus.h>
 
-static int sdm_expect_v(sdm_session_t *ssl[], int cmd, va_list ap);
-
 #define ADD_TO_DATA_VAL16bit(data, data_size, data_offset, val) \
     ADD_TO_DATA_VAL(2, data, data_size, data_offset, val)
 
