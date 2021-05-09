@@ -170,17 +170,17 @@ int sdm_is_async_reply(uint8_t cmd);
     }                                                             \
 } while (0)
 
-#define SDM_CHECK_STR_ARG_LONG(name, str_val, out, range_expr) do {             \
-    long arg;                                                     \
-    errno = 0;                                                    \
-    arg = strtol(str_val, NULL, 0);                               \
-    if ((errno == ERANGE && (arg == LONG_MAX || arg == LONG_MIN)) \
-        || (errno != 0 && arg == 0)) {                            \
-        logger(ERR_LOG, name": must be a digit\n");               \
-        return -1;                                                \
-    }                                                             \
-    SDM_CHECK_ARG_LONG(name, arg, range_expr);                    \
-    out = arg;                                                    \
+#define SDM_CHECK_STR_ARG_LONG(name, str_val, out, range_expr) do {\
+    long _arg;                                                     \
+    errno = 0;                                                     \
+    _arg = strtol(str_val, NULL, 0);                               \
+    if ((errno == ERANGE && (_arg == LONG_MAX || _arg == LONG_MIN))\
+        || (errno != 0 && _arg == 0)) {                            \
+        logger(ERR_LOG, name": must be a digit\n");                \
+        return -1;                                                 \
+    }                                                              \
+    SDM_CHECK_ARG_LONG(name, _arg, range_expr);                    \
+    out = _arg;                                                    \
 } while (0)
 
 #endif
