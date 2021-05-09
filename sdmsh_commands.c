@@ -170,7 +170,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 
 int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 {
-    size_t len = 1024 * 2, cnt;
+    ssize_t len = 1024 * 2, cnt;
     uint16_t *data, cmd;
     sdm_session_t *ss = sc->cookie;
     int rc;
@@ -215,6 +215,11 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     do {
         len = len < nsamples - passed ? len : nsamples - passed;
         cnt = stream_read(stream, data, len);
+
+        if (cnt < 0) {
+            logger(ERR_LOG, "tx: read error %s\n", stream_strerror(stream));
+            break;
+        }
         if (cnt == 0) {
             cmd = SDM_CMD_STOP;
             break;
