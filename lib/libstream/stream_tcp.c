@@ -33,32 +33,24 @@ struct private_data_t
 
 static int stream_impl_open_connect(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
+    struct private_data_t *pdata = stream->pdata;
 
     if ((pdata->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        RETURN_ERROR("socket creation", errno);
+        STREAM_RETURN_ERROR("socket creation", errno);
 
     /* TODO: add retry count here */
     if (connect(pdata->fd, (struct sockaddr *)&pdata->saun, sizeof(pdata->saun)) == -1) {
         close(pdata->fd);
-        RETURN_ERROR("connecting socket", errno);
+        STREAM_RETURN_ERROR("connecting socket", errno);
     }
     return STREAM_ERROR_NONE;
 }
 
 static int stream_impl_open_listen(stream_t *stream)
 {
-    struct private_data_t *pdata;
+    struct private_data_t *pdata = stream->pdata;
     int wait_conn_fd = -1;
     int opt;
-
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
 
     if ((wait_conn_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         pdata->error = errno;
@@ -103,18 +95,14 @@ stream_impl_listen_error:
 
 static int stream_impl_open(stream_t *stream)
 {
-    struct private_data_t *pdata;
+    struct private_data_t *pdata = stream->pdata;
     int rc, port;
     char *args;
     char *socket_type, *ip_s, *port_s;
 
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
-
     /* args: tcp:[connect|listen]:<ip>:<port> */
     if (stream->args == NULL)
-        RETURN_ERROR("tcp arguments", EINVAL);
+        STREAM_RETURN_ERROR("tcp arguments", EINVAL);
 
     args = strdup(stream->args);
     socket_type = strtok(args, ":");
@@ -150,11 +138,7 @@ static int stream_impl_open(stream_t *stream)
 
 static int stream_impl_close(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
+    struct private_data_t *pdata = stream->pdata;
 
     if (pdata->fd >= 0)
         close(pdata->fd);
@@ -164,24 +148,18 @@ static int stream_impl_close(stream_t *stream)
 
 static void stream_impl_free(stream_t *stream)
 {
-    if (stream && stream->pdata) {
-        free(stream->pdata);
-        stream->pdata = NULL;
-    }
+    free(stream->pdata);
+    stream->pdata = NULL;
 }
 
 static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned sample_count)
 {
-    struct private_data_t *pdata;
+    struct private_data_t *pdata = stream->pdata;
     int rv, offset = 0;
     int requested_length = 2 * sample_count;
 
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
-
     if (stream->direction == STREAM_OUTPUT)
-        RETURN_ERROR("reading from stream", ENOTSUP);
+        STREAM_RETURN_ERROR("reading from stream", ENOTSUP);
 
     do {
         rv = read(pdata->fd, &((char*)samples)[offset], requested_length - offset);
@@ -190,7 +168,7 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
         } else {
             if (rv < 0 && (errno == EAGAIN || errno == EINTR))
                 continue;
-            RETURN_ERROR("reading from stream", errno);
+            STREAM_RETURN_ERROR("reading from stream", errno);
         }
     } while (offset < requested_length);
 
@@ -204,16 +182,12 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
 
 static int stream_impl_write(stream_t *stream, void* samples, unsigned sample_count)
 {
-    struct private_data_t *pdata;
+    struct private_data_t *pdata = stream->pdata;
     int rc, offset = 0;
     int requested_length = 2 * sample_count;
 
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
-
     if (stream->direction == STREAM_INPUT)
-        RETURN_ERROR("writing to stream", ENOTSUP);
+        STREAM_RETURN_ERROR("writing to stream", ENOTSUP);
 
     do {
         rc = write(pdata->fd, &((char*)samples)[offset], requested_length - offset);
@@ -222,7 +196,7 @@ static int stream_impl_write(stream_t *stream, void* samples, unsigned sample_co
         } else {
             if (rc < 0 && (errno == EAGAIN || errno == EINTR))
                 continue;
-            RETURN_ERROR("writing to stream", errno);
+            STREAM_RETURN_ERROR("writing to stream", errno);
         }
     } while (offset < requested_length);
 
@@ -234,46 +208,26 @@ static int stream_impl_write(stream_t *stream, void* samples, unsigned sample_co
 
 static int stream_impl_get_errno(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return EINVAL;
-    pdata = stream->pdata;
-
+    struct private_data_t *pdata = stream->pdata;
     return pdata->error;
 }
 
 static const char* stream_impl_strerror(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return "No stream";
-    pdata = stream->pdata;
-
+    struct private_data_t *pdata = stream->pdata;
     return strerror(pdata->error);
 }
 
 static const char* stream_impl_get_error_op(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return "No stream";
-    pdata = stream->pdata;
-
+    struct private_data_t *pdata = stream->pdata;
     return pdata->error_op;
 }
 
 static int stream_impl_count(stream_t* stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
-
-    RETURN_ERROR("stream count", EAFNOSUPPORT);
+    struct private_data_t *pdata = stream->pdata;
+    STREAM_RETURN_ERROR("stream count", EAFNOSUPPORT);
 }
 
 int stream_impl_tcp_new(stream_t *stream)

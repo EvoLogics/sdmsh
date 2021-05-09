@@ -27,11 +27,7 @@ struct private_data_t
 
 static int stream_impl_open(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
+    struct private_data_t *pdata = stream->pdata;
 
     if (stream->direction == STREAM_OUTPUT) {
         pdata->fp = fopen(stream->args, "w");
@@ -40,33 +36,21 @@ static int stream_impl_open(stream_t *stream)
     }
 
     if (!pdata->fp)
-        RETURN_ERROR("opening file", errno);
+        STREAM_RETURN_ERROR("opening file", errno);
 
     return STREAM_ERROR_NONE;
 }
 
 static int stream_impl_openfp(stream_t *stream, FILE *fp)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return STREAM_ERROR;
-    if (!fp)
-        return STREAM_ERROR;
-
-    pdata = stream->pdata;
+    struct private_data_t *pdata = stream->pdata;
     pdata->fp = fp;
-
     return STREAM_ERROR_NONE;
 }
 
 static int stream_impl_close(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
+    struct private_data_t *pdata = stream->pdata;
 
     if (!pdata->fp)
         return 0;
@@ -79,99 +63,74 @@ static int stream_impl_close(stream_t *stream)
 
 static void stream_impl_free(stream_t *stream)
 {
-    if (stream && stream->pdata) {
-        free(stream->pdata);
-        stream->pdata = NULL;
-    }
+    free(stream->pdata);
+    stream->pdata = NULL;
 }
 
 static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned sample_count)
 {
-    struct private_data_t *pdata;
+    struct private_data_t *pdata = stream->pdata;
     int rc;
 
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
 
     if (stream->direction == STREAM_OUTPUT)
-        RETURN_ERROR("reading file", ENOTSUP);
+        STREAM_RETURN_ERROR("reading file", ENOTSUP);
 
     rc = fread(samples, sample_count, stream->sample_size, pdata->fp);
 
     if ((unsigned)rc != sample_count)
-        RETURN_ERROR("reading file", errno);
+        STREAM_RETURN_FP("reading file", STREAM_ERROR_IO, pdata->fp);
 
     return rc;
 }
 
 static int stream_impl_write(stream_t *stream, void* samples, unsigned sample_count)
 {
-    struct private_data_t *pdata;
+    struct private_data_t *pdata = stream->pdata;
     int rc;
 
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
 
     if (stream->direction == STREAM_INPUT)
-        RETURN_ERROR("writing file", ENOTSUP);
+        STREAM_RETURN_ERROR("writing file", ENOTSUP);
 
     rc = fwrite(samples, stream->sample_size, sample_count, pdata->fp);
 
     if ((unsigned)rc != sample_count)
-        RETURN_ERROR("writing file", errno);
+        STREAM_RETURN_ERROR("writing file", errno);
 
     return rc;
 }
 
 static int stream_impl_get_errno(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return EINVAL;
-    pdata = stream->pdata;
-
+    struct private_data_t *pdata = stream->pdata;
     return pdata->error;
 }
 
 static const char* stream_impl_strerror(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return "No stream";
-    pdata = stream->pdata;
+    struct private_data_t *pdata = stream->pdata;
 
     return strerror(pdata->error);
 }
 
 static const char* stream_impl_get_error_op(stream_t *stream)
 {
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return "No stream";
-    pdata = stream->pdata;
+    struct private_data_t *pdata = stream->pdata;
 
     return pdata->error_op;
 }
 
 static int stream_impl_count(stream_t* stream)
 {
+    struct private_data_t *pdata = stream->pdata;
     struct stat st;
-    struct private_data_t *pdata;
-
-    if (!stream)
-        return STREAM_ERROR;
-    pdata = stream->pdata;
 
     if (stream->direction == STREAM_OUTPUT)
-        RETURN_ERROR("counting samples in file", ENOTSUP);
+        STREAM_RETURN_ERROR("counting samples in file", ENOTSUP);
 
     if (stat(stream->args, &st) < 0)
-        RETURN_ERROR("reading file", errno);
+        STREAM_RETURN_ERROR("reading file", errno);
 
     return st.st_size / 2;
 }

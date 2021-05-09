@@ -48,7 +48,7 @@ struct stream_t
     //! Private data used by stream implementation.
     void* pdata;
     //! Error message buffer.
-    char bfr_error[128];
+    char bfr_error[512];
 
     int direction;
 };
@@ -66,11 +66,31 @@ struct streams_t {
     int error_index; /* Last handled stream. For error report */
 };
 
-#define RETURN_ERROR(descr, errno_code)   \
-    do {                                  \
-        pdata->error_op = descr;          \
-        pdata->error = errno_code;        \
-        return STREAM_ERROR;              \
+#define STREAM_SET_ERROR(descr, errno_code) \
+    do {                                    \
+        pdata->error_op = descr;            \
+        pdata->error = errno_code;          \
+    } while (0)
+
+#define STREAM_RETURN_ERROR(descr, errno_code) \
+    do {                                       \
+        pdata->error_op = descr;               \
+        pdata->error = errno_code;             \
+        return STREAM_ERROR;                   \
+    } while (0)
+
+#define STREAM_RETURN_FP(descr, stream_error, _fp) \
+    do {                                           \
+        int ret;                                   \
+        if (feof(_fp))                             \
+            ret = STREAM_ERROR_EOS;                \
+        if (ferror(_fp)) {                         \
+            pdata->error_op = descr;               \
+            pdata->error = stream_error;           \
+            ret = STREAM_ERROR;                    \
+        }                                          \
+        clearerr(_fp);                             \
+        return ret;                                \
     } while (0)
 
 //! Retrieve the list of drivers.

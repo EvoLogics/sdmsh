@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <wordexp.h>
+#include <errno.h>
 
 #include <stream.h>
 // Declare driver initialization functions.
@@ -19,6 +20,14 @@ static const char* s_drivers[] = {
 #include "stream.def"
     NULL
 };
+
+#define CHECK_SUPPORT(func)     \
+    do {                    \
+        if (!stream)        \
+            return EINVAL;  \
+        if (!stream->func)  \
+            return ENOTSUP; \
+    } while(0)
 
 const char** stream_get_drivers(void)
 {
@@ -58,6 +67,8 @@ stream_t *stream_new_v(int direction, const char* driver, const char* args)
 
 void stream_free(stream_t *stream)
 {
+    if (!stream || !stream->pdata)
+        return;
     if (stream->free)
         stream->free(stream);
     free(stream);
@@ -66,68 +77,91 @@ void stream_free(stream_t *stream)
 
 void stream_set_fs(stream_t *stream, unsigned fs)
 {
+    if (!stream)
+        return;
     stream->fs = fs;
 }
 
 unsigned stream_get_fs(stream_t *stream)
 {
+    if (!stream)
+        return 0;
     return stream->fs;
 }
 
 unsigned stream_get_sample_size(stream_t *stream)
 {
+    if (!stream)
+        return 0;
     return stream->sample_size;
 }
 
 int stream_open(stream_t *stream)
 {
+    CHECK_SUPPORT(open);
     return stream->open(stream);
 }
 
 int stream_openfp(stream_t *stream, FILE *fp)
 {
-    if (stream->openfp)
-        return stream->openfp(stream, fp);
-    return STREAM_ERROR;
+    CHECK_SUPPORT(openfp);
+    return stream->openfp(stream, fp);
 }
 
 int stream_close(stream_t *stream)
 {
+    CHECK_SUPPORT(close);
+
+    if (!stream->pdata)
+        return 0;
+
     return stream->close(stream);
 }
 
 int stream_read(stream_t *stream, uint16_t* samples, unsigned sample_count)
 {
-    if (stream) {
-        return stream->read(stream, samples, sample_count);
-    } else {
-        return STREAM_ERROR;
-    }
+    CHECK_SUPPORT(read);
+    return stream->read(stream, samples, sample_count);
 }
 
 int stream_write(stream_t *stream, uint16_t *samples, unsigned sample_count)
 {
-    if (stream) {
-        return stream->write(stream, samples, sample_count);
-    } else {
-        return STREAM_ERROR;
-    }
+    CHECK_SUPPORT(write);
+    return stream->write(stream, samples, sample_count);
 }
 
 ssize_t stream_count(stream_t *stream)
 {
+    CHECK_SUPPORT(count);
     return stream->count(stream);
 }
 
 int stream_get_errno(stream_t *stream)
 {
+    CHECK_SUPPORT(get_errno);
+    if (!stream)
+        return EINVAL;
+
     return stream->get_errno(stream);
 }
 
 const char* stream_strerror(stream_t *stream)
 {
-    sprintf(stream->bfr_error, "%s \"%s\": %s", stream->get_error_op(stream)
-            , stream->args, stream->strerror(stream));
+    if (!stream)
+        return "No stream";
+
+    if (!stream->get_errno)
+        return "";
+
+    if (stream->get_errno(stream) < STREAM_ERROR_MIN) {
+        snprintf(stream->bfr_error, sizeof(stream->bfr_error), "%s \"%s\""
+                , stream->get_error_op(stream)
+                , stream->args);
+    } else {
+        snprintf(stream->bfr_error, sizeof(stream->bfr_error), "%s \"%s\": %s"
+                , stream->get_error_op(stream)
+                , stream->args, stream->strerror(stream));
+    }
     return stream->bfr_error;
 }
 
@@ -196,6 +230,9 @@ stream_t* streams_add_new(streams_t *streams, int direction, char *description)
 {
     stream_t *stream;
 
+    if (!streams)
+        return NULL;
+
     if (streams->count >= STREAMS_MAX) {
         /* logger(ERR_LOG, "Too many streams open: %d\n", streams->count); */
         return NULL;
@@ -214,6 +251,9 @@ stream_t* streams_add_new(streams_t *streams, int direction, char *description)
 
 int streams_add(streams_t *streams, stream_t *stream)
 {
+    if (!streams)
+        return EINVAL;
+
     if (streams->count >= STREAMS_MAX)
         return STREAM_ERROR;
     streams->streams[streams->count++] = stream;
@@ -223,6 +263,9 @@ int streams_add(streams_t *streams, stream_t *stream)
 void streams_clean(streams_t *streams)
 {
     int i;
+    if (!streams)
+        return;
+
     for (i = streams->count - 1; i >= 0 ; i--)
         streams_remove(streams, i);
 }
@@ -230,6 +273,9 @@ void streams_clean(streams_t *streams)
 // FIXME: need heavy testing!!!!!!!!!!!!!
 int streams_remove(streams_t *streams, unsigned int index)
 {
+    if (!streams)
+        return EINVAL;
+
     if (index > streams->count)
         return STREAM_ERROR;
 
