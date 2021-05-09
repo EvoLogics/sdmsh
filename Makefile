@@ -23,19 +23,14 @@ LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 CFLAGS = -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC
 
 ifdef BUILD_STATIC_BIN
-    LDFLAGS += -static -l:libreadline.a
+    LDFLAGS += -static -l:libreadline.a -l:libtinfo.a -l:libncurses.a
 else
-    LDFLAGS += -lreadline
+    LDFLAGS += -lreadline -ltinfo -lncurses
 endif
 
 ifdef COMPAT_READLINE6
     SRC     +=  compat/readline6.c
     CFLAGS  += -DCOMPAT_READLINE6
-    ifdef BUILD_STATIC_BIN
-        LDFLAGS += -l:libtinfo.a -l:libncurses.a
-    else
-        LDFLAGS += -ltinfo -lncurses
-    endif
 endif
 
 build: lib $(OBJ)
@@ -46,12 +41,12 @@ build-dyn: lib $(OBJ)
 
 .PHONY: lib
 lib:
-	make -C $(LIBSDM_DIR)
 	make -C $(LIBSTRM_DIR)
+	make -C $(LIBSDM_DIR)
 
 $(LIBSDM_A) $(LIBSDM_SO):
-	make -C $(LIBSDM_DIR)
 	make -C $(LIBSTRM_DIR)
+	make -C $(LIBSDM_DIR)
 
 clean:
 	make -C $(LIBSDM_DIR) clean
