@@ -206,7 +206,8 @@ stream_t* stream_new(int direction, char *description)
         else if (!strcmp(ext, ".dat") || !strcmp(ext, ".txt"))
             drv = "ascii";
         else if (!strcmp(ext, ".raw") || !strcmp(ext, ".bin")
-              || !strcmp(ext, ".dmp") || !strcmp(ext, ".fifo"))
+              || !strcmp(ext, ".s16") || !strcmp(ext, ".dmp")
+              || !strcmp(ext, ".fifo"))
             drv = "raw";
         else
             drv = default_drv;
