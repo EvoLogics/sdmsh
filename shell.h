@@ -95,6 +95,7 @@ struct shell_config {
 
     /* internal data */
     int   shell_quit;
+    int   sig_cancel;
     char *shell_input;
     char *history_file;
 };

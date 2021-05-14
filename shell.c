@@ -49,6 +49,7 @@ static void handle_signals(int signo) {
             } else {
                 shell_config->shell_quit = 1;
             }
+            shell_config->sig_cancel++;
             break;
 
         case SIGPIPE:
@@ -141,6 +142,7 @@ int  shell_handle(struct shell_config *sc)
     if (!cmd || cmd[0] == 0 || cmd[0] == '#')
         return 0;
 
+    sc->sig_cancel = 0;
     shell_add_history(shell_config, cmd);
 
     /* Handle commands separated by ';' */
@@ -428,6 +430,7 @@ void shell_input_init_current(struct shell_config *sc)
 
     rl_instream = sc->input = si->input;
     sc->shell_quit = 0;
+    sc->sig_cancel = 0;
 }
 
 struct shell_input* shell_input_next(struct shell_config *sc)

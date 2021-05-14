@@ -224,12 +224,12 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
         }
 
         /* handle ctrl-c */
-        if (cnt == 0 || sc->shell_quit) {
-            sdm_send(ss, SDM_CMD_STOP);
+        if (cnt == 0 || sc->sig_cancel) {
+            logger(INFO_LOG, "\rtx cancelled. Wait TX_STOP                     \n");
             break;
         }
 
-        logger(INFO_LOG, "tx data %d / %d / %d samples  \r", nsamples, len, passed);
+        logger(DATA_LOG, "tx data %d / %d / %d samples  \r", nsamples, len, passed);
 
         if (cnt == len && nsamples >= 1024) {
             rc = sdm_send(ss, cmd, nsamples, data, len);
