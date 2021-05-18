@@ -164,6 +164,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
     }
 
     stream_close(stream);
+    stream_free(stream);
     free(data);
     sdm_set_idle_state(ss);
 

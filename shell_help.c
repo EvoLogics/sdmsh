@@ -18,8 +18,8 @@ void shell_help_show(struct shell_config *sc, char *name)
     struct commands_t *cmd;
     for (cmd = sc->commands; cmd->name != NULL; cmd++) {
         if (!name || !strcmp(cmd->name, name)) {
-            printf ("%-10s-\t%s\n", cmd->name, cmd->help);
-            printf ("%-10s \tUsage: %s\n", " ", cmd->usage ? cmd->usage : cmd->name);
+            printf ("%-10s  -  %s\n", cmd->name, cmd->help);
+            printf ("%-10s      Usage: %s\n", " ", cmd->usage ? cmd->usage : cmd->name);
             if (name) {
                 if (cmd->flags & SCF_USE_DRIVER)
                     shell_help_show_drivers(sc, "\t\t");

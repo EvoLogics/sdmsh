@@ -125,8 +125,13 @@ int  shell_handle(struct shell_config *sc)
     if (sc->shell_quit) {
         struct shell_input *si = shell_input_next(sc);
 
-        if (si == NULL)
+        if (si == NULL) {
+            if (sc->shell_input) {
+                free(sc->shell_input);
+                sc->shell_input = NULL;
+            }
             return SHELL_EOF;
+        }
 
         /* Hack to show prompt after `source` */
         if (is_interactive_mode(sc)) {
@@ -140,7 +145,7 @@ int  shell_handle(struct shell_config *sc)
 
     cmd = strchopspaces(sc->shell_input);
     if (!cmd || cmd[0] == 0 || cmd[0] == '#')
-        return 0;
+        goto shell_handle_free;
 
     sc->sig_cancel = 0;
     shell_add_history(shell_config, cmd);
@@ -152,13 +157,14 @@ int  shell_handle(struct shell_config *sc)
         rc = shell_input_add(sc, SHELL_INPUT_PUT_HEAD|SHELL_INPUT_TYPE_STRING, cmd);
         if (rc == -1) {
             fprintf(stderr, "Error open file /dev/zero\n");
-            return -1;
+            goto shell_handle_free;
         } else if (rc == -2) {
             fprintf(stderr, "Too many inputs. Maximum %d", SHELL_MAX_INPUT);
-            return -1;
+            rc = -1;
+            goto shell_handle_free;
         }
         shell_input_init_current(sc);
-        return 0;
+        goto shell_handle_free;
     }
     rc = shell_run_cmd(sc, cmd);
 
@@ -179,6 +185,7 @@ int  shell_handle(struct shell_config *sc)
         }
     }
 
+shell_handle_free:
     free(sc->shell_input);
     sc->shell_input = NULL;
 
@@ -229,6 +236,7 @@ int shell_run_cmd(struct shell_config *sc, char *shell_input)
 
     if (shell_make_argv(cmd_line, &argv, &argc) == -1) {
         fprintf(stderr, "\rCommand syntax error: \"%s\"\n", cmd_line);
+        free(cmd_line);
         return -1;
     }
 
@@ -343,6 +351,9 @@ int shell_input_add(struct shell_config *sc, int flags, ...)
         return -2;
 
     si = malloc(sizeof(struct shell_input));
+    if (!si)
+        return -2;
+
     if (flags & SHELL_INPUT_PUT_HEAD)
         STAILQ_INSERT_HEAD(&sc->inputs_list, si, next_input);
     else
