@@ -4,6 +4,10 @@
 # Uncomment this if you want static binary
 #BUILD_STATIC_BIN = 1
 
+# Comment this if you do not want checking with address sanitize
+# NOTE: you can use shell variable ASAN_OPTIONS=fast_unwind_on_malloc=false before run sdmsh
+# also read https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags
+WITH_ADDRESS_SANITAZE = 1
 ##############################
 PROJ = sdmsh
 
@@ -20,7 +24,11 @@ LIBSTRM_DIR = lib/$(LIBSTRM)
 LIBSTRM_SO  = $(LIBSTRM_DIR)/$(LIBSTRM).so
 LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 
-CFLAGS = -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC
+CFLAGS += -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC
+ifdef WITH_ADDRESS_SANITAZE
+	CFLAGS  += -fsanitize=address
+	LDFLAGS += -fsanitize=address
+endif
 
 ifdef BUILD_STATIC_BIN
     LDFLAGS += -static -l:libreadline.a -l:libtinfo.a -l:libncurses.a
