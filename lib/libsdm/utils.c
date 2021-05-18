@@ -12,14 +12,8 @@
 
 #define LOGGER_MAX_LINE 1024
 
-static long log_limit;
-
-static long current_size = 0;
-static int  limit_overflow;
-static char *overflow_warning = "\nfile overflow-----\n";
 static char last_log_line[LOGGER_MAX_LINE];
-
-static int log_fd = -1;
+static int  log_fd = -1;
 
 int logger_init(const char *filename, int limit)
 {
@@ -31,7 +25,7 @@ int logger_init(const char *filename, int limit)
 
     log_fd = open(filename,O_CREAT | O_RDWR,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 
-    if (log_fd < 0 || current_size < 0)
+    if (log_fd < 0)
         return -1;
 
     return logger_init_fd(log_fd, limit);
@@ -41,19 +35,7 @@ int logger_init_fd(int fd, int limit)
 {
     if (limit > 0)
         return 0;
-
-    if (log_limit < 0)
-        return -1;
-
     log_fd = fd;
-
-    log_limit = limit;
-    if (log_limit > (long)strlen(overflow_warning))
-        log_limit -= strlen(overflow_warning);
-
-    current_size = 0;
-    limit_overflow = 0;
-
     return 0;
 }
 
@@ -62,44 +44,25 @@ void logger_deinit()
     if (log_fd != -1)
         close(log_fd);
     log_fd = -1;
-    last_log_line[0] = 0;
-    log_limit = 0;
 }
 
 int logger_(const char *msg, ...)
 {
     va_list ap;
-    int buf_len;
-    char buf[LOGGER_MAX_LINE + 1];
-    int fd = STDOUT_FILENO;
+    int rc, fd = STDOUT_FILENO;
 
     va_start(ap, msg);
-    buf_len = vsnprintf(buf, LOGGER_MAX_LINE, msg, ap);
+    vsnprintf(last_log_line, sizeof(last_log_line), msg, ap);
     va_end(ap);
 
-    if (log_fd != -1) {
-        if (log_limit && current_size + buf_len >= log_limit)
-        {
-            /* supress logging when owerflow */
-            if (limit_overflow)
-                return 0;
-
-            limit_overflow = 1;
-            strcpy(buf, overflow_warning);
-            buf_len = strlen(buf);
-            current_size = log_limit;
-        }
-        else
-            current_size += buf_len;
+    if (log_fd != -1)
         fd = log_fd;
-    }
 
-    write(fd, buf, buf_len);
+    va_start(ap, msg);
+    rc = vdprintf(fd, msg, ap);
+    va_end(ap);
 
-    strncpy(last_log_line, buf, sizeof(last_log_line));
-    last_log_line[LOGGER_MAX_LINE - 1] = 0;
-
-    return 0;
+    return rc;
 }
 
 char *logger_last_line()
