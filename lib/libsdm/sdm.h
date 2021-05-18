@@ -92,7 +92,7 @@ typedef struct sdm_pkt_t {
             uint16_t param;
             uint8_t  dummy;
         };
-        char rx_len[3];
+        uint32_t rx_len;
     };
     uint32_t data_len; /* in 16bit words */
     union {

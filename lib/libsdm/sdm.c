@@ -106,7 +106,10 @@ void sdm_pack_cmd(sdm_pkt_t *cmd, char *buf)
                                memcpy(&buf[SDM_PKT_T_OFFSET_GAIN_LVL],  &cmd->gain_and_srclvl, sizeof(cmd->gain_and_srclvl));
                                break;
                              }
-        case SDM_CMD_RX:     { memcpy(&buf[SDM_PKT_T_OFFSET_RX_LEN],     cmd->rx_len,          sizeof(cmd->rx_len)); break; }
+        case SDM_CMD_USBL_CONFIG:
+        case SDM_CMD_RX_JANUS:
+        case SDM_CMD_USBL_RX:
+        case SDM_CMD_RX:     { memcpy(&buf[SDM_PKT_T_OFFSET_RX_LEN],    &cmd->rx_len,          3); break; }
         default:             { memcpy(&buf[SDM_PKT_T_OFFSET_PARAM],     &cmd->param,           sizeof(cmd->param));  break; }
     }
     memcpy(&buf[SDM_PKT_T_OFFSET_DATA_LEN], &cmd->data_len, sizeof(cmd->data_len));
@@ -195,7 +198,6 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
         {
             uint32_t delay, samples;
             uint32_t gain, sample_rate;
-            uint32_t tmp;
             
             va_start(ap, cmd_code);
             delay = va_arg(ap, int);
@@ -204,14 +206,13 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             sample_rate = va_arg(ap, int);
             va_end(ap);
             
-            tmp = (gain << 4) + (sample_rate << 1);
+            cmd->rx_len = (gain << 4) + (sample_rate << 1);
 
-            memcpy(cmd->rx_len, &tmp, 3);
             data_len = cmd->data_len = 4;
             cmd_raw = realloc(cmd_raw, SDM_PKT_T_SIZE + cmd->data_len * 2);
 
-            memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA],     &delay, 4);
-            memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA + 2], &samples, 4);
+            memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA],     &delay,   4);
+            memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA + 4], &samples, 4);
             break;
         }
         case SDM_CMD_TX_CONTINUE:
@@ -259,13 +260,8 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
         case SDM_CMD_RX:
         case SDM_CMD_RX_JANUS:
         {
-            uint32_t tmp;
             va_start(ap, cmd_code);
-
-            /* max RX length 24 bit */
-            tmp = va_arg(ap, int) & 0xffffff;
-            memcpy(cmd->rx_len, &tmp, 3);
-
+            cmd->rx_len = va_arg(ap, int) & 0xffffff;
             va_end(ap);
             break;
         }
@@ -273,15 +269,13 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
         {
             uint8_t channel;
             uint16_t samples;
-            uint32_t tmp;
             
             va_start(ap, cmd_code);
             channel = va_arg(ap, int);
             samples = va_arg(ap, int);
             va_end(ap);
 
-            tmp = samples + (channel << 21);
-            memcpy(cmd->rx_len, &tmp, 3);
+            cmd->rx_len = samples + (channel << 21);
             break;
         }
         default:
