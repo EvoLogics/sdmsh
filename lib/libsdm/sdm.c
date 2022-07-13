@@ -59,8 +59,10 @@ sdm_session_t* sdm_connect(char *host, int port)
         if (sockfd < 0)
             continue;
 
-        if (getnameinfo(rp->ai_addr, rp->ai_addrlen, buf_host, sizeof (buf_host), buf_port, sizeof(buf_port), NI_NUMERICHOST) < 0)
-            return NULL;
+        if (getnameinfo(rp->ai_addr, rp->ai_addrlen, buf_host, sizeof (buf_host), buf_port, sizeof(buf_port), NI_NUMERICHOST) < 0) {
+            rp = NULL;
+            break;
+        }
         logger(DEBUG_LOG, "Try connect to %s:%s..\n", buf_host, buf_port);
 
         if (connect(sockfd, rp->ai_addr, rp->ai_addrlen) >= 0)
@@ -69,10 +71,10 @@ sdm_session_t* sdm_connect(char *host, int port)
         close(sockfd);
     }
 
+    freeaddrinfo(resolv);
+
     if (rp == NULL)
         return NULL;
-
-    freeaddrinfo(resolv);
 
     ss = calloc(1, sizeof(sdm_session_t));
     if (ss == NULL)
