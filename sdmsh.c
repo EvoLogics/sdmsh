@@ -362,7 +362,7 @@ int main(int argc, char *argv[])
 
             do {
                 rc = sdm_handle_rx_data(sdm_session, buf, len);
-                if (len && !sdm_is_async_reply(sdm_session->cmd->cmd))
+                if (len && sdm_session->cmd && !sdm_is_async_reply(sdm_session->cmd->cmd))
                     if (sdm_session->rx_data_len == 0 || rc == 0)
                         shell_forced_update_display(&shell_config);
                 len = 0;
