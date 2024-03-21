@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
         rc = select(maxfd + 1, &rfds, NULL, NULL, &tv);
 
         if (rc == -1 && errno == EINTR) {
-            if(shell_config.shell_quit)
+            if(shell_config.shell_quit >= 2)
                 break;
             continue;
         }
@@ -384,6 +384,8 @@ int main(int argc, char *argv[])
                 continue;
             }
         }
+        if(shell_config.shell_quit >= 2)
+            break;
     }
 
     shell_deinit(&shell_config);
