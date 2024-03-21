@@ -226,7 +226,7 @@ int shell_run_cmd(struct shell_config *sc, char *shell_input)
     struct commands_t *cmd;
     char **argv;
     int argc;
-    int rc;
+    int rc = -1;
     char *cmd_line;
 
     if (!shell_input || *shell_input == 0)
