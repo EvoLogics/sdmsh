@@ -31,6 +31,7 @@ int sdmsh_cmd_waitsyncin (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_usleep     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_source     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_history    (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_exit       (struct shell_config *sc, char *argv[], int argc);
 
 struct commands_t commands[] = {
      {"config",      sdmsh_cmd_config,      SCF_NONE,       "config <threshold> <gain> <source level> [<preamp_gain>]", "Config SDM command." }
@@ -47,6 +48,7 @@ struct commands_t commands[] = {
    , {"source",      sdmsh_cmd_source,      SCF_NONE,       "source <source-file>", "Run commands from file."}
    , {"help",        sdmsh_cmd_help,        SCF_NONE,       "help [command]", "This help"}
    , {"history",     sdmsh_cmd_history,     SCF_NO_HISTORY, "history [number-lines]", "Display history. Optional [number-lines] by default is 10."}
+   , {"exit",        sdmsh_cmd_exit,        SCF_NO_HISTORY, "exit", "Exit from shell"}
    , {NULL, NULL, 0, NULL, NULL }
 };
 
@@ -408,4 +410,12 @@ int sdmsh_cmd_source(struct shell_config *sc, char *argv[], int argc)
     shell_input_init_current(sc);
 
     return rc;
+}
+
+int sdmsh_cmd_exit(struct shell_config *sc, char *argv[], int argc)
+{
+    argv = argv;
+    argc = argc;
+    sc->shell_quit = 2;
+    return 0;
 }

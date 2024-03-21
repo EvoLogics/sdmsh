@@ -28,7 +28,7 @@ void rl_cb_getline(char* line)
 {
     shell_config->shell_input = line;
     if (line == NULL) {
-        shell_config->shell_quit = 1;
+        shell_config->shell_quit++;
         return;
     }
 }
@@ -47,7 +47,7 @@ static void handle_signals(int signo) {
                     rl_redisplay();
                 }
             } else {
-                shell_config->shell_quit = 1;
+                shell_config->shell_quit++;
             }
             shell_config->sig_cancel++;
             break;
