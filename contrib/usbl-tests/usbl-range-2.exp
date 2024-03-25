@@ -8,8 +8,9 @@ array set ::opt {
     sound_speed 340. # air
     verbose 0
     ref_sample_number 1024
-    usbl-range-active  {./usbl-range.exp -s $::opt(ref_sample_number) 188 active}
-    usbl-range-passive {./usbl-range.exp -s $::opt(ref_sample_number) 190 passive}
+    usbl-range-active  {./usbl-range.exp -s $::opt(ref_sample_number) $::opt(addr_active) active}
+    usbl-range-passive {./usbl-range.exp -s $::opt(ref_sample_number) $::opt(addr_passive) passive}
+    fail_timeout 5
     #usbl-range-passive {ssh evologics@192.168.169.10 "cd work/proj/am/sdmsh; ./usbl-range.exp 190 passive"}
 }
 
@@ -121,7 +122,8 @@ proc check_for_following {type} {
 
 proc show_help_and_die {} {
     global argv0 image_types
-    send_error "Usage: [regsub .*/ $argv0 {}] \[-h|--help] \[-v] \[-s ref_sample_number]\n\
+    send_error "Usage: [regsub .*/ $argv0 {}] \[-h|--help] \[-v] \[-s ref_sample_number]\
+        modem-hostname-active modem-hostname-passive\n\
     -s  - referece samples number for referense less then 1024 samples.\n\
     \n\
     -h  - this help\n\
@@ -151,9 +153,11 @@ while { [llength $argv] > 0 } {
 set argv [string trim $argv \{\}]
 set argc [llength $argv]
 
-#if {$argc != 1} {
-#    show_help_and_die
-#}
+if {$argc != 2} {
+    show_help_and_die
+}
+set ::opt(addr_active)  [lindex $argv 0]
+set ::opt(addr_passive) [lindex $argv 1]
 
 spawn {*}[subst $::opt(usbl-range-passive)]
 set id(passive) $spawn_id
@@ -170,8 +174,19 @@ expect -i id(active) -re {delta: (\d+)[^\r\n]*\r*\n} {
 } -re {([^\n\r]*)\r*\n} {
     puts "active:  $expect_out(1,string)"
     exp_continue
+} -timeout $::opt(fail_timeout) timeout {
+    die "waiting answer from active timeout"
 } eof {
-    wait -i $id(active) reason
+    puts "eof active"
+    set reason [wait -i $id(active)]
+    if {[info exist ::errorCode]} {
+        puts "eof active: $errorCode"
+    }
+
+    if {[info exist reason]} {
+        puts "eof active; $reason"
+    }
+
     if {[info exist reason] && [lindex $reason 3] != 0} {
         die fail\n
     }
@@ -189,8 +204,20 @@ expect -i id(active) -re {delta: (\d+)[^\r\n]*\r*\n} {
 } -re {([^\n\r]*)\r*\n} {
     puts "passive: $expect_out(1,string)"
     exp_continue
+} -timeout $::opt(fail_timeout) timeout {
+    die "waiting answer from passive timeout"
 } eof {
-    wait -i $id(passive) reason
+    puts "eof passive"
+    set reason [wait -i $id(passive)]
+
+    if {[info exist ::errorCode]} {
+        puts "eof active: $::errorCode"
+    }
+
+    if {[info exist reason]} {
+        puts "eof active; $reason"
+    }
+
     if {[info exist reason] && [lindex $reason 3] != 0} {
         die fail\n
     }

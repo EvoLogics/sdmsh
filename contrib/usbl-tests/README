@@ -45,7 +45,7 @@ $ ./usbl-range-calc.exp 2897569 2897186
 
 == Auto test ==
 {{{
-$ ./usbl-range-2.exp
+$ ./usbl-range-2.exp 188 190
 passive: spawn ../../sdmsh 190 -sf usbl-range-passive.sdmsh -v0
 active:  spawn ../../sdmsh 188 -sf usbl-range-active.sdmsh -v0
 active:  current_time = 2380421751, tx_time = 2380120814, rx_time = 2217928409
