@@ -120,6 +120,7 @@ proc show_help_and_die {} {
 
 array set ::opt {
     verbose 0
+    speed_of_sound 1450 # {1450 m/s in water, 340 m/s in air}
 }
 
 while { [llength $argv] > 0 } {
@@ -153,6 +154,6 @@ if {![info exist active] || ![info exist passive] \
 }
 
 set us [expr ($active - $passive) / 2. ]
-set m  [format %0.2f [expr $us / 1000000. * 1450.]]
+set m  [format %0.2f [expr $us / 1000000. * $::opt(speed_of_sound)]]
 msg note "$us us. distance $m m\n"
 

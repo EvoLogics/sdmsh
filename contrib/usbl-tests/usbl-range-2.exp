@@ -10,8 +10,10 @@ array set ::opt {
     ref_sample_number 1024
     usbl-range-active  {./usbl-range.exp -s $::opt(ref_sample_number) $::opt(addr_active) active}
     usbl-range-passive {./usbl-range.exp -s $::opt(ref_sample_number) $::opt(addr_passive) passive}
-    fail_timeout 5
     #usbl-range-passive {ssh evologics@192.168.169.10 "cd work/proj/am/sdmsh; ./usbl-range.exp 190 passive"}
+
+    fail_timeout 5
+    speed_of_sound 1450 # {1450 m/s in water, 340 m/s in air}
 }
 
 remove_nulls -d 0
@@ -237,6 +239,6 @@ if {![info exist active] || ![info exist passive]} {
 msg warn "active: [expr $active / 1000000.], passive: [expr $passive / 1000000.].\n"
 set us [expr ($active - $passive) / 2. ]
 
-set m  [format %0.2f [expr $us / 1000000. * $::opt(sound_speed)]]
+set m  [format %0.2f [expr $us / 1000000. * $::opt(speed_of_sound)]]
 
 msg note "$us us. distance $m m\n"
