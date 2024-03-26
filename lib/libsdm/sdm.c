@@ -363,7 +363,7 @@ char* sdm_reply_report_to_str(uint8_t cmd)
         case SDM_REPLY_REPORT_REF:         return "REF";
         case SDM_REPLY_REPORT_CONFIG:      return "CONFIG";
         case SDM_REPLY_REPORT_USBL_CONFIG: return "USBL_CONFIG";
-        case SDM_REPLY_REPORT_USBL_RX_STOP:return "RX_STOP";
+        case SDM_REPLY_REPORT_USBL_RX_STOP:return "USBL_RX_STOP";
         case SDM_REPLY_REPORT_DROP:        return "DROP";
         case SDM_REPLY_REPORT_SYSTIME:     return "SYSTIME";
         case SDM_REPLY_REPORT_UNKNOWN:     return "UNKNOWN";
