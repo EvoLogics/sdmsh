@@ -596,6 +596,11 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
     switch (ss->cmd->cmd) {
         case SDM_REPLY_STOP:
+            if (ss->streams.count && ss->data_len == 0) {
+                logger(INFO_LOG, "\nReceiving STOP with data length 0. Ignore it\n");
+                return handled;
+            }
+
             if (ss->streams.count) {
                 logger(INFO_LOG, "\nReceiving %d samples is done.\n", ss->data_len / 2);
                 streams_clean(&ss->streams);
