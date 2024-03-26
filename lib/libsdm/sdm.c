@@ -642,7 +642,8 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         case SDM_REPLY_BUSY:
             return SDM_ERR_BUSY;
         case SDM_REPLY_SYNCIN:
-            ss->state = SDM_STATE_IDLE;
+            if (ss->state == SDM_STATE_WAIT_SYNCIN)
+                ss->state = SDM_STATE_IDLE;
             return handled;
         case SDM_REPLY_REPORT:
             ss->state = SDM_STATE_IDLE;
