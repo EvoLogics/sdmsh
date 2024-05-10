@@ -41,11 +41,23 @@ ifdef COMPAT_READLINE6
     CFLAGS  += -DCOMPAT_READLINE6
 endif
 
+DOCKER_RUN = docker run --rm -it \
+                -w $(PWD) -v $(PWD):$(PWD) \
+                -v $(HOME)/.bash_history:$(HOME)/.bash_history \
+                -e USER=$(USER) -e HOST_UID=$$(id -u) -e HOST_GID=$$(id -g) \
+                evologicsgmbh/crosscompile-sandbox
+
 build: lib $(OBJ)
 	$(CC) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. $(LDFLAGS)
 
 build-dyn: lib $(OBJ)
 	$(CC) $(LDFLAGS) -o $(PROJ) $(OBJ) -L$(LIBSDM_DIR) -I$(LIBSDM_DIR) -L$(LIBSTRM_DIR) -I$(LIBSTRM_DIR) -lsdm
+
+sandbox-build:
+	$(DOCKER_RUN) make
+
+sandbox-devshell:
+	$(DOCKER_RUN)
 
 .PHONY: lib
 lib:
