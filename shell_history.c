@@ -31,12 +31,10 @@ void shell_history_init(struct shell_config *sc)
 
 void shell_history_deinit(struct shell_config *sc)
 {
-    if (!is_interactive_mode(sc))
-        return;
-
     if (sc->history_file) {
         stifle_history(history_max_entries);
         write_history(sc->history_file);
+        rl_clear_history();
         free(sc->history_file);
         sc->history_file = NULL;
     }

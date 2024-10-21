@@ -108,10 +108,16 @@ void shell_deinit(struct shell_config *sc)
 {
     if (is_interactive_mode(sc)) {
         rl_clear_visible_line();
-        shell_history_deinit(sc);
+        rl_free_line_state();
     }
+    /* for -f shell any case initiated as interactive shell (fix it?) */
+    rl_free_keymap(rl_binding_keymap);
 
+    shell_history_deinit(sc);
+
+    rl_set_prompt(NULL);
     rl_callback_handler_remove();
+    rl_callback_sigcleanup();
     rl_clear_signals();
     signal(SIGINT, SIG_IGN);
 
