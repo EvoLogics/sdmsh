@@ -17,7 +17,6 @@
 #include <sdm.h>
 
 #include <stream.h>
-#include <error.h>
 #include <janus/janus.h>
 
 #define ADD_TO_DATA_VAL16bit(data, data_size, data_offset, val) \

@@ -61,7 +61,7 @@
     $result = PyList_New(templen);
     for (i = 0; i < templen; i++)
         PyList_SetItem($result, i, PyInt_FromLong((double)$1[i]));
-#elif define(SWIGTCL)
+#elif defined(SWIGTCL)
 #endif
 }
 
@@ -89,7 +89,7 @@
         }
         $2[i] = PyInt_AsLong(s);
     }
-#elif define(SWIGTCL)
+#elif defined(SWIGTCL)
 #endif
 }
 
@@ -123,7 +123,7 @@
         $1[i] = (sdm_session_t *)argp;
     }
     $1[size] = NULL;
-#elif define(SWIGTCL)
+#elif defined(SWIGTCL)
 #endif
 }
 
