@@ -101,7 +101,7 @@ static int stream_impl_open(stream_t *stream)
     char *socket_type, *ip_s, *port_s;
 
     /* args: tcp:[connect|listen]:<ip>:<port> */
-    if (stream->args == NULL)
+    if (stream->args[0] == 0)
         STREAM_RETURN_ERROR("tcp arguments", EINVAL);
 
     args = strdup(stream->args);

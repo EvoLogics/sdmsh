@@ -13,6 +13,10 @@
 #include <compat/readline6.h>
 #include <readline/readline.h>
 
+#if RL_READLINE_VERSION < 0x0800
+extern int rl_tty_set_echoing (int);
+#endif
+
 #include <shell.h>
 #include <shell_completion.h>
 #include <shell_history.h>

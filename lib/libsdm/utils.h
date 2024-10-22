@@ -146,7 +146,7 @@
         int __i;                                                        \
         if (level & log_level) {                                        \
             rawlog(level, color);                                       \
-            if (len <= 16) {                                            \
+            if (len <= 24) {                                            \
                 DUMP(level, buf, len);                                  \
             }else{                                                      \
                 logger_("[%d]{", len);                                  \
