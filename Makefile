@@ -7,7 +7,7 @@
 # Comment this if you do not want checking with address sanitize
 # NOTE: you can use shell variable ASAN_OPTIONS=fast_unwind_on_malloc=false before run sdmsh
 # also read https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags
-WITH_ADDRESS_SANITAZE = 1
+#WITH_ADDRESS_SANITAZE = 1
 ##############################
 PROJ = sdmsh
 

@@ -1,4 +1,4 @@
 #!/bin/sh
 
-cd ../janus
+cd ../janus-c/local-install/bin
 exec ./janus-rx $@

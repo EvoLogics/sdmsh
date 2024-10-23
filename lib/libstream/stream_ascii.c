@@ -160,9 +160,11 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
                 samples[data_offset++] = (uint16_t)(val * SHRT_MAX);
                 break;
             case STREAM_ASCII_FILE_TYPE_INT:
-                if (val <= SHRT_MIN || val >= SHRT_MAX)
+                if (val < SHRT_MIN || val > SHRT_MAX) {
+ 		    printf("val: %d\n", (int)val);
                     STREAM_RETURN_ERROR("Error int data must be 16bit", ERANGE);
-
+		}
+            
                 samples[data_offset++] = (uint16_t)val;
                 break;
         }
