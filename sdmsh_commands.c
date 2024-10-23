@@ -179,7 +179,7 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
     uint16_t *data, cmd;
     sdm_session_t *ss = sc->cookie;
     int rc;
-    unsigned nsamples = 0, passed = 0;
+    ssize_t nsamples = 0, passed = 0;
     stream_t* stream;
 
     ARGS_RANGE(argc == 3 || argc == 2);

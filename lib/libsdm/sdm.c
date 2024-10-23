@@ -129,7 +129,7 @@ void sdm_pack_reply(sdm_pkt_t *cmd, char **buf_out)
     if (cmd->data_len != 0) {
         switch (cmd->cmd) {
             case SDM_REPLY_RX: case SDM_REPLY_USBL_RX:
-                buf = realloc(cmd, SDM_PKT_T_SIZE + cmd->data_len * 2);
+                buf = realloc(buf, SDM_PKT_T_SIZE + cmd->data_len * 2);
                 memcpy(&buf[SDM_PKT_T_OFFSET_DATA], cmd->data, cmd->data_len * 2);
                 break;
         }
@@ -377,7 +377,7 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
     logger((sdm_is_async_reply(cmd->cmd) ? ASYNC_LOG : INFO_LOG)
             , "\rrx cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
     sdm_pack_reply(cmd, &buf);
-    DUMP_SHORT(DEBUG_LOG, YELLOW, buf, SDM_PKT_T_SIZE);
+    DUMP_SHORT(DEBUG_LOG, YELLOW, buf, SDM_PKT_T_SIZE + cmd->data_len * 2);
     free(buf);
 
     switch (cmd->cmd) {
