@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h> /* strdup() */
 #include <sys/queue.h>
-#include <wordexp.h>
+#include <glob.h>
 
 #include <compat/readline6.h>
 #include <readline/readline.h>
@@ -204,23 +204,18 @@ shell_handle_free:
 
 int shell_make_argv(char *cmd_line, char ***argv, int *argc)
 {
-    wordexp_t result;
+    glob_t g;
 
-    switch (wordexp(cmd_line, &result, 0))
-    {
-        case 0:
-            break;
-        case WRDE_NOSPACE:
-            wordfree (&result);
-            /* FALLTHROUGH */
-        default:
-            return -1;
+    switch (glob (cmd_line, GLOB_NOCHECK | GLOB_TILDE, NULL, &g)) {
+    case 0:
+        *argc = g.gl_pathc;
+        *argv = g.gl_pathv;
+        return 0;
+    case GLOB_NOSPACE:
+        globfree (&g);
+    default:
+        return -1;
     }
-
-    *argc = result.we_wordc;
-    *argv = result.we_wordv;
-
-    return 0;
 }
 
 void shell_free_argv(char **argv, int argc)
@@ -481,3 +476,5 @@ struct shell_input* shell_input_next(struct shell_config *sc)
 
     return si;
 }
+
+/* vim: set ts=4 sw=4 et: */

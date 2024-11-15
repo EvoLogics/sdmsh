@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <wordexp.h>
 #include <errno.h>
+#include <glob.h>
 
 #include <stream.h>
 // Declare driver initialization functions.
@@ -38,15 +38,16 @@ stream_t *stream_new_v(int direction, const char* driver, const char* args)
 {
     stream_t *stream = (stream_t*)calloc(1, sizeof(stream_t));
     int rv = 0;
-    wordexp_t wbuf;
+    glob_t g;
 
-    /* Need to expand ~ after <driver>: prefix */
-    wordexp(args, &wbuf, WRDE_NOCMD);
-    if (wbuf.we_wordc == 1)
-        strcpy(stream->args, wbuf.we_wordv[0]);
-    else
-        strcpy(stream->args, args);
-    wordfree(&wbuf);
+    memset (&g, 0, sizeof (g));
+    // FIXME: Don't use strcpy(3)
+    if (glob (args, GLOB_NOCHECK | GLOB_TILDE, NULL, &g) == 0) {
+        strcpy (stream->args, g.gl_pathv[0]);
+    } else {
+        strcpy (stream->args, args);
+    }
+    globfree (&g);
 
     stream->sample_size = sizeof(uint16_t);
     stream->direction = direction;
@@ -345,3 +346,5 @@ stream_load_samples_error:
 
     return samples;
 }
+
+/* vim: set ts=4 sw=4 et: */
