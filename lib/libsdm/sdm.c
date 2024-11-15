@@ -289,6 +289,8 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
         if (data_len) {
             logger(TRACE_LOG, "tx cmd continue: %d samples              \n", data_len);
             n = write(ss->sockfd, data, data_len * 2);
+        } else {
+            n = 0;
         }
     } else {
         sdm_pack_cmd(cmd, cmd_raw);
@@ -882,3 +884,4 @@ int sdm_receive_data_time_limit(sdm_session_t *ssl[], long time_limit)
     return rc;
 }
 
+/* vim: set ts=4 sw=4 et: */
