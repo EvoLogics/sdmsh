@@ -206,13 +206,16 @@ int shell_make_argv(char *cmd_line, char ***argv, int *argc)
 {
     glob_t g;
 
-    switch (glob (cmd_line, GLOB_NOCHECK | GLOB_TILDE, NULL, &g)) {
-    case 0:
+    if (glob (cmd_line, GLOB_NOCHECK | GLOB_TILDE, NULL, &g) == 0) {
         *argc = g.gl_pathc;
         *argv = g.gl_pathv;
         return 0;
+    }
+
+    switch (errno) {
     case GLOB_NOSPACE:
         globfree (&g);
+        // fallthrough
     default:
         return -1;
     }
