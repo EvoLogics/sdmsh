@@ -24,17 +24,26 @@ LIBSTRM_DIR = lib/$(LIBSTRM)
 LIBSTRM_SO  = $(LIBSTRM_DIR)/$(LIBSTRM).so
 LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 
-CFLAGS += -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC
+ifdef BUILD_STATIC_BIN
+STATIC = --static
+endif
+
+RLINC = `pkg-config --cflags readline`
+RLLIB = `pkg-config --libs ${STATIC} readline`
+
+CFLAGS += -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC ${RLINC}
 ifdef WITH_ADDRESS_SANITAZE
 	CFLAGS  += -fsanitize=address
 	LDFLAGS += -fsanitize=address
 endif
 
 ifdef BUILD_STATIC_BIN
-    LDFLAGS += -static -l:libreadline.a -l:libtinfo.a -l:libncurses.a
+    LDFLAGS += -static -l:libtinfo.a -l:libncurses.a
 else
-    LDFLAGS += -lreadline -ltinfo -lncurses
+    LDFLAGS += -ltinfo -lncurses
 endif
+
+LDFLAGS += ${RLLIB}
 
 ifdef COMPAT_READLINE6
     SRC     +=  compat/readline6.c
