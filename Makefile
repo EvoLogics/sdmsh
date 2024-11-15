@@ -70,16 +70,16 @@ sandbox-devshell:
 
 .PHONY: lib
 lib:
-	make -C $(LIBSTRM_DIR)
-	make -C $(LIBSDM_DIR)
+	${MAKE} -C $(LIBSTRM_DIR)
+	${MAKE} -C $(LIBSDM_DIR)
 
 $(LIBSDM_A) $(LIBSDM_SO):
-	make -C $(LIBSTRM_DIR)
-	make -C $(LIBSDM_DIR)
+	${MAKE} -C $(LIBSTRM_DIR)
+	${MAKE} -C $(LIBSDM_DIR)
 
 clean:
-	make -C $(LIBSDM_DIR) clean
-	make -C $(LIBSTRM_DIR) clean
+	${MAKE} -C $(LIBSDM_DIR) clean
+	${MAKE} -C $(LIBSTRM_DIR) clean
 	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so core
 
 dist-clean: clean
