@@ -31,7 +31,7 @@ endif
 RLINC = `pkg-config --cflags readline`
 RLLIB = `pkg-config --libs ${STATIC} readline`
 
-CFLAGS += -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC ${RLINC}
+CFLAGS += -Wall -Wextra -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC ${RLINC}
 ifdef WITH_ADDRESS_SANITAZE
 	CFLAGS  += -fsanitize=address
 	LDFLAGS += -fsanitize=address
