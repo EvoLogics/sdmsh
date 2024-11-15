@@ -164,7 +164,7 @@ static int shell_filter_scripts_names(char **names)
 static char** shell_cb_completion(const char *text, int start, int end)
 {
     char **matches = NULL;
-    end = end;
+    (void)end;
 
     rl_ignore_some_completions_function = NULL;
 
@@ -188,7 +188,8 @@ static char** shell_cb_completion(const char *text, int start, int end)
 
 static char* shell_rl_hook_dummy(const char *text, int state)
 {
-    text = text; state = state;
+    (void)text;
+    (void)state;
     return NULL;
 }
 

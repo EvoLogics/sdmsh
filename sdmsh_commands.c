@@ -64,7 +64,7 @@ struct driver_t drivers[] = {
 
 int sdmsh_cmd_help(struct shell_config *sc, char *argv[], int argc)
 {
-    argc = argc;
+    (void)argc;
     shell_help_show(sc, argv[1]);
     return 0;
 }
@@ -110,7 +110,7 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
 {
     sdm_session_t *ss = sc->cookie;
 
-    argv = argv;
+    (void)argv;
     ARGS_RANGE(argc == 1);
     sdm_send(ss, SDM_CMD_STOP);
     sdm_set_idle_state(ss);
@@ -360,7 +360,7 @@ int sdmsh_cmd_waitsyncin(struct shell_config *sc, char *argv[], int argc)
 {
     sdm_session_t *ss = sc->cookie;
 
-    argv = argv;
+    (void)argv;
     ARGS_RANGE(argc == 1);
     sdm_set_idle_state(ss);
     ss->state = SDM_STATE_WAIT_SYNCIN;
@@ -371,7 +371,7 @@ int sdmsh_cmd_waitsyncin(struct shell_config *sc, char *argv[], int argc)
 int sdmsh_cmd_usleep(struct shell_config *sc, char *argv[], int argc)
 {
     useconds_t usec;
-    sc = sc;
+    (void)sc;
 
     ARGS_RANGE(argc == 2);
     SDM_CHECK_STR_ARG_LONG("usleep: usec", argv[1], usec, arg >= 0);
@@ -383,7 +383,7 @@ int sdmsh_cmd_usleep(struct shell_config *sc, char *argv[], int argc)
 int sdmsh_cmd_history(struct shell_config *sc, char *argv[], int argc)
 {
     int hist_num = 10;
-    sc = sc;
+    (void)sc;
 
     ARGS_RANGE(argc == 1 || argc == 2);
     if (argc == 2)
@@ -414,8 +414,8 @@ int sdmsh_cmd_source(struct shell_config *sc, char *argv[], int argc)
 
 int sdmsh_cmd_exit(struct shell_config *sc, char *argv[], int argc)
 {
-    argv = argv;
-    argc = argc;
+    (void)argc;
+    (void)argv;
     sc->shell_quit = 2;
     return 0;
 }
