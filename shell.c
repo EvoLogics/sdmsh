@@ -285,7 +285,7 @@ int rl_hook_argv_getch(FILE *in)
     static char prev_ch = 0;
     char ch;
     struct shell_input *si;
-    in = in;
+    (void)in;
 
     si = STAILQ_FIRST(&shell_config->inputs_list);
     if (*si->pos != 0) {

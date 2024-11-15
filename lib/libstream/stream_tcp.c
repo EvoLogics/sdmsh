@@ -111,6 +111,7 @@ static int stream_impl_open(stream_t *stream)
     if (!socket_type || !ip_s || !port_s) {
         pdata->error = EINVAL;
         pdata->error_op = "arguments parsing";
+        rc = STREAM_ERROR;
         goto stream_impl_open_finish;
     }
     port = atoi(port_s);
@@ -126,6 +127,7 @@ static int stream_impl_open(stream_t *stream)
     } else {
         pdata->error = EINVAL;
         pdata->error_op = "connection type";
+        rc = STREAM_ERROR;
     }
     if (rc < 0) {
         pdata->error = errno;

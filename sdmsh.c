@@ -251,6 +251,8 @@ int main(int argc, char *argv[])
         } else {
             host = argv[optind - 1];
         }
+    } else {
+        host = NULL;
     }
 
     if (flags & FLAG_SHOW_HELP)
