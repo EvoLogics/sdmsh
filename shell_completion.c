@@ -30,14 +30,16 @@ static char* shell_rl_driver_completion(const char *text, int index)
         if (drv->flags & SCF_DRIVER_FILENAME && strstart((char *)text, drv->name)) {
             char *fn;
             char *fn_with_prefix;
+	    size_t len_fwp;
 
             rl_filename_completion_desired = 1;
             fn = rl_filename_completion_function(text + strlen(drv->name), index - cnt);
             if (!fn)
                 return NULL;
 
-            fn_with_prefix = malloc(strlen(fn) + strlen(drv->name) + 1 + 1);
-            sprintf(fn_with_prefix, "%s%s", drv->name, fn);
+	    len_fwp = strlen (fn) + strlen (drv->name) + 1 + 1;
+            fn_with_prefix = malloc(len_fwp);
+            snprintf(fn_with_prefix, len_fwp, "%s%s", drv->name, fn);
             free(fn);
             return fn_with_prefix;
         }

@@ -326,7 +326,7 @@ char *sstrpad(char *src, size_t pad)
     }
     buf[0] = 0;
     if (pad >= len) {
-        strcat(buf, src);
+        strlcat(buf, src, sizeof (buf));
         memset(&buf[len], ' ', pad - len);
         buf[pad] = 0;
     } else {
