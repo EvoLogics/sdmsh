@@ -80,7 +80,7 @@ $(LIBSDM_A) $(LIBSDM_SO):
 clean:
 	${MAKE} -C $(LIBSDM_DIR) clean
 	${MAKE} -C $(LIBSTRM_DIR) clean
-	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so core
+	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so core *.core
 
 dist-clean: clean
 	rm -f cscope.out tags
