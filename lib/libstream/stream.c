@@ -41,11 +41,11 @@ stream_t *stream_new_v(int direction, const char* driver, const char* args)
     glob_t g;
 
     memset (&g, 0, sizeof (g));
-    // FIXME: Don't use strcpy(3)
+    // FIXME: check return value of strncpy()
     if (glob (args, GLOB_NOCHECK | GLOB_TILDE, NULL, &g) == 0) {
-        strcpy (stream->args, g.gl_pathv[0]);
+        strncpy (stream->args, g.gl_pathv[0], sizeof (stream->args));
     } else {
-        strcpy (stream->args, args);
+        strncpy (stream->args, args, sizeof (stream->args));
     }
     globfree (&g);
 
