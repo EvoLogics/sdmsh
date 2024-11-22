@@ -202,23 +202,99 @@ shell_handle_free:
     return rc;
 }
 
-int shell_make_argv(char *cmd_line, char ***argv, int *argc)
+static char *next (const char **sp, int *quot)
 {
-    glob_t g;
+	size_t len, cap;
+	const char *begin;
+	char *s;
+	int ch;
 
-    if (glob (cmd_line, GLOB_NOCHECK | GLOB_TILDE, NULL, &g) == 0) {
-        *argc = g.gl_pathc;
-        *argv = g.gl_pathv;
-        return 0;
-    }
+	for (; isspace (**sp); ++*sp);
 
-    switch (errno) {
-    case GLOB_NOSPACE:
-        globfree (&g);
-        // fallthrough
-    default:
-        return -1;
-    }
+	if (**sp == '\0') {
+		return NULL;
+	} else if (**sp == '\'') {
+		begin = ++*sp;
+		for (; **sp != '\''; ++*sp) {
+			if (**sp == '\0')
+				return NULL;
+		}
+		++*sp;
+		*quot = 1;
+		return strndup (begin, *sp - begin - 1);
+	} else if (**sp == '\"') {
+		++*sp;
+		len = 0;
+		cap = 10;
+		s = malloc (cap + 1);
+
+		for (; **sp != '\"'; ++*sp) {
+			if (**sp == '\0') {
+				return NULL;
+			} else if (**sp == '\\') {
+				++*sp;
+				ch = **sp;
+				++*sp;
+			} else {
+				ch = **sp;
+			}
+
+			if (len == cap) {
+				cap *= 2;
+				s = realloc (s, cap + 1);
+			}
+			s[len++] = ch;
+		}
+		++*sp;
+		s[len] = '\0';
+		*quot = 1;
+		return s;
+	} else {
+		begin = *sp;
+		for (; **sp != '\0' && !isspace (**sp); ++*sp);
+		*quot = 0;
+		return strndup (begin, *sp - begin);
+	}
+}
+
+int shell_make_argv (const char *cmdline, char ***argv, int *argc)
+{
+	glob_t g;
+	char *s;
+	int quot;
+	size_t cap;
+
+	cap = 4;
+	*argc = 0;
+	*argv = calloc (cap + 1, sizeof (char *));
+
+	while ((s = next (&cmdline, &quot)) != NULL) {
+		if (quot) {
+			if (*argc == cap) {
+				cap *= 2;
+				*argv = reallocarray (*argv, cap + 1, sizeof (char *));
+			}
+			(*argv)[(*argc)++] = s;
+		} else {
+			memset (&g, 0, sizeof (g));
+
+			if (glob (s, GLOB_NOCHECK, NULL, &g) == 0) {
+				if (cap < (*argc + g.gl_pathc)) {
+					for (cap *= 2; cap < (*argc + g.gl_pathc); cap *= 2);
+					*argv = reallocarray (*argv, cap + 1, sizeof (char *));
+				}
+
+				for (size_t i = 0; i < g.gl_pathc; ++i)
+					(*argv)[(*argc)++] = strdup (g.gl_pathv[i]);
+			}
+
+			globfree (&g);
+			free (s);
+		}
+	}
+
+	(*argv)[*argc] = NULL;
+	return 0;
 }
 
 void shell_free_argv(char **argv, int argc)
