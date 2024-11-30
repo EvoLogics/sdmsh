@@ -1,3 +1,7 @@
+- why is input int16, while output is uint16?
+- sdmsh_commands.c:262
+- sdm.c:265:sdm_send() va_arg(int) vs va_arg(long)
+
 + fix autocomplition for raw:,ascii:,tcp:
 + do nothing by `history`if there is no interactive mode
 + skip `history` command from history
