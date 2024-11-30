@@ -182,7 +182,7 @@ static int stream_impl_write(stream_t *stream, void* samples, unsigned int sampl
         STREAM_RETURN_ERROR("writing file", ENOTSUP);
 
     for (i = 0; i < sample_count; i++)
-        if (fprintf (pdata->fp, "%d\n", ((uint16_t*)samples)[i]) < 0)
+        if (fprintf (pdata->fp, "%d\n", ((int16_t*)samples)[i]) < 0)
             STREAM_RETURN_ERROR("writing file", errno);
 
     return sample_count;
