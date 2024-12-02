@@ -12,6 +12,7 @@
 #include <stdlib.h>     /* stdlib() */
 #include <assert.h>
 #include <limits.h>     /* SHORT_MAX  */
+#include <inttypes.h>   /* PRIu32  */
 #include <sys/time.h>   /* struct timeval  */
 
 #include <sdm.h>
@@ -392,14 +393,14 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
             logger(INFO_LOG, "          \n");
             break;
         case SDM_REPLY_BUSY:
-            logger(INFO_LOG, "%d\n", cmd->param);
+            logger(INFO_LOG, "%"PRId32"\n", cmd->param);
             break;
         case SDM_REPLY_SYSTIME:
             if (cmd->data_len == 8) {
-                logger (INFO_LOG, "current_time = %u, tx_time = %u, rx_time = %u, syncin_time = %u\n"
+                logger (INFO_LOG, "current_time = %"PRIu32", tx_time = %"PRIu32", rx_time = %"PRIu32", syncin_time = %"PRIu32"\n"
                        , cmd->current_time, cmd->tx_time, cmd->rx_time, cmd->syncin_time);
             } else {
-                logger (INFO_LOG, "current_time = %u, tx_time = %u, rx_time = %u\n"
+                logger (INFO_LOG, "current_time = %"PRIu32", tx_time = %"PRIu32", rx_time = %"PRIu32"\n"
                        , cmd->current_time, cmd->tx_time, cmd->rx_time);
             }
             break;
@@ -411,26 +412,26 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
             float janus_doppler;
             memcpy(&janus_nshift, &ss->rx_data[0], 4);
             memcpy(&janus_doppler, &ss->rx_data[4], 4);
-            logger (INFO_LOG, " janus_nshift = %d, janus_doppler = %f\n", janus_nshift, janus_doppler);
+            logger (INFO_LOG, " janus_nshift = %"PRId32", janus_doppler = %f\n", janus_nshift, janus_doppler);
             break;
         }
         case SDM_REPLY_REPORT:
             switch (cmd->param) {
                 case SDM_REPLY_REPORT_NO_SDM_MODE: logger(INFO_LOG, " %s\n", sdm_reply_report_to_str(SDM_REPLY_REPORT_NO_SDM_MODE)); break;
-                case SDM_REPLY_REPORT_TX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
-                case SDM_REPLY_REPORT_RX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_TX_STOP:     logger(INFO_LOG, " %s after %"PRIu32" samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_RX_STOP:     logger(INFO_LOG, " %s after %"PRIu32" samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 case SDM_REPLY_REPORT_REF:         logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param),    cmd->data_len ? "done":"fail"); break;
                 case SDM_REPLY_REPORT_CONFIG:      logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
                 case SDM_REPLY_REPORT_USBL_CONFIG: logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
-                case SDM_REPLY_REPORT_USBL_RX_STOP:logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
-                case SDM_REPLY_REPORT_DROP:        logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_USBL_RX_STOP:logger(INFO_LOG, " %s %"PRIu32"\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_DROP:        logger(INFO_LOG, " %s %"PRIu32"\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 case SDM_REPLY_REPORT_SYSTIME:     logger(INFO_LOG, " %s fail\n", sdm_reply_report_to_str(cmd->param)); break;
-                case SDM_REPLY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%02x\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
-                default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
+                case SDM_REPLY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%"PRIx32"\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", (unsigned)cmd->param); break;
             }
             break;
         default:
-            logger(WARN_LOG, "Uknown reply command 0x%02x\n", cmd->cmd);
+            logger(WARN_LOG, "Uknown reply command 0x%02x\n", (unsigned)cmd->cmd);
             break;
     }
 
