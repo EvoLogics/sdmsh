@@ -166,7 +166,7 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
     va_list ap;
     int n;
     char *data;
-    int data_len = 0;
+    uint32_t data_len = 0;
     char *cmd_raw;
     sdm_pkt_t *cmd;
 
@@ -178,6 +178,7 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
     cmd->magic = SDM_PKG_MAGIC;
     cmd->cmd = cmd_code;
 
+    va_start (ap, cmd_code);
     switch (cmd_code) {
         case SDM_CMD_STOP:
         case SDM_CMD_SYSTIME:
@@ -185,12 +186,10 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
         case SDM_CMD_CONFIG: {
             uint16_t preamp_gain;
             
-            va_start(ap, cmd_code);
-            cmd->threshold        = va_arg(ap, int);
-            cmd->gain_and_srclvl  = va_arg(ap, int) << 7;
-            cmd->gain_and_srclvl |= va_arg(ap, int);
-            preamp_gain = (va_arg(ap, int) & 0xf) << 12;
-            va_end(ap);
+            cmd->threshold        = va_arg(ap, unsigned);
+            cmd->gain_and_srclvl  = va_arg(ap, unsigned) << 7;
+            cmd->gain_and_srclvl |= va_arg(ap, unsigned);
+            preamp_gain = (va_arg(ap, unsigned) & 0xf) << 12;
             data_len = cmd->data_len = 1;
             cmd_raw = realloc(cmd_raw, SDM_PKT_T_SIZE + cmd->data_len * 2);
             memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA], &preamp_gain, 2);
@@ -201,12 +200,10 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             uint32_t delay, samples;
             uint32_t gain, sample_rate;
             
-            va_start(ap, cmd_code);
-            delay = va_arg(ap, int);
-            samples = va_arg(ap, int);
-            gain = va_arg(ap, int);
-            sample_rate = va_arg(ap, int);
-            va_end(ap);
+            delay = va_arg(ap, unsigned);
+            samples = va_arg(ap, unsigned);
+            gain = va_arg(ap, unsigned);
+            sample_rate = va_arg(ap, unsigned);
             
             cmd->rx_len = (gain << 4) + (sample_rate << 1);
 
@@ -218,53 +215,41 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             break;
         }
         case SDM_CMD_TX_CONTINUE:
-            va_start(ap, cmd_code);
             va_arg(ap, unsigned);
             data = va_arg(ap, char *);
             data_len = va_arg(ap, int);
-            va_end(ap);
             break;
         case SDM_CMD_TX:
         {
             char *d;
 
-            va_start(ap, cmd_code);
-
             cmd->data_len = va_arg(ap, unsigned);
             d             = va_arg(ap, char *);
-            data_len      = va_arg(ap, int);
+            data_len      = va_arg(ap, unsigned);
 
             /* FIXME: quick fix. Padding up to 1024 samples here */
             cmd->data_len = ((cmd->data_len + 1023) / 1024) * 1024;
             cmd_raw = realloc(cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
             memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA], d, data_len * 2);
-
-            va_end(ap);
             break;
         }
         case SDM_CMD_REF:
         {
             char *d;
 
-            va_start(ap, cmd_code);
-
             d             = va_arg(ap, char *);
-            data_len      = va_arg(ap, int);
+            data_len      = va_arg(ap, unsigned);
             cmd->data_len = data_len;
 
             cmd_raw = realloc(cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
             memset(&cmd_raw[SDM_PKT_T_OFFSET_DATA], 0, data_len * 2);
             memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA], d, data_len * 2);
-
-            va_end(ap);
             break;
         }
         case SDM_CMD_RX:
         case SDM_CMD_RX_JANUS:
         {
-            va_start(ap, cmd_code);
-            cmd->rx_len = va_arg(ap, int) & 0xffffff;
-            va_end(ap);
+            cmd->rx_len = va_arg(ap, unsigned long) & 0xffffff;
             break;
         }
         case SDM_CMD_USBL_RX:
@@ -272,10 +257,8 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             uint8_t channel;
             uint16_t samples;
             
-            va_start(ap, cmd_code);
-            channel = va_arg(ap, int);
-            samples = va_arg(ap, int);
-            va_end(ap);
+            channel = va_arg(ap, unsigned);
+            samples = va_arg(ap, unsigned);
 
             cmd->rx_len = samples + (channel << 21);
             break;
@@ -285,6 +268,8 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             free(cmd_raw);
             return -1;
     }
+
+    va_end (ap);
 
     if (cmd_code == SDM_CMD_TX_CONTINUE) {
         if (data_len) {
