@@ -273,14 +273,14 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
 
     if (cmd_code == SDM_CMD_TX_CONTINUE) {
         if (data_len) {
-            logger(TRACE_LOG, "tx cmd continue: %d samples              \n", data_len);
+            logger(TRACE_LOG, "tx cmd continue: %"PRIu32" samples              \n", data_len);
             n = write(ss->sockfd, data, data_len * 2);
         } else {
             n = 0;
         }
     } else {
         sdm_pack_cmd(cmd, cmd_raw);
-        logger(INFO_LOG, "tx cmd %-6s: %d samples ", sdm_cmd_to_str(cmd->cmd), data_len);
+        logger(INFO_LOG, "tx cmd %-6s: %"PRIu32" samples ", sdm_cmd_to_str(cmd->cmd), data_len);
         DUMP_SHORT(DEBUG_LOG, LGREEN, cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
         logger(INFO_LOG, "\n");
         n = write(ss->sockfd, cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
@@ -600,7 +600,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         case SDM_REPLY_SYSTIME:
             /* cmd->data_len in header in uint16 count */
             if (handled - data_len < (int)ss->cmd->data_len * 2) {
-                logger(INFO_LOG, "\rwaiting %d bytes\r", ss->cmd->data_len * 2 - handled - data_len);
+                logger(INFO_LOG, "\rwaiting %"PRIu32" bytes\r", ss->cmd->data_len * 2 - handled - data_len);
                 return 0;
             }
 
@@ -615,7 +615,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         case SDM_REPLY_JANUS_DETECTED:
             /* cmd->data_len in header in uint16 count */
             if (handled - data_len < (int)ss->cmd->data_len * 2) {
-                logger(INFO_LOG, "\rwaiting %d bytes\r", ss->cmd->data_len * 2 - handled - data_len);
+                logger(INFO_LOG, "\rwaiting %"PRIu32" bytes\r", ss->cmd->data_len * 2 - handled - data_len);
                 return 0;
             }
 
