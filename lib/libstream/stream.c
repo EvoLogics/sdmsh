@@ -15,6 +15,10 @@
     int stream_impl_ ## a ## _new(stream_t*);
 #include "stream.def"
 
+#ifndef GLOB_TILDE
+# define GLOB_TILDE 0
+#endif
+
 static const char* s_drivers[] = {
 #define STREAM(a) #a,
 #include "stream.def"

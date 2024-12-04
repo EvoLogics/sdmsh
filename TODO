@@ -7,7 +7,6 @@
 + skip `history` command from history
 + handle ctrl-c for cleaning current command. can interrupt usleep 100000
 + driver "tcp:" cannot be used for tx.
-+ add command `source`
 + add possibillity put multiply options `-f` to read many script files
 + add autodetect filetype by extention *.raw -> raw:, .dat,txt -> ascii:
 
@@ -31,7 +30,6 @@
   this must fix problems with redraw prompt in call rl_callback_read_char()
 
 - add to command `tx` possibillity get singals from several files
-- add command `exit`
 - add command `set`. and variable `log_level`
 - add parameters to scripts like $1, $2..
 - add support libsox for .wav files and resampling
