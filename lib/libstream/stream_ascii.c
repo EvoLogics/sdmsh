@@ -148,7 +148,7 @@ static float myatof (const char *s)
 		f += (*s - '0') * x;
 
 skip:
-	f = sign * (f * ival);
+	f = sign * (f + ival);
 
 	if (*s != 'e' && *s != 'E')
 		return f;
