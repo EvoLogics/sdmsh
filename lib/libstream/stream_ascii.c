@@ -123,6 +123,49 @@ static void stream_impl_free(stream_t *stream)
     stream->pdata = NULL;
 }
 
+static float myatof (const char *s)
+{
+	float f = 0.0f, x;
+	int sign = 1, ival = 0, exp;
+
+	for (; isspace (*s); ++s);
+
+	if (*s == '-') {
+		sign = -1;
+		++s;
+	}
+
+	for (ival = 0; isdigit (*s); ++s)
+		ival = ival * 10 + (*s - '0');
+
+	if (*s != '.')
+		goto skip;
+	++s;
+
+	for (x = 0.1f; isdigit (*s); ++s, x *= 0.1f)
+		f += (*s - '0') * x;
+
+skip:
+	f = sign * (f * ival);
+
+	if (*s != 'e' && *s != 'E')
+		return f;
+	++s;
+
+	exp = 0;
+	sign = 1;
+	if (*s == '-') {
+		sign = -1;
+		++s;
+	}
+
+	for (; isdigit (*s); ++s)
+		exp = exp * 10 + (*s - '0');
+
+	return powf (10.0f, sign * exp) * f;
+
+}
+
 static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned sample_count)
 {
     struct private_data_t *pdata = stream->pdata;
@@ -147,14 +190,14 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
 
         errno = 0;
         buf[strlen(buf) - 1] = 0;
-        val = strtod(buf, NULL);
+        val = myatof(buf);
         if (errno == ERANGE || (errno != 0 && val == 0)) {
             STREAM_RETURN_ERROR("Error to convert to digit.", errno);
         }
 
         switch (pdata->file_type) {
             case STREAM_ASCII_FILE_TYPE_FLOAT:
-                if (val > 1. || val < -1.)
+                if (val > 1.0 || val < -1.0)
                     STREAM_RETURN_ERROR("Error float data do not normalized", ERANGE);
 
                 samples[data_offset++] = (uint16_t)(val * SHRT_MAX);
