@@ -1,3 +1,4 @@
+// converts samples between text and binary formats
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
@@ -13,7 +14,7 @@ void error (const char *fmt, ...)
 	va_list ap;
 
 	va_start (ap, fmt);
-	fprintf (stderr, "convert: ");
+	fprintf (stderr, "sampleconv: ");
 	vfprintf (stderr, fmt, ap);
 	fputc ('\n', stderr);
 	va_end (ap);
@@ -97,7 +98,7 @@ void write_bin (FILE *file, i16 x)
 
 int usage (void)
 {
-	fputs ("usage: convert [-i filetype] [-o filetype]\n", stderr);
+	fputs ("usage: sampleconv [-i filetype] [-o filetype]\n", stderr);
 	return 1;
 }
 
