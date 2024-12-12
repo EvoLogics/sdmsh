@@ -360,11 +360,15 @@ char* sdm_reply_report_to_str(uint8_t cmd)
 int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 {
     char *buf;
+    int len;
 
     logger((sdm_is_async_reply(cmd->cmd) ? ASYNC_LOG : INFO_LOG)
             , "\rrx cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
     sdm_pack_reply(cmd, &buf);
-    DUMP_SHORT(DEBUG_LOG, YELLOW, buf, SDM_PKT_T_SIZE + cmd->data_len * 2);
+    len = SDM_PKT_T_SIZE;
+    if (cmd->cmd != SDM_REPLY_REPORT)
+        len += cmd->data_len * 2;
+    DUMP_SHORT(DEBUG_LOG, YELLOW, buf, len);
     free(buf);
 
     switch (cmd->cmd) {
