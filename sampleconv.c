@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+typedef uint16_t u16;
 typedef int16_t i16;
+typedef unsigned char uchar;
 
 void error (const char *fmt, ...)
 {
@@ -67,10 +69,11 @@ bool read_int (FILE *file, i16 *x)
 
 bool read_bin (FILE *file, i16 *x)
 {
-	char b[2];
-	if (fread (b, 2, 1, file) != 2)
+	uchar b[2];
+	if (fread (b, 2, 1, file) != 1)
 		return false;
-	*x = (i16)b[0] | ((i16)b[1] << 8);
+
+	*x = (u16)b[0] | ((u16)b[1] << 8);
 	return true;
 }
 
@@ -90,7 +93,7 @@ void write_int (FILE *file, i16 x)
 
 void write_bin (FILE *file, i16 x)
 {
-	char b[2];
+	uchar b[2];
 	b[0] = x & 0xff;
 	b[1] = x >> 8;
 	fwrite (b, 2, 1, file);
