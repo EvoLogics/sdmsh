@@ -31,7 +31,7 @@ endif
 RLINC = `pkg-config --cflags readline`
 RLLIB = `pkg-config --libs ${STATIC} readline`
 
-CFLAGS += -Wall -Wextra -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC ${RLINC}
+CFLAGS += -Wall -Wextra -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -D_GNU_SOURCE -fPIC ${RLINC}
 ifdef WITH_ADDRESS_SANITAZE
 	CFLAGS  += -fsanitize=address
 	LDFLAGS += -fsanitize=address
@@ -55,6 +55,8 @@ DOCKER_RUN = docker run --rm -it \
                 -v $(HOME)/.bash_history:$(HOME)/.bash_history \
                 -e USER=$(USER) -e HOST_UID=$$(id -u) -e HOST_GID=$$(id -g) \
                 evologicsgmbh/crosscompile-sandbox
+
+all: build
 
 build: lib $(OBJ)
 	$(CC) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. $(LDFLAGS)

@@ -1,6 +1,3 @@
-/* for asprintf() */
-#define _GNU_SOURCE
-
 #include <assert.h>
 #include <err.h>
 #include <stdarg.h>

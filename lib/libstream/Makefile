@@ -3,7 +3,7 @@ PROJ = libstream
 SRC = stream.c stream_raw.c stream_ascii.c stream_tcp.c stream_popen.c
 OBJ = $(SRC:.c=.o)
 
-CFLAGS = -Wall -Wextra -I. -lm -ggdb -DLOGGER_ENABLED -fPIC
+CFLAGS = -Wall -Wextra -I. -lm -ggdb -DLOGGER_ENABLED -D_GNU_SOURCE -fPIC
 
 $(PROJ): $(PROJ).so $(PROJ).a
 
