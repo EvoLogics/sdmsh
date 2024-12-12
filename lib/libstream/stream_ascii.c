@@ -217,7 +217,7 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
                 if (val > 1.0 || val < -1.0)
                     STREAM_RETURN_ERROR("Error float data do not normalized", ERANGE);
 
-                samples[data_offset++] = (uint16_t)(val * SHRT_MAX);
+                samples[data_offset++] = (int16_t)(val * SHRT_MAX);
                 break;
             case STREAM_ASCII_FILE_TYPE_INT:
                 if (val < SHRT_MIN || val > SHRT_MAX) {
@@ -225,7 +225,7 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
                     STREAM_RETURN_ERROR("Error int data must be 16bit", ERANGE);
 		}
             
-                samples[data_offset++] = (uint16_t)val;
+                samples[data_offset++] = (int16_t)val;
                 break;
         }
         n++;
