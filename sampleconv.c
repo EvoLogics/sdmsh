@@ -98,14 +98,29 @@ void write_bin (FILE *file, i16 x)
 
 int usage (void)
 {
-	fputs ("usage: sampleconv [-i filetype] [-o filetype]\n", stderr);
+	fputs ("usage: sampleconv [-i filetype] [-o filetype] [input [output]]\n", stderr);
 	return 1;
+}
+
+FILE *openfile (const char *path, bool out)
+{
+	FILE *file;
+
+	if (strcmp (path, "-") == 0) {
+		return out ? stdout : stdin;
+	} else {
+		file = fopen (path, out ? "w" : "r");
+		if (file == NULL)
+			error ("fopen('%s')", path);
+		return file;
+	}
 }
 
 int main (int argc, char *argv[])
 {
 	read_t rfunc = read_float;
 	write_t wfunc = write_bin;
+	FILE *in = stdin, *out = stdout;
 	int option;
 	i16 x;
 
@@ -138,9 +153,19 @@ int main (int argc, char *argv[])
 		}
 	}
 
-	while (rfunc (stdin, &x))
-		wfunc (stdout, x);
+	argc -= optind;
+	argv += optind;
 
+	if (argc >= 1) {
+		in = openfile (argv[0], false);
+		if (argc >= 2)
+			out = openfile (argv[1], true);
+	}
 
+	while (rfunc (in, &x))
+		wfunc (out, x);
+
+	fclose (in);
+	fclose (out);
 	return 0;
 }
