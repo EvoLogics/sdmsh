@@ -56,7 +56,7 @@ DOCKER_RUN = docker run --rm -it \
                 -e USER=$(USER) -e HOST_UID=$$(id -u) -e HOST_GID=$$(id -g) \
                 evologicsgmbh/crosscompile-sandbox
 
-all: build
+all: build sampleconv
 
 build: lib $(OBJ)
 	$(CC) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. $(LDFLAGS)
