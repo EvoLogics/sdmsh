@@ -40,6 +40,9 @@ bool read_float (FILE *file, i16 *x)
 	if (*endp != '\0' && *endp != '\n')
 		error ("invalid float: %s", line);
 
+	if (d < -1.0 || d > 1.0)
+		error ("out of range: %s", line);
+
 	i = (long)(d * 32767);
 	if (i < -32768 || i > 32767)
 		error ("out of range: %s", line);
