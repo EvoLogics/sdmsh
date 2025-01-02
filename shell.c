@@ -1,6 +1,3 @@
-/* for asprintf() */
-#define _GNU_SOURCE
-
 #include <assert.h>
 #include <err.h>
 #include <stdarg.h>
@@ -8,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h> /* strdup() */
 #include <sys/queue.h>
-#include <wordexp.h>
+#include <glob.h>
 
 #include <compat/readline6.h>
 #include <readline/readline.h>
@@ -202,25 +199,99 @@ shell_handle_free:
     return rc;
 }
 
-int shell_make_argv(char *cmd_line, char ***argv, int *argc)
+static char *next (const char **sp, int *quot)
 {
-    wordexp_t result;
+	size_t len, cap;
+	const char *begin;
+	char *s;
+	int ch;
 
-    switch (wordexp(cmd_line, &result, 0))
-    {
-        case 0:
-            break;
-        case WRDE_NOSPACE:
-            wordfree (&result);
-            /* FALLTHROUGH */
-        default:
-            return -1;
-    }
+	for (; isspace (**sp); ++*sp);
 
-    *argc = result.we_wordc;
-    *argv = result.we_wordv;
+	if (**sp == '\0') {
+		return NULL;
+	} else if (**sp == '\'') {
+		begin = ++*sp;
+		for (; **sp != '\''; ++*sp) {
+			if (**sp == '\0')
+				return NULL;
+		}
+		++*sp;
+		*quot = 1;
+		return strndup (begin, *sp - begin - 1);
+	} else if (**sp == '\"') {
+		++*sp;
+		len = 0;
+		cap = 10;
+		s = malloc (cap + 1);
 
-    return 0;
+		for (; **sp != '\"'; ++*sp) {
+			if (**sp == '\0') {
+				return NULL;
+			} else if (**sp == '\\') {
+				++*sp;
+				ch = **sp;
+				++*sp;
+			} else {
+				ch = **sp;
+			}
+
+			if (len == cap) {
+				cap *= 2;
+				s = realloc (s, cap + 1);
+			}
+			s[len++] = ch;
+		}
+		++*sp;
+		s[len] = '\0';
+		*quot = 1;
+		return s;
+	} else {
+		begin = *sp;
+		for (; **sp != '\0' && !isspace (**sp); ++*sp);
+		*quot = 0;
+		return strndup (begin, *sp - begin);
+	}
+}
+
+int shell_make_argv (const char *cmdline, char ***argv, int *argc)
+{
+	glob_t g;
+	char *s;
+	int quot;
+	size_t cap;
+
+	cap = 4;
+	*argc = 0;
+	*argv = calloc (cap + 1, sizeof (char *));
+
+	while ((s = next (&cmdline, &quot)) != NULL) {
+		if (quot) {
+			if (*argc == cap) {
+				cap *= 2;
+				*argv = reallocarray (*argv, cap + 1, sizeof (char *));
+			}
+			(*argv)[(*argc)++] = s;
+		} else {
+			memset (&g, 0, sizeof (g));
+
+			if (glob (s, GLOB_NOCHECK, NULL, &g) == 0) {
+				if (cap < (*argc + g.gl_pathc)) {
+					for (cap *= 2; cap < (*argc + g.gl_pathc); cap *= 2);
+					*argv = reallocarray (*argv, cap + 1, sizeof (char *));
+				}
+
+				for (size_t i = 0; i < g.gl_pathc; ++i)
+					(*argv)[(*argc)++] = strdup (g.gl_pathv[i]);
+			}
+
+			globfree (&g);
+			free (s);
+		}
+	}
+
+	(*argv)[*argc] = NULL;
+	return 0;
 }
 
 void shell_free_argv(char **argv, int argc)
@@ -285,7 +356,7 @@ int rl_hook_argv_getch(FILE *in)
     static char prev_ch = 0;
     char ch;
     struct shell_input *si;
-    in = in;
+    (void)in;
 
     si = STAILQ_FIRST(&shell_config->inputs_list);
     if (*si->pos != 0) {
@@ -481,3 +552,5 @@ struct shell_input* shell_input_next(struct shell_config *sc)
 
     return si;
 }
+
+/* vim: set ts=4 sw=4 et: */

@@ -111,6 +111,7 @@ static int stream_impl_open(stream_t *stream)
     if (!socket_type || !ip_s || !port_s) {
         pdata->error = EINVAL;
         pdata->error_op = "arguments parsing";
+        rc = STREAM_ERROR;
         goto stream_impl_open_finish;
     }
     port = atoi(port_s);
@@ -126,6 +127,7 @@ static int stream_impl_open(stream_t *stream)
     } else {
         pdata->error = EINVAL;
         pdata->error_op = "connection type";
+        rc = STREAM_ERROR;
     }
     if (rc < 0) {
         pdata->error = errno;
@@ -242,7 +244,7 @@ int stream_impl_tcp_new(stream_t *stream)
     stream->strerror     = stream_impl_strerror;
     stream->get_error_op = stream_impl_get_error_op;
     stream->count        = stream_impl_count;
-    strcpy(stream->name, "TCP");
+    strncpy(stream->name, "TCP", sizeof (stream->name));
 
     return STREAM_ERROR_NONE;
 }

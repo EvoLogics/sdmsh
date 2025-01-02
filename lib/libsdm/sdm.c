@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <unistd.h>     /* write() */
 #include <err.h>        /* err() */
@@ -12,6 +11,7 @@
 #include <stdlib.h>     /* stdlib() */
 #include <assert.h>
 #include <limits.h>     /* SHORT_MAX  */
+#include <inttypes.h>   /* PRIu32  */
 #include <sys/time.h>   /* struct timeval  */
 
 #include <sdm.h>
@@ -165,7 +165,7 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
     va_list ap;
     int n;
     char *data;
-    int data_len = 0;
+    uint32_t data_len = 0;
     char *cmd_raw;
     sdm_pkt_t *cmd;
 
@@ -177,6 +177,7 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
     cmd->magic = SDM_PKG_MAGIC;
     cmd->cmd = cmd_code;
 
+    va_start (ap, cmd_code);
     switch (cmd_code) {
         case SDM_CMD_STOP:
         case SDM_CMD_SYSTIME:
@@ -184,12 +185,10 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
         case SDM_CMD_CONFIG: {
             uint16_t preamp_gain;
             
-            va_start(ap, cmd_code);
-            cmd->threshold        = va_arg(ap, int);
-            cmd->gain_and_srclvl  = va_arg(ap, int) << 7;
-            cmd->gain_and_srclvl |= va_arg(ap, int);
-            preamp_gain = (va_arg(ap, int) & 0xf) << 12;
-            va_end(ap);
+            cmd->threshold        = va_arg(ap, unsigned);
+            cmd->gain_and_srclvl  = va_arg(ap, unsigned) << 7;
+            cmd->gain_and_srclvl |= va_arg(ap, unsigned);
+            preamp_gain = (va_arg(ap, unsigned) & 0xf) << 12;
             data_len = cmd->data_len = 1;
             cmd_raw = realloc(cmd_raw, SDM_PKT_T_SIZE + cmd->data_len * 2);
             memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA], &preamp_gain, 2);
@@ -200,12 +199,10 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             uint32_t delay, samples;
             uint32_t gain, sample_rate;
             
-            va_start(ap, cmd_code);
-            delay = va_arg(ap, int);
-            samples = va_arg(ap, int);
-            gain = va_arg(ap, int);
-            sample_rate = va_arg(ap, int);
-            va_end(ap);
+            delay = va_arg(ap, unsigned);
+            samples = va_arg(ap, unsigned);
+            gain = va_arg(ap, unsigned);
+            sample_rate = va_arg(ap, unsigned);
             
             cmd->rx_len = (gain << 4) + (sample_rate << 1);
 
@@ -217,53 +214,41 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             break;
         }
         case SDM_CMD_TX_CONTINUE:
-            va_start(ap, cmd_code);
             va_arg(ap, unsigned);
             data = va_arg(ap, char *);
             data_len = va_arg(ap, int);
-            va_end(ap);
             break;
         case SDM_CMD_TX:
         {
             char *d;
 
-            va_start(ap, cmd_code);
-
             cmd->data_len = va_arg(ap, unsigned);
             d             = va_arg(ap, char *);
-            data_len      = va_arg(ap, int);
+            data_len      = va_arg(ap, unsigned);
 
             /* FIXME: quick fix. Padding up to 1024 samples here */
             cmd->data_len = ((cmd->data_len + 1023) / 1024) * 1024;
             cmd_raw = realloc(cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
             memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA], d, data_len * 2);
-
-            va_end(ap);
             break;
         }
         case SDM_CMD_REF:
         {
             char *d;
 
-            va_start(ap, cmd_code);
-
             d             = va_arg(ap, char *);
-            data_len      = va_arg(ap, int);
+            data_len      = va_arg(ap, unsigned);
             cmd->data_len = data_len;
 
             cmd_raw = realloc(cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
             memset(&cmd_raw[SDM_PKT_T_OFFSET_DATA], 0, data_len * 2);
             memcpy(&cmd_raw[SDM_PKT_T_OFFSET_DATA], d, data_len * 2);
-
-            va_end(ap);
             break;
         }
         case SDM_CMD_RX:
         case SDM_CMD_RX_JANUS:
         {
-            va_start(ap, cmd_code);
-            cmd->rx_len = va_arg(ap, int) & 0xffffff;
-            va_end(ap);
+            cmd->rx_len = va_arg(ap, unsigned long) & 0xffffff;
             break;
         }
         case SDM_CMD_USBL_RX:
@@ -271,10 +256,8 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             uint8_t channel;
             uint16_t samples;
             
-            va_start(ap, cmd_code);
-            channel = va_arg(ap, int);
-            samples = va_arg(ap, int);
-            va_end(ap);
+            channel = va_arg(ap, unsigned);
+            samples = va_arg(ap, unsigned);
 
             cmd->rx_len = samples + (channel << 21);
             break;
@@ -285,14 +268,18 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
             return -1;
     }
 
+    va_end (ap);
+
     if (cmd_code == SDM_CMD_TX_CONTINUE) {
         if (data_len) {
-            logger(TRACE_LOG, "tx cmd continue: %d samples              \n", data_len);
+            logger(TRACE_LOG, "tx cmd continue: %"PRIu32" samples              \n", data_len);
             n = write(ss->sockfd, data, data_len * 2);
+        } else {
+            n = 0;
         }
     } else {
         sdm_pack_cmd(cmd, cmd_raw);
-        logger(INFO_LOG, "tx cmd %-6s: %d samples ", sdm_cmd_to_str(cmd->cmd), data_len);
+        logger(INFO_LOG, "tx cmd %-6s: %"PRIu32" samples ", sdm_cmd_to_str(cmd->cmd), data_len);
         DUMP_SHORT(DEBUG_LOG, LGREEN, cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
         logger(INFO_LOG, "\n");
         n = write(ss->sockfd, cmd_raw, SDM_PKT_T_SIZE + data_len * 2);
@@ -373,11 +360,15 @@ char* sdm_reply_report_to_str(uint8_t cmd)
 int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
 {
     char *buf;
+    int len;
 
     logger((sdm_is_async_reply(cmd->cmd) ? ASYNC_LOG : INFO_LOG)
             , "\rrx cmd %-6s: ", sdm_reply_to_str(cmd->cmd));
     sdm_pack_reply(cmd, &buf);
-    DUMP_SHORT(DEBUG_LOG, YELLOW, buf, SDM_PKT_T_SIZE + cmd->data_len * 2);
+    len = SDM_PKT_T_SIZE;
+    if (cmd->cmd != SDM_REPLY_REPORT)
+        len += cmd->data_len * 2;
+    DUMP_SHORT(DEBUG_LOG, YELLOW, buf, len);
     free(buf);
 
     switch (cmd->cmd) {
@@ -390,14 +381,14 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
             logger(INFO_LOG, "          \n");
             break;
         case SDM_REPLY_BUSY:
-            logger(INFO_LOG, "%d\n", cmd->param);
+            logger(INFO_LOG, "%"PRId32"\n", cmd->param);
             break;
         case SDM_REPLY_SYSTIME:
             if (cmd->data_len == 8) {
-                logger (INFO_LOG, "current_time = %u, tx_time = %u, rx_time = %u, syncin_time = %u\n"
+                logger (INFO_LOG, "current_time = %"PRIu32", tx_time = %"PRIu32", rx_time = %"PRIu32", syncin_time = %"PRIu32"\n"
                        , cmd->current_time, cmd->tx_time, cmd->rx_time, cmd->syncin_time);
             } else {
-                logger (INFO_LOG, "current_time = %u, tx_time = %u, rx_time = %u\n"
+                logger (INFO_LOG, "current_time = %"PRIu32", tx_time = %"PRIu32", rx_time = %"PRIu32"\n"
                        , cmd->current_time, cmd->tx_time, cmd->rx_time);
             }
             break;
@@ -409,26 +400,26 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
             float janus_doppler;
             memcpy(&janus_nshift, &ss->rx_data[0], 4);
             memcpy(&janus_doppler, &ss->rx_data[4], 4);
-            logger (INFO_LOG, " janus_nshift = %d, janus_doppler = %f\n", janus_nshift, janus_doppler);
+            logger (INFO_LOG, " janus_nshift = %"PRId32", janus_doppler = %f\n", janus_nshift, janus_doppler);
             break;
         }
         case SDM_REPLY_REPORT:
             switch (cmd->param) {
                 case SDM_REPLY_REPORT_NO_SDM_MODE: logger(INFO_LOG, " %s\n", sdm_reply_report_to_str(SDM_REPLY_REPORT_NO_SDM_MODE)); break;
-                case SDM_REPLY_REPORT_TX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
-                case SDM_REPLY_REPORT_RX_STOP:     logger(INFO_LOG, " %s after %d samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_TX_STOP:     logger(INFO_LOG, " %s after %"PRIu32" samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_RX_STOP:     logger(INFO_LOG, " %s after %"PRIu32" samples\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 case SDM_REPLY_REPORT_REF:         logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param),    cmd->data_len ? "done":"fail"); break;
                 case SDM_REPLY_REPORT_CONFIG:      logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
                 case SDM_REPLY_REPORT_USBL_CONFIG: logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len ? "done":"fail"); break;
-                case SDM_REPLY_REPORT_USBL_RX_STOP:logger(INFO_LOG, " %s %s\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
-                case SDM_REPLY_REPORT_DROP:        logger(INFO_LOG, " %s %d\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_USBL_RX_STOP:logger(INFO_LOG, " %s %"PRIu32"\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                case SDM_REPLY_REPORT_DROP:        logger(INFO_LOG, " %s %"PRIu32"\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
                 case SDM_REPLY_REPORT_SYSTIME:     logger(INFO_LOG, " %s fail\n", sdm_reply_report_to_str(cmd->param)); break;
-                case SDM_REPLY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%02x\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
-                default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", cmd->param); break;
+                case SDM_REPLY_REPORT_UNKNOWN:     logger(INFO_LOG, " %s 0x%"PRIx32"\n", sdm_reply_report_to_str(cmd->param), cmd->data_len); break;
+                default:  logger(WARN_LOG, " Uknown reply report 0x%02x\n", (unsigned)cmd->param); break;
             }
             break;
         default:
-            logger(WARN_LOG, "Uknown reply command 0x%02x\n", cmd->cmd);
+            logger(WARN_LOG, "Uknown reply command 0x%02x\n", (unsigned)cmd->cmd);
             break;
     }
 
@@ -612,7 +603,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         case SDM_REPLY_SYSTIME:
             /* cmd->data_len in header in uint16 count */
             if (handled - data_len < (int)ss->cmd->data_len * 2) {
-                logger(INFO_LOG, "\rwaiting %d bytes\r", ss->cmd->data_len * 2 - handled - data_len);
+                logger(INFO_LOG, "\rwaiting %"PRIu32" bytes\r", ss->cmd->data_len * 2 - handled - data_len);
                 return 0;
             }
 
@@ -627,7 +618,7 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
         case SDM_REPLY_JANUS_DETECTED:
             /* cmd->data_len in header in uint16 count */
             if (handled - data_len < (int)ss->cmd->data_len * 2) {
-                logger(INFO_LOG, "\rwaiting %d bytes\r", ss->cmd->data_len * 2 - handled - data_len);
+                logger(INFO_LOG, "\rwaiting %"PRIu32" bytes\r", ss->cmd->data_len * 2 - handled - data_len);
                 return 0;
             }
 
@@ -882,3 +873,4 @@ int sdm_receive_data_time_limit(sdm_session_t *ssl[], long time_limit)
     return rc;
 }
 
+/* vim: set ts=4 sw=4 et: */

@@ -246,11 +246,13 @@ int main(int argc, char *argv[])
         long num = strtol(argv[optind - 1], &endptr, 10);
 
         if (endptr != NULL && *endptr == 0 && num >= 1 && num <= 254) {
-            sprintf (host_, "192.168.0.%lu", num);
+            snprintf (host_, sizeof (host_), "192.168.0.%lu", num);
             host = host_;
         } else {
             host = argv[optind - 1];
         }
+    } else {
+        host = NULL;
     }
 
     if (flags & FLAG_SHOW_HELP)

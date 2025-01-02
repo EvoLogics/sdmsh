@@ -8,6 +8,8 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <ctype.h>
+#include <math.h>
 
 #include <stream.h>
 
@@ -123,6 +125,64 @@ static void stream_impl_free(stream_t *stream)
     stream->pdata = NULL;
 }
 
+#define NEXP 20
+static float exps[2 * NEXP] = {
+	1e-20f, 1e-19f, 1e-18f, 1e-17f, 1e-16f, 1e-15f, 1e-14f, 1e-13f, 1e-12f, 1e-11f,
+	1e-10f, 1e-9f, 1e-8f, 1e-7f, 1e-6f, 1e-5f, 1e-4f, 1e-3f, 1e-2f, 1e-1f,
+	1e0f, 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f,
+	1e10f, 1e11f, 1e12f, 1e13f, 1e14f, 1e15f, 1e16f, 1e17f, 1e18f, 1e19f,
+};
+inline static float fast_pow10f (int sign, int exp)
+{
+	return exp < NEXP ? exps[sign * exp + 20] : powf (10.0f, sign * exp);
+}
+
+static float myatof (const char *s)
+{
+	float f = 0.0f, x;
+	int sign = 1, ival = 0, exp;
+
+	for (; isspace (*s); ++s);
+
+	if (*s == '-') {
+		sign = -1;
+		++s;
+	}
+
+	for (ival = 0; isdigit (*s); ++s)
+		ival = ival * 10 + (*s - '0');
+
+	if (*s != '.')
+		goto skip;
+	++s;
+
+	for (x = 0.1f; isdigit (*s); ++s, x *= 0.1f)
+		f += (*s - '0') * x;
+
+skip:
+	f = sign * (f + ival);
+
+	if (*s != 'e' && *s != 'E')
+		return f;
+	++s;
+
+	sign = 1;
+	if (*s == '-') {
+		sign = -1;
+		++s;
+	}
+
+	for (exp = 0; isdigit (*s); ++s)
+		exp = exp * 10 + (*s - '0');
+
+	return fast_pow10f (sign, exp) * f;
+
+}
+
+#if __OpenBSD__
+# define fgets_unlocked fgets
+#endif
+
 static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned sample_count)
 {
     struct private_data_t *pdata = stream->pdata;
@@ -137,7 +197,7 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
     for (n = 0; n < sample_count;) {
         double val;
 
-        if ((fgets(buf, sizeof(buf), pdata->fp) == NULL)) {
+        if ((fgets_unlocked (buf, sizeof(buf), pdata->fp) == NULL)) {
             break;
         }
 
@@ -147,17 +207,17 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
 
         errno = 0;
         buf[strlen(buf) - 1] = 0;
-        val = strtod(buf, NULL);
+        val = myatof(buf);
         if (errno == ERANGE || (errno != 0 && val == 0)) {
             STREAM_RETURN_ERROR("Error to convert to digit.", errno);
         }
 
         switch (pdata->file_type) {
             case STREAM_ASCII_FILE_TYPE_FLOAT:
-                if (val > 1. || val < -1.)
+                if (val > 1.0 || val < -1.0)
                     STREAM_RETURN_ERROR("Error float data do not normalized", ERANGE);
 
-                samples[data_offset++] = (uint16_t)(val * SHRT_MAX);
+                samples[data_offset++] = (int16_t)(val * SHRT_MAX);
                 break;
             case STREAM_ASCII_FILE_TYPE_INT:
                 if (val < SHRT_MIN || val > SHRT_MAX) {
@@ -165,7 +225,7 @@ static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned 
                     STREAM_RETURN_ERROR("Error int data must be 16bit", ERANGE);
 		}
             
-                samples[data_offset++] = (uint16_t)val;
+                samples[data_offset++] = (int16_t)val;
                 break;
         }
         n++;
@@ -182,7 +242,7 @@ static int stream_impl_write(stream_t *stream, void* samples, unsigned int sampl
         STREAM_RETURN_ERROR("writing file", ENOTSUP);
 
     for (i = 0; i < sample_count; i++)
-        if (fprintf (pdata->fp, "%d\n", ((uint16_t*)samples)[i]) < 0)
+        if (fprintf (pdata->fp, "%d\n", ((int16_t*)samples)[i]) < 0)
             STREAM_RETURN_ERROR("writing file", errno);
 
     return sample_count;
@@ -241,7 +301,7 @@ int stream_impl_ascii_new(stream_t *stream)
     stream->strerror     = stream_impl_strerror;
     stream->get_error_op = stream_impl_get_error_op;
     stream->count        = stream_impl_count;
-    strcpy(stream->name, "ASCII");
+    strncpy(stream->name, "ASCII", sizeof (stream->name));
 
     return STREAM_ERROR_NONE;
 }

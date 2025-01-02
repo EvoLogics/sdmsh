@@ -24,17 +24,26 @@ LIBSTRM_DIR = lib/$(LIBSTRM)
 LIBSTRM_SO  = $(LIBSTRM_DIR)/$(LIBSTRM).so
 LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 
-CFLAGS += -W -Wall -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -fPIC
+ifdef BUILD_STATIC_BIN
+STATIC = --static
+endif
+
+RLINC = `pkg-config --cflags readline`
+RLLIB = `pkg-config --libs ${STATIC} readline`
+
+CFLAGS += -Wall -Wextra -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -D_GNU_SOURCE -fPIC ${RLINC}
 ifdef WITH_ADDRESS_SANITAZE
 	CFLAGS  += -fsanitize=address
 	LDFLAGS += -fsanitize=address
 endif
 
 ifdef BUILD_STATIC_BIN
-    LDFLAGS += -static -l:libreadline.a -l:libtinfo.a -l:libncurses.a
+    LDFLAGS += -static -l:libtinfo.a -l:libncurses.a
 else
-    LDFLAGS += -lreadline -ltinfo -lncurses
+    LDFLAGS += -ltinfo -lncurses
 endif
+
+LDFLAGS += ${RLLIB} -lm
 
 ifdef COMPAT_READLINE6
     SRC     +=  compat/readline6.c
@@ -46,6 +55,8 @@ DOCKER_RUN = docker run --rm -it \
                 -v $(HOME)/.bash_history:$(HOME)/.bash_history \
                 -e USER=$(USER) -e HOST_UID=$$(id -u) -e HOST_GID=$$(id -g) \
                 evologicsgmbh/crosscompile-sandbox
+
+all: build sampleconv
 
 build: lib $(OBJ)
 	$(CC) -o $(PROJ) $(OBJ) $(LIBSDM_A) $(LIBSTRM_A) -L. $(LDFLAGS)
@@ -61,17 +72,17 @@ sandbox-devshell:
 
 .PHONY: lib
 lib:
-	make -C $(LIBSTRM_DIR)
-	make -C $(LIBSDM_DIR)
+	${MAKE} -C $(LIBSTRM_DIR)
+	${MAKE} -C $(LIBSDM_DIR)
 
 $(LIBSDM_A) $(LIBSDM_SO):
-	make -C $(LIBSTRM_DIR)
-	make -C $(LIBSDM_DIR)
+	${MAKE} -C $(LIBSTRM_DIR)
+	${MAKE} -C $(LIBSDM_DIR)
 
 clean:
-	make -C $(LIBSDM_DIR) clean
-	make -C $(LIBSTRM_DIR) clean
-	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so core
+	${MAKE} -C $(LIBSDM_DIR) clean
+	${MAKE} -C $(LIBSTRM_DIR) clean
+	rm -f $(PROJ) $(OBJ) *~ .*.sw? *.so core *.core
 
 dist-clean: clean
 	rm -f cscope.out tags

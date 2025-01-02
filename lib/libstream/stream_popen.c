@@ -140,7 +140,7 @@ int stream_impl_popen_new(stream_t *stream)
     stream->strerror     = stream_impl_strerror;
     stream->get_error_op = stream_impl_get_error_op;
     stream->count        = stream_impl_count;
-    strcpy(stream->name, "POPEN");
+    strncpy(stream->name, "POPEN", sizeof (stream->name));
 
     return STREAM_ERROR_NONE;
 }

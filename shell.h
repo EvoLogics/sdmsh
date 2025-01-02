@@ -9,6 +9,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifndef __linux__
+typedef void (*sighandler_t)(int);
+#endif
+
 #include <stdio.h> /* FILE* */
 #include <signal.h>
 
