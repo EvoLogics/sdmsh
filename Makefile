@@ -43,7 +43,7 @@ else
     LDFLAGS += -ltinfo -lncurses
 endif
 
-LDFLAGS += ${RLLIB} -lm
+LDFLAGS += ${RLLIB} -lm -lbsd
 
 ifdef COMPAT_READLINE6
     SRC     +=  compat/readline6.c
