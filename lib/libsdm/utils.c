@@ -316,26 +316,6 @@ char* ssprintf(char *fmt, ...)
     return buf;
 }
 
-char *sstrpad(char *src, size_t pad)
-{
-    static char buf[SSPRINTFMAX];
-    size_t len = strlen(src);
-
-    if (pad > sizeof(buf) - 1) {
-        pad = sizeof(buf) - 1;
-    }
-    buf[0] = 0;
-    if (pad >= len) {
-        strlcat(buf, src, sizeof (buf));
-        memset(&buf[len], ' ', pad - len);
-        buf[pad] = 0;
-    } else {
-        strncat(buf, src, pad);
-        buf[pad-1] = '{';
-    }
-    return buf;
-}
-
 void log_hexdump(char *buf, ssize_t len)
 {
     static char hex[]="0123456789abcdef";
