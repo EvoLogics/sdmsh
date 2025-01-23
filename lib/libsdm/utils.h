@@ -235,7 +235,6 @@ char *memmemtr(char *haystack, size_t haystacklen, char *needle, size_t needlele
 char *memmemf(char *haystack, size_t haystacklen, char *needle, size_t needlelen);
 char *memmemf_ncase(char *haystack, size_t haystacklen, char *needle, size_t needlelen);
 char* ssprintf(char *fmt, ...);
-char *sstrpad(char *src, size_t pad);
 
 void log_hexdump(char *buf, ssize_t len);
 int array2hexdump(char *dst, size_t dst_len, char *src, size_t src_len);
