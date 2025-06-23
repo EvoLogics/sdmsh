@@ -7,6 +7,7 @@
 
 %rename("%(strip:[sdm_])s") "";
 %rename("%(strip:[SDM_])s", %$isenumitem) "";
+
 %define EXCEPTION_RET_INT {
     if (arg1 == NULL)
         SWIG_exception(SWIG_ValueError, "No connection");
@@ -14,7 +15,11 @@
     $action
 
     if (result == SDM_ERR_TIMEOUT) {
+#if defined(SWIGPYTHON)
         SWIG_SetErrorMsg(SDM_TimeoutError, "Timeout");
+#elif defined(SWIGTCL)
+        SWIG_Error(42, "Timeout");
+#endif
         SWIG_fail;
     } else if (result < 0)
         SWIG_exception(SWIG_SystemError, logger_last_line());
@@ -62,6 +67,10 @@
     for (i = 0; i < templen; i++)
         PyList_SetItem($result, i, PyInt_FromLong((double)$1[i]));
 #elif defined(SWIGTCL)
+    Tcl_Obj *listPtr = Tcl_NewListObj(templen, NULL);
+    for (i = 0; i < templen; i++)
+        Tcl_ListObjAppendElement(interp, listPtr, Tcl_NewIntObj($1[i]));
+    Tcl_SetObjResult(interp, listPtr);
 #endif
 }
 
@@ -90,6 +99,13 @@
         $2[i] = PyInt_AsLong(s);
     }
 #elif defined(SWIGTCL)
+    if (Tcl_ListObjLength(interp, $input, &$1) != TCL_OK)
+        SWIG_exception(SWIG_ValueError, "Expecting a list");
+
+    $2 = (uint16_t *) malloc(($1)*sizeof(uint16_t));
+    for (i = 0; i < $1; i++) {
+    }
+
 #endif
 }
 
