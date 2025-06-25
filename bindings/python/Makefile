@@ -24,7 +24,9 @@ CC = gcc
 TEST_NODE_active = 219
 TEST_NODE_passive = 221
 
-.PHONY: build
+pkg:
+	python3 -m build
+.PHONY: pkg
 build: lib $(LIBSDM_DIR)/libsdm.so $(LIBSTREAM_DIR)/libstream.so $(OUT_SO)
 
 $(WRAP_SRC): $(SWIG_SRC)

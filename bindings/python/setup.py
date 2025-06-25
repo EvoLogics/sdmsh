@@ -35,8 +35,25 @@ class CustomBuildExt(_build_ext):
 
 from setuptools.command.sdist import sdist as _sdist
 import shutil
+import subprocess
 
 class CustomSdist(_sdist):
+    def run(self):
+        print("→ Copying .c and .h files to libsrc/")
+        copy_sources()
+
+        # Generate sdm.py using SWIG before sdist builds file list
+        if not os.path.exists("sdm.py"):
+            print("→ Generating sdm.py using SWIG")
+            subprocess.run([
+                "swig", "-python", "-Wall", "-globals", "var",
+                *[f"-I{os.path.join(base_dir, inc)}" for inc in src_dirs],
+                *[f"-I{os.path.join(libsrc_dir, inc)}" for inc in src_dirs],
+                "-o", "sdm_wrap.c", "sdm.i"
+            ], check=True)
+
+        super().run()
+
     def make_release_tree(self, base_dir, files):
         print("→ Copying .c and .h files to libsrc/")
         copied_files = []
@@ -68,6 +85,8 @@ src_dirs = [
 
 swig_opts = ["-Wall", "-globals", "var"]
 
+# Package can be build from current directory or from temporary directory.
+# Include paths can be in lisrc/lib or in lib/, so two set if -I flags are needed.
 for inc in src_dirs:
     swig_opts.append(f"-I{os.path.join(base_dir, inc)}")
     swig_opts.append(f"-I{os.path.join(libsrc_dir, inc)}")
@@ -93,7 +112,7 @@ sdm_module = Extension(
 setup(
     name="sdm",
     version="0.0.1",
-    description="SWIG wrapper for SDM",
+    description="SDM library for EvoLogics S2C Underwater Acoustic Modems",
     py_modules=["sdm", "sdmapi"],
     ext_modules=[sdm_module],
     cmdclass={
