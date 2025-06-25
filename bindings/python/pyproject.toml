@@ -1,0 +1,34 @@
+[build-system]
+#requires = ["hatchling >= 1.26"]
+#build-backend = "hatchling.build"
+#requires = ["setuptools>=61.0", "wheel", "swig"]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sdm"
+version = "0.0.1"
+authors = [
+  { name="Maksym Komar", email="komar@evologics.de" },
+]
+description = "Shell for SDM mode for EvoLogics S2C Underwater Acoustic Modems"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+#license = "MIT"
+#license-files = ["LICEN[CS]E*"]
+
+#[tool.setuptools.ext_modules]
+#sdm = {
+#    sources = ["sdm.i", "sdm.c"],
+#    swig = true,
+#    language = "c"
+#}
+
+[project.urls]
+Homepage = "https://github.com/EvoLogics/sdmsh"
+Issues = "https://github.com/EvoLogics/sdmsh/issues"
