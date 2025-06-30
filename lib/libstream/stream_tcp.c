@@ -154,7 +154,7 @@ static void stream_impl_free(stream_t *stream)
     stream->pdata = NULL;
 }
 
-static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned sample_count)
+static int stream_impl_read(const stream_t *stream, int16_t* samples, unsigned sample_count)
 {
     struct private_data_t *pdata = stream->pdata;
     int rv, offset = 0;

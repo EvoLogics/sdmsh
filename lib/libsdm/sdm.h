@@ -96,7 +96,7 @@ typedef struct sdm_pkt_t {
     };
     uint32_t data_len; /* in 16bit words */
     union {
-        uint16_t data[0];
+        int16_t data[0];
         struct {
             uint32_t current_time;
             uint32_t tx_time;

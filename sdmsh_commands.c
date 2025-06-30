@@ -120,7 +120,7 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
 
 int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 {
-    uint16_t  *data;
+    int16_t  *data;
     ssize_t len = 1024;
     sdm_session_t *ss = sc->cookie;
     int rc;
@@ -145,7 +145,7 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         return -1;
     }
 
-    data = calloc(len, sizeof(uint16_t));
+    data = calloc(len, sizeof(int16_t));
 
     rc = stream_read(stream, data + len - samples_count, samples_count);
 
@@ -156,8 +156,8 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
         if (rc != len) {
             logger (WARN_LOG, "ref: Padding before reference %d samples, to reference signal to 1024 samples\n", len - rc);
             if (samples_count == len) {
-                memmove(data + len - rc, data, rc * sizeof(uint16_t));
-                memset(data, 0, (len - rc) * sizeof(uint16_t));
+                memmove(data + len - rc, data, rc * sizeof(int16_t));
+                memset(data, 0, (len - rc) * sizeof(int16_t));
             }
         }
 
@@ -176,7 +176,8 @@ int sdmsh_cmd_ref(struct shell_config *sc, char *argv[], int argc)
 int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
 {
     ssize_t len = 1024 * 2, cnt;
-    uint16_t *data, cmd;
+    uint16_t cmd;
+    int16_t *data;
     sdm_session_t *ss = sc->cookie;
     int rc;
     ssize_t nsamples = 0, passed = 0;
@@ -214,8 +215,10 @@ int sdmsh_cmd_tx(struct shell_config *sc, char *argv[], int argc)
             logger(ERR_LOG, "tx: open error %s\n", stream_strerror(stream));
         return -1;
     }
-    data = malloc(len * sizeof(uint16_t));
 
+    data = malloc(len * sizeof(int16_t));
+
+    /* FIXME: when TX huge ammount of data, we cannot get SDM_REPLY_STOP and stop sending */
     cmd = SDM_CMD_TX;
     do {
         len = len < nsamples - passed ? len : nsamples - passed;
@@ -320,7 +323,7 @@ int sdmsh_cmd_rx_janus(struct shell_config *sc, char *argv[], int argc)
 int sdmsh_cmd_usbl_rx(struct shell_config *sc, char *argv[], int argc)
 {
     uint8_t channel = 0;
-    uint16_t samples = 0;
+    int16_t samples = 0;
     sdm_session_t *ss = sc->cookie;
     stream_t* stream;
 

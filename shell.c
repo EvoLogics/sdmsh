@@ -267,7 +267,7 @@ int shell_make_argv (const char *cmdline, char ***argv, int *argc)
 
 	while ((s = next (&cmdline, &quot)) != NULL) {
 		if (quot) {
-			if (*argc == cap) {
+			if ((size_t)*argc == cap) {
 				cap *= 2;
 				*argv = reallocarray (*argv, cap + 1, sizeof (char *));
 			}

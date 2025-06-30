@@ -47,13 +47,13 @@ stream_t *stream_new_v(int direction, const char* driver, const char* args)
     memset (&g, 0, sizeof (g));
     // FIXME: check return value of strncpy()
     if (glob (args, GLOB_NOCHECK | GLOB_TILDE, NULL, &g) == 0) {
-        strncpy (stream->args, g.gl_pathv[0], sizeof (stream->args));
+        strncpy (stream->args, g.gl_pathv[0], sizeof (stream->args) - 1);
     } else {
-        strncpy (stream->args, args, sizeof (stream->args));
+        strncpy (stream->args, args, sizeof (stream->args) - 1);
     }
     globfree (&g);
 
-    stream->sample_size = sizeof(uint16_t);
+    stream->sample_size = sizeof(int16_t);
     stream->direction = direction;
     stream_set_fs(stream, 62500);
 
@@ -123,13 +123,13 @@ int stream_close(stream_t *stream)
     return stream->close(stream);
 }
 
-int stream_read(stream_t *stream, uint16_t* samples, unsigned sample_count)
+int stream_read(stream_t *stream, int16_t* samples, unsigned sample_count)
 {
     CHECK_SUPPORT(read);
     return stream->read(stream, samples, sample_count);
 }
 
-int stream_write(stream_t *stream, uint16_t *samples, unsigned sample_count)
+int stream_write(stream_t *stream, int16_t *samples, unsigned sample_count)
 {
     CHECK_SUPPORT(write);
     return stream->write(stream, samples, sample_count);
@@ -310,10 +310,10 @@ void stream_dump(stream_t *stream)
     fprintf(stderr, "Stream Sampling Frequency (Hz): %u\n", stream->fs);
 }
 
-uint16_t* stream_load_samples(char *filename, size_t *len)
+int16_t* stream_load_samples(char *filename, size_t *len)
 {
     int rc;
-    uint16_t *samples = NULL;
+    int16_t *samples = NULL;
     stream_t* stream;
 
     stream = stream_new(STREAM_INPUT, filename);
@@ -330,7 +330,7 @@ uint16_t* stream_load_samples(char *filename, size_t *len)
     if (rc < 0)
         goto stream_load_samples_error;
 
-    samples = malloc(rc * sizeof(uint16_t));
+    samples = malloc(rc * sizeof(int16_t));
     if (!samples)
         goto stream_load_samples_error;
 

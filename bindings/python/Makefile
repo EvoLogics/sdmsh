@@ -27,7 +27,9 @@ TEST_NODE_passive = 221
 pkg:
 	python3 -m build
 .PHONY: pkg
+
 build: lib $(LIBSDM_DIR)/libsdm.so $(LIBSTREAM_DIR)/libstream.so $(OUT_SO)
+.PHONY: build
 
 $(WRAP_SRC): $(SWIG_SRC)
 	#swig -python -E -I$(LIBSDM_DIR) $(SWIG_SRC)

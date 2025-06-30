@@ -179,11 +179,11 @@ skip:
 
 }
 
-#if __OpenBSD__
+#ifdef __OpenBSD__
 # define fgets_unlocked fgets
 #endif
 
-static int stream_impl_read(const stream_t *stream, uint16_t* samples, unsigned sample_count)
+static int stream_impl_read(const stream_t *stream, int16_t* samples, unsigned sample_count)
 {
     struct private_data_t *pdata = stream->pdata;
     unsigned n;

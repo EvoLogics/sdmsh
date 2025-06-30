@@ -56,8 +56,8 @@
   $1 = &templen;
 }
 
-%typemap(out) uint16_t* {
-    int i;
+%typemap(out) int16_t* {
+    size_t i;
 
     if (!$1)
       SWIG_exception(SWIG_ValueError, "No signal data");
@@ -74,22 +74,22 @@
 #endif
 }
 
-%typemap(freearg) uint16_t* {
+%typemap(freearg) int16_t* {
   if (!$1)
       SWIG_exception(SWIG_ValueError, "No signal data");
   free($1);
 }
 
 
-%typemap(in) (size_t nsamples, uint16_t *data) {
-    int i;
+%typemap(in) (size_t nsamples, int16_t *data) {
+    size_t i;
 
 #if defined(SWIGPYTHON)
     if (!PyList_Check($input))
         SWIG_exception(SWIG_ValueError, "Expecting a list");
 
     $1 = PyList_Size($input);
-    $2 = (uint16_t *) malloc(($1)*sizeof(uint16_t));
+    $2 = (int16_t *) malloc(($1)*sizeof(int16_t));
     for (i = 0; i < $1; i++) {
         PyObject *s = PyList_GetItem($input,i);
         if (!PyInt_Check(s)) {
@@ -102,24 +102,27 @@
     if (Tcl_ListObjLength(interp, $input, &$1) != TCL_OK)
         SWIG_exception(SWIG_ValueError, "Expecting a list");
 
-    $2 = (uint16_t *) malloc(($1)*sizeof(uint16_t));
+    $2 = (int16_t *) malloc(($1)*sizeof(int16_t));
     for (i = 0; i < $1; i++) {
     }
 
 #endif
 }
 
-%typemap(freearg) (size_t nsamples, uint16_t *data) {
+%typemap(freearg) (size_t nsamples, int16_t *data) {
     if (!$2)
         SWIG_exception(SWIG_ValueError, "No data");
     free($2);
 }
 
+%typemap(arginit) (sdm_session_t *ssl[]) {
+    $1 = NULL;
+}
+
 %typemap(in) (sdm_session_t *ssl[]) {
-    int i;
+    size_t i;
     size_t size;
 
-    $1 = NULL;
 #if defined(SWIGPYTHON)
     if (!PyList_Check($input))
         SWIG_exception(SWIG_ValueError, "Expecting a list in $symname");
@@ -144,7 +147,7 @@
 }
 
 %typemap(freearg) (sdm_session_t *ssl[]) {
-    if (!$1)
+    if ($1 == NULL || $1[0] == NULL)
         SWIG_exception(SWIG_ValueError, "Expecting a list in $symname");
     free($1);
 }
@@ -218,7 +221,7 @@ int sdm_send_usbl_config(sdm_session_t *ss, uint16_t delay, long samples,
     return sdm_send(ss, SDM_CMD_USBL_CONFIG, delay, samples, gain, sample_rate);
 }
 
-int sdm_send_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
+int sdm_send_ref(sdm_session_t *ss, size_t nsamples, int16_t *data) {
     if (!ss) {
         logger(ERR_LOG, "No SDM session\n");
         return -1;
@@ -236,7 +239,7 @@ int sdm_send_ref(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
     return sdm_send(ss, SDM_CMD_REF, data, nsamples);
 }
 
-int sdm_send_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
+int sdm_send_tx(sdm_session_t *ss, size_t nsamples, int16_t *data) {
     int rc;
     uint16_t cmd;
     size_t cnt, passed = 0, len = 1024;
@@ -268,7 +271,7 @@ int sdm_send_tx(sdm_session_t *ss, size_t nsamples, uint16_t *data) {
             rc = sdm_send(ss, cmd, nsamples, data, len);
             passed += len;
         } else if (cnt > 0) {
-            uint16_t buf[1024] = {0};
+            int16_t buf[1024] = {0};
             memcpy(buf, data, cnt);
             rc = sdm_send(ss, cmd, nsamples, buf, 1024 * ((cnt + 1023) / 1024));
             passed += 1024 * ((cnt + 1023) / 1024);
@@ -463,9 +466,9 @@ int sdm_add_sink_membuf(sdm_session_t *ss)
     return 0;
 }
 
-uint16_t* sdm_get_membuf(sdm_session_t *ss, size_t *len)
+int16_t* sdm_get_membuf(sdm_session_t *ss, size_t *len)
 {
-    uint16_t *sink_membuf;
+    int16_t *sink_membuf;
 
     if (!ss) {
         logger(ERR_LOG, "No SDM session\n");
@@ -477,7 +480,7 @@ uint16_t* sdm_get_membuf(sdm_session_t *ss, size_t *len)
         return NULL;
     }
 
-    sink_membuf  = (uint16_t *)ss->sink_membuf;
+    sink_membuf  = (int16_t *)ss->sink_membuf;
     *len         = ss->sink_membuf_size / 2;
 
     ss->sink_membuf   = NULL;

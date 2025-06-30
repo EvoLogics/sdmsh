@@ -432,7 +432,7 @@ int sdm_save_samples(sdm_session_t *ss, char *buf, size_t len)
     int i;
 
     for (i = ss->streams.count - 1; i >= 0; i--) {
-        int rc = stream_write(ss->streams.streams[i], (uint16_t*)buf, len / 2);
+        int rc = stream_write(ss->streams.streams[i], (int16_t*)buf, len / 2);
 
         if (rc <= 0) {
             error = rc;
