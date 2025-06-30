@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 import sys
 import time
 import sdm
@@ -45,7 +45,7 @@ def send_signal(session):
 def recv_data(session):
     try:
         sdm.expect(session, sdm.REPLY_STOP);
-    except sdm.TimeoutError, err:
+    except sdm.TimeoutError(err):
         print("Fail to receive signal on %s side" % session.name)
         sdm.send_stop(session)
         exit(1)
