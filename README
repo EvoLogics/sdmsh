@@ -1,3 +1,8 @@
 Shell for SDM mode for EvoLogics S2C Underwater Acoustic Modems
 
 Documentation online: https://github.com/evologics/sdmsh/wiki
+
+# Cross-Compiling without pkg-config
+```sh
+make RLINC=/path/to/readline/include RLLIB=/path/to/readline/lib
+```
