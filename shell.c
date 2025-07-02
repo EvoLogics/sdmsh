@@ -269,7 +269,7 @@ int shell_make_argv (const char *cmdline, char ***argv, int *argc)
 		if (quot) {
 			if ((size_t)*argc == cap) {
 				cap *= 2;
-				*argv = reallocarray (*argv, cap + 1, sizeof (char *));
+				*argv = realloc(*argv, (cap + 1) * sizeof (char *));
 			}
 			(*argv)[(*argc)++] = s;
 		} else {
@@ -278,7 +278,7 @@ int shell_make_argv (const char *cmdline, char ***argv, int *argc)
 			if (glob (s, GLOB_NOCHECK, NULL, &g) == 0) {
 				if (cap < (*argc + g.gl_pathc)) {
 					for (cap *= 2; cap < (*argc + g.gl_pathc); cap *= 2);
-					*argv = reallocarray (*argv, cap + 1, sizeof (char *));
+					*argv = realloc(*argv, (cap + 1) * sizeof (char *));
 				}
 
 				for (size_t i = 0; i < g.gl_pathc; ++i)
