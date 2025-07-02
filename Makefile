@@ -25,16 +25,24 @@ LIBSTRM_SO  = $(LIBSTRM_DIR)/$(LIBSTRM).so
 LIBSTRM_A   = $(LIBSTRM_DIR)/$(LIBSTRM).a
 
 ifdef BUILD_STATIC_BIN
-STATIC = --static
+    STATIC = --static
 endif
 
-RLINC = `pkg-config --cflags readline`
-RLLIB = `pkg-config --libs ${STATIC} readline`
+RLINC != pkg-config --cflags readline 2> /dev/null
+RLLIB != pkg-config --libs ${STATIC} readline 2> /dev/null
 
 CFLAGS += -Wall -Wextra -I. -I$(LIBSDM_DIR) -I$(LIBSTRM_DIR) -ggdb -DLOGGER_ENABLED -D_GNU_SOURCE -fPIC ${RLINC}
 ifdef WITH_ADDRESS_SANITAZE
 	CFLAGS  += -fsanitize=address
 	LDFLAGS += -fsanitize=address
+endif
+
+ifeq ($(RLLIB),)
+   ifdef BUILD_STATIC_BIN
+      LDFLAGS += -l:libreadline.a
+   else
+      LDFLAGS += -lreadline
+   endif
 endif
 
 ifdef BUILD_STATIC_BIN
