@@ -34,9 +34,12 @@ struct private_data_t
 static int stream_impl_open_connect(stream_t *stream)
 {
     struct private_data_t *pdata = stream->pdata;
+    int optval = 1;
 
     if ((pdata->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         STREAM_RETURN_ERROR("socket creation", errno);
+
+    setsockopt(pdata->fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
     /* TODO: add retry count here */
     if (connect(pdata->fd, (struct sockaddr *)&pdata->saun, sizeof(pdata->saun)) == -1) {
@@ -144,6 +147,7 @@ static int stream_impl_close(stream_t *stream)
 
     if (pdata->fd >= 0)
         close(pdata->fd);
+    pdata->fd = -1;
 
     return STREAM_ERROR_NONE;
 }
