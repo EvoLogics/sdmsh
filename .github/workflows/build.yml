@@ -1,0 +1,27 @@
+name: Build (Debian 13)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:13
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt update
+          apt upgrade -y
+          apt install -y git build-essential pkg-config libreadline-dev
+
+      - name: Checkout source (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build
+        run: |
+          make
