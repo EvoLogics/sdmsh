@@ -181,6 +181,9 @@ int sdm_send(sdm_session_t *ss, int cmd_code, ...)
     switch (cmd_code) {
         case SDM_CMD_STOP:
         case SDM_CMD_SYSTIME:
+        /* Both carry nothing: the command byte is the whole request. */
+        case SDM_CMD_LISTEN:
+        case SDM_CMD_GET_CONFIG:
             break;
         case SDM_CMD_CONFIG: {
             uint16_t preamp_gain;
@@ -310,6 +313,8 @@ char* sdm_cmd_to_str(uint8_t cmd)
         case SDM_CMD_USBL_CONFIG: return "USBL_CONFIG";
         case SDM_CMD_USBL_RX:     return "USBL_RX";
         case SDM_CMD_SYSTIME:     return "SYSTIME";
+        case SDM_CMD_LISTEN:      return "LISTEN";
+        case SDM_CMD_GET_CONFIG:  return "GET_CONFIG";
         default: return "???";
     }
 }
@@ -323,6 +328,7 @@ char* sdm_reply_to_str(uint8_t cmd)
         case SDM_REPLY_JANUS_DETECTED: return "JANUS_DETECTED";
         case SDM_REPLY_USBL_RX: return "USBL_RX";
         case SDM_REPLY_SYSTIME: return "SYSTIME";
+        case SDM_REPLY_CONFIG:  return "CONFIG";
         case SDM_REPLY_SYNCIN:  return "SYNCIN";
         case SDM_REPLY_BUSY:    return "BUSY";
         case SDM_REPLY_REPORT:  return "REPORT";

@@ -36,6 +36,11 @@ enum {
     SDM_CMD_SYSTIME     = 7,
     SDM_CMD_RX_JANUS    = 8,
     SDM_JANUS_DETECTED  = 9,
+    /* Entering SDM is automatic; leaving has to be asked for.
+     * 11, not the free 10: amdl uses 0xa for RELOAD in the same enum. */
+    SDM_CMD_LISTEN      = 11,
+    /* The preamp step is not in the sample stream and cannot be inferred. */
+    SDM_CMD_GET_CONFIG  = 12,
 
     SDM_CMD_TX_CONTINUE = 128
 };
@@ -47,6 +52,9 @@ enum {
     SDM_REPLY_SYSTIME         = 7,
     SDM_REPLY_RX_JANUS        = 8,
     SDM_REPLY_JANUS_DETECTED  = 9,
+    SDM_REPLY_LISTEN          = 11,
+    /* Same field layout as SDM_CMD_CONFIG. */
+    SDM_REPLY_CONFIG          = 12,
     SDM_REPLY_SYNCIN          = 253,
     SDM_REPLY_BUSY            = 254,
     SDM_REPLY_REPORT          = 255,

@@ -20,6 +20,8 @@
 int sdmsh_cmd_help       (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_config     (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_stop       (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_listen     (struct shell_config *sc, char *argv[], int argc);
+int sdmsh_cmd_getconfig  (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_ref        (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_tx         (struct shell_config *sc, char *argv[], int argc);
 int sdmsh_cmd_rx         (struct shell_config *sc, char *argv[], int argc);
@@ -37,6 +39,8 @@ struct commands_t commands[] = {
      {"config",      sdmsh_cmd_config,      SCF_NONE,       "config <threshold> <gain> <source level> [<preamp_gain>]", "Config SDM command." }
    , {"usbl_config", sdmsh_cmd_usbl_config, SCF_NONE,       "usbl_config <delay> <samples> <gain> <sample_rate>", "Config SDM USBL command."}
    , {"stop",        sdmsh_cmd_stop,        SCF_NONE,       "stop", "Stop SDM command."}
+   , {"listen",      sdmsh_cmd_listen,      SCF_NONE,       "listen", "Leave SDM mode and return the modem to its Listen state."}
+   , {"getconfig",   sdmsh_cmd_getconfig,   SCF_NONE,       "getconfig", "Request the receiver settings currently in force."}
    , {"ref",         sdmsh_cmd_ref,         SCF_USE_DRIVER, "ref [<number of samples>] [<driver>:]<params>", "Update reference signal."}
    , {"tx",          sdmsh_cmd_tx,          SCF_USE_DRIVER, "tx [<number of samples>] [<driver>:]<parameter>", "Send signal."}
    , {"rx",          sdmsh_cmd_rx,          SCF_USE_DRIVER, "rx <number of samples> [<driver>:]<params> [[<driver>:]<params>]", "Receive signal [0 is inf]."}
@@ -114,6 +118,29 @@ int sdmsh_cmd_stop(struct shell_config *sc, char *argv[], int argc)
     ARGS_RANGE(argc == 1);
     sdm_send(ss, SDM_CMD_STOP);
     sdm_set_idle_state(ss);
+
+    return 0;
+}
+
+int sdmsh_cmd_listen(struct shell_config *sc, char *argv[], int argc)
+{
+    sdm_session_t *ss = sc->cookie;
+
+    (void)argv;
+    ARGS_RANGE(argc == 1);
+    sdm_send(ss, SDM_CMD_LISTEN);
+    sdm_set_idle_state(ss);
+
+    return 0;
+}
+
+int sdmsh_cmd_getconfig(struct shell_config *sc, char *argv[], int argc)
+{
+    sdm_session_t *ss = sc->cookie;
+
+    (void)argv;
+    ARGS_RANGE(argc == 1);
+    sdm_send(ss, SDM_CMD_GET_CONFIG);
 
     return 0;
 }
