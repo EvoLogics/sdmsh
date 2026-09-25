@@ -8,7 +8,11 @@
 #include <netdb.h>
 #include <err.h>
 #include <limits.h> /* SHRT_MAX */
-#include <endian.h>
+#ifdef __APPLE__
+# include <machine/endian.h>
+#else
+# include <endian.h>
+#endif
 #include <assert.h>
 #include <getopt.h>
 #include <libgen.h> /* basename() */

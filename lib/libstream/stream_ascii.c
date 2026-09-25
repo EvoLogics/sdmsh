@@ -179,7 +179,7 @@ skip:
 
 }
 
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined(__APPLE__)
 # define fgets_unlocked fgets
 #endif
 
