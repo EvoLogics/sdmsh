@@ -328,6 +328,7 @@ char* sdm_reply_to_str(uint8_t cmd)
         case SDM_REPLY_JANUS_DETECTED: return "JANUS_DETECTED";
         case SDM_REPLY_USBL_RX: return "USBL_RX";
         case SDM_REPLY_SYSTIME: return "SYSTIME";
+        case SDM_REPLY_LISTEN:  return "LISTEN";
         case SDM_REPLY_CONFIG:  return "CONFIG";
         case SDM_REPLY_SYNCIN:  return "SYNCIN";
         case SDM_REPLY_BUSY:    return "BUSY";
