@@ -384,9 +384,21 @@ int sdm_show(sdm_session_t *ss, sdm_pkt_t *cmd)
         case SDM_REPLY_USBL_RX:
             /* RX do not return data_len. No need to dump data */
         case SDM_REPLY_STOP:
+        case SDM_REPLY_LISTEN:
             /* spaces need to clean last message 'recv %d samples' */
             logger(INFO_LOG, "          \n");
             break;
+        case SDM_REPLY_CONFIG: {
+            uint16_t word = 0;
+
+            /* the preamp step is the top nibble of the one data word */
+            if (cmd->data_len >= 1 && ss->rx_data_len >= 2)
+                memcpy(&word, ss->rx_data, sizeof(word));
+            logger(INFO_LOG, "threshold %u, gain %u, source level %u, preamp %u\n"
+                   , (unsigned)cmd->threshold, (unsigned)cmd->gain_and_srclvl >> 7
+                   , (unsigned)cmd->gain_and_srclvl & 0x7f, (unsigned)word >> 12);
+            break;
+        }
         case SDM_REPLY_BUSY:
             logger(INFO_LOG, "%"PRId32"\n", cmd->param);
             break;
@@ -636,6 +648,17 @@ int sdm_handle_rx_data(sdm_session_t *ss, char *buf, int len)
 
             return handled;
 
+        case SDM_REPLY_CONFIG: {
+            int n = ss->cmd->data_len * 2 < (uint32_t)ss->rx_data_len ? (int)ss->cmd->data_len * 2 : ss->rx_data_len;
+
+            /* a resize by 0 would drop the whole buffer */
+            if (n > 0) {
+                sdm_buf_resize(ss, NULL, -n);
+                handled += n;
+            }
+            ss->state = SDM_STATE_IDLE;
+            return handled;
+        }
         case SDM_REPLY_BUSY:
             return SDM_ERR_BUSY;
         case SDM_REPLY_SYNCIN:
